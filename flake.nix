@@ -3,7 +3,9 @@
 
   inputs = {
     nixpkgs.url = "github:cachix/devenv-nixpkgs/c2f38fe7f9e04d9aadd354d380f2bd40531d9737"; # reviewed rolling revision; never follow the floating branch
+    # Nix requires literal input URLs. nix/devenv.nix rejects mismatched revisions.
     devenv.url = "github:cachix/devenv/fe20b5cba7ab5e93ae73f956a8d3efc50e1753f4?dir=src/modules";
+    devenv-cli.url = "github:cachix/devenv/fe20b5cba7ab5e93ae73f956a8d3efc50e1753f4";
     git-hooks.url = "github:cachix/git-hooks.nix/a0e4241b51206fbcbf52fd322eb5f0cd80f153c4";
     go-overlay.url = "github:purpleclay/go-overlay/8e136930a2a34c501d612f7b7b0ee8806531768f";
     llm-agents.url = "github:numtide/llm-agents.nix/ba24820b562c0e1ff95d283a2e2e1debcbcbad83";
