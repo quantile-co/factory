@@ -1,0 +1,65 @@
+name: Apply
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: factory-production
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Infrastructure
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      contains(fromJSON(vars.GH_MAINTAINERS), github.actor)
+    runs-on: namespace-profile-quantile
+    environment: prod
+    timeout-minutes: 20
+    env:
+      TF_IN_AUTOMATION: "true"
+      GCP_TF_STATE_BUCKET: ${{ vars.GCP_TF_STATE_BUCKET }}
+      TF_VAR_gcp_billing_account: ${{ vars.GCP_BILLING_ACCOUNT }}
+      TF_VAR_gcp_folder_id: ${{ vars.GCP_FOLDER_ID }}
+      TF_VAR_gcp_wif_pool: ${{ vars.GCP_WIF_POOL }}
+      TF_VAR_gh_maintainers: ${{ vars.GH_MAINTAINERS }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          install_options: --no-daemon
+          extra_nix_config: |
+            require-sigs = true
+
+      - name: Initialize remote state
+        run: >-
+          nix shell --inputs-from path:. nixpkgs#opentofu --command
+          tofu -chdir=tf init -input=false -lockfile=readonly
+          -backend-config="bucket=$GCP_TF_STATE_BUCKET"
+          -backend-config="prefix=repository/prod"
+
+      - name: Plan and apply the exact plan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TF_TOKEN }}
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/factory.tfplan"
+          trap 'rm -f "$plan"' EXIT
+          nix shell --inputs-from path:. nixpkgs#opentofu --command tofu -chdir=tf plan -input=false -out="$plan"
+          nix shell --inputs-from path:. nixpkgs#opentofu --command tofu -chdir=tf apply -input=false "$plan"

@@ -1,0 +1,14 @@
+.devenv/
+.devenv.flake.nix
+.direnv/
+.envrc.local
+gha-creds-*.json
+.pi/npm/
+result
+result-*
+tf/.terraform/
+tf/.terraform.tfstate.lock.info
+tf/backend_override.tf
+tf/*.tfstate
+tf/*.tfstate.*
+tf/*.tfplan

@@ -1,0 +1,19 @@
+# Use this repository's flake as the source of shared input revisions.
+inputs:
+  factory:
+    url: git+file:.
+    flake: true
+  nixpkgs:
+    follows: factory/nixpkgs
+  devenv:
+    follows: factory/devenv
+  git-hooks:
+    follows: factory/git-hooks
+  go-overlay:
+    follows: factory/go-overlay
+  llm-agents:
+    follows: factory/llm-agents
+  mk-shell-bin:
+    follows: factory/mk-shell-bin
+  nix2container:
+    follows: factory/nix2container
