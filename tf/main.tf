@@ -4,7 +4,7 @@ module "project" {
   source = "./project"
 
   gh_repository_name = "factory"
-  gh_description     = "Quantile software factory: shared development and infrastructure modules."
+  gh_description     = "Quantile software factory."
   gh_visibility      = "public"
   gh_maintainers     = var.gh_maintainers
 
