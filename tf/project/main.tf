@@ -73,7 +73,7 @@ resource "github_repository_ruleset" "member_landing" {
   name        = "member-landing"
   repository  = github_repository.self.name
   target      = "branch"
-  enforcement = "active"
+  enforcement = "evaluate"
 
   bypass_actors {
     actor_id    = 2 # Maintain
