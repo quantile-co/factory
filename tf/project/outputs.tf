@@ -18,11 +18,6 @@ output "gh_environment_names" {
   value       = toset([for environment in github_repository_environment.main : environment.environment])
 }
 
-output "gh_landing_ruleset_id" {
-  description = "Update-only ruleset ID; other branch protections remain independent."
-  value       = github_repository_ruleset.member_landing.id
-}
-
 output "gh_repository_id" {
   description = "Immutable numeric repository ID used to scope WIF principals."
   value       = github_repository.self.repo_id

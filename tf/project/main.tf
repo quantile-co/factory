@@ -67,53 +67,6 @@ resource "github_branch_protection" "main" {
   }
 }
 
-# Only repository writers may land; these bypasses apply to the update rule,
-# never to independent signed-commit, check, and linear-history protection.
-resource "github_repository_ruleset" "member_landing" {
-  name        = "member-landing"
-  repository  = github_repository.self.name
-  target      = "branch"
-  enforcement = "evaluate"
-
-  bypass_actors {
-    actor_id    = 2 # Maintain
-    actor_type  = "RepositoryRole"
-    bypass_mode = "always"
-  }
-
-  bypass_actors {
-    actor_id    = 4 # Write
-    actor_type  = "RepositoryRole"
-    bypass_mode = "always"
-  }
-
-  bypass_actors {
-    actor_id    = 5 # Admin
-    actor_type  = "RepositoryRole"
-    bypass_mode = "always"
-  }
-
-  bypass_actors {
-    actor_type  = "OrganizationAdmin"
-    bypass_mode = "always"
-  }
-
-  conditions {
-    ref_name {
-      include = ["refs/heads/${var.gh_main_branch}"]
-      exclude = []
-    }
-  }
-
-  rules {
-    update = true
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
 resource "github_repository_environment" "main" {
   for_each = var.gh_environments
 
