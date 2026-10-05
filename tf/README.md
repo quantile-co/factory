@@ -38,7 +38,7 @@ export GITHUB_TOKEN="$GH_TF_TOKEN" # provider credential only for local Terrafor
 test ! -e tf/backend_override.tf
 test ! -e tf/terraform.tfstate
 unset TF_DATA_DIR TF_WORKSPACE
-printf 'terraform { backend "local" {} }\n' > tf/backend_override.tf
+printf 'terraform {\n  backend "local" {}\n}\n' > tf/backend_override.tf
 tofu -chdir=tf init -input=false -lockfile=readonly
 
 # The repository already exists. Import it ONLY when it has no state address.
