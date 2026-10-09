@@ -21,7 +21,7 @@ gcloud auth application-default login # select the same Google account
 : "${GCP_WIF_POOL:?set the Q0 GitHub WIF pool resource path}"
 : "${GCP_WIF_PROVIDER:?set the Q0 quantile-co GitHub WIF provider path}"
 : "${GH_MAINTAINERS:?set a JSON array of GitHub usernames}"
-: "${GH_TF_TOKEN:?load a repository-scoped token from a secure local source}"
+: "${GH_REPO_TOKEN:?load a repository-scoped token from a secure local source}"
 
 # Map public names to Terraform inputs; keep the GitHub token out of TF_VAR_*.
 export TF_VAR_gcp_billing_account="$GCP_BILLING_ACCOUNT"
@@ -30,7 +30,7 @@ export TF_VAR_gcp_wif_pool="$GCP_WIF_POOL"
 export TF_VAR_gh_maintainers="$GH_MAINTAINERS"
 
 gh auth status # use the operator's GitHub CLI login for provisioning and run checks
-export GITHUB_TOKEN="$GH_TF_TOKEN" # provider credential only for local Terraform
+export GITHUB_TOKEN="$GH_REPO_TOKEN" # provider credential only for local Terraform
 # Verify the existing pool maps main_branch_repository_actor_id and the
 # provider accepts this repository's owner. Do not impersonate Q0 break-glass.
 
@@ -72,7 +72,7 @@ gh variable set GCP_PROJECT_ID --repo "$GH_REPOSITORY" --body "$GCP_PROJECT_ID"
 gh variable set GCP_TF_STATE_BUCKET --repo "$GH_REPOSITORY" --body "$GCP_TF_STATE_BUCKET"
 
 # Verify prod (and non-prod) permit ONLY main, not tags, before adding secrets.
-printf '%s' "$GH_TF_TOKEN" | gh secret set GH_TF_TOKEN --repo "$GH_REPOSITORY" --env prod
+printf '%s' "$GH_REPO_TOKEN" | gh secret set GH_REPO_TOKEN --repo "$GH_REPOSITORY" --env prod
 
 # Both workflows are published but manual-only. Dispatch only after prod is
 # protected, populated, and the remote-state plan above is clean.
