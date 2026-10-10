@@ -12,3 +12,8 @@ tf/backend_override.tf
 tf/*.tfstate
 tf/*.tfstate.*
 tf/*.tfplan
+
+# Keep generated Pi session data local.
+/.pi/memory/SCRATCHPAD.md
+/.pi/memory/recovery/
+/.pi/memory/daily/*
