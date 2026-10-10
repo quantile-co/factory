@@ -56,7 +56,7 @@ jobs:
 
       - name: Plan and apply the exact plan
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TF_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
         run: |
           set -euo pipefail
           plan="$RUNNER_TEMP/factory.tfplan"
