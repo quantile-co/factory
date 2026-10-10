@@ -56,5 +56,5 @@ jobs:
 
       - name: Plan
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN || secrets.GH_TF_TOKEN }}
         run: nix shell --inputs-from path:. nixpkgs#opentofu --command tofu -chdir=tf plan -input=false -no-color
