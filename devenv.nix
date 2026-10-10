@@ -9,6 +9,5 @@
     config.quantile.json.jq.package
     config.quantile.ts.node.package
     config.quantile.pi.package
-    config.quantile.engram.package
   ];
 }

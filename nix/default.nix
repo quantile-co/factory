@@ -1,7 +1,6 @@
 { inputs }:
 let
   modules = {
-    engram = import ./engram.nix;
     gcp = import ./gcp.nix;
     github = import ./github.nix;
     json = import ./json.nix;
