@@ -13,7 +13,6 @@ tf/*.tfstate
 tf/*.tfstate.*
 tf/*.tfplan
 
-# Keep generated Pi session data local.
+# Review daily memory logs before staging; keep scratchpad and recovery local.
 /.pi/memory/SCRATCHPAD.md
 /.pi/memory/recovery/
-/.pi/memory/daily/*
