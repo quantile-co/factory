@@ -20,16 +20,21 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Mount the Nix store and database
+        uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+        with:
+          path: /nix
+          spacectl-version: 0.12.3
+          spacectl-system-binary: ignore
+
       - name: Install Nix
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
         with:
           install_options: --no-daemon
           extra_nix_config: |
             require-sigs = true
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
 
       - name: Run checks
-        env:
-          ACTIONLINT_CONFIG_FILE: etc/github/actionlint.yaml
-          SEMGREP_RULES_DIR: etc/semgrep
-          SEMGREP_FIXTURES_DIR: etc/semgrep
-        run: nix run path:.#check
+        run: nix run path:.#devenv-cli -- tasks run check:all
