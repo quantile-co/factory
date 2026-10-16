@@ -1,0 +1,6 @@
+# Seed as <repo>/.qmd/index.yml; QMD resolves relative paths from that repo.
+# Index only this checkout's Pi memory, never global or sibling repositories.
+collections:
+  pi-memory:
+    path: .pi/memory
+    pattern: "**/*.md"

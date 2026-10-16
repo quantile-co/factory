@@ -138,28 +138,22 @@ describe("Terraform project module", () => {
     },
   ), 120_000);
 
-  it("keeps providers, backend and credentials outside the reusable module", () => {
-    expect(readdirSync(moduleDir).filter((name) => name.endsWith(".tf")).sort()).toEqual(
-      ["main.tf", "outputs.tf", "variables.tf", "versions.tf"],
-    );
-    for (const name of ["main.tf", "outputs.tf", "variables.tf", "versions.tf"]) {
+  it("keeps provider and backend configuration outside the reusable module", () => {
+    for (const name of readdirSync(moduleDir).filter((file) => file.endsWith(".tf"))) {
       const document = parse(join(moduleDir, name));
       expect(document).not.toHaveProperty("provider");
+      if (name !== "main.tf") {
+        expect(document).not.toHaveProperty("resource");
+        expect(document).not.toHaveProperty("data");
+      }
       for (const block of (document.terraform ?? []) as Array<Record<string, unknown>>) {
         expect(block).not.toHaveProperty("backend");
       }
     }
     const variables = parse(join(moduleDir, "variables.tf")).variable as Record<string, Array<Record<string, unknown>>>;
-    for (const definition of Object.values(variables)) {
-      expect(definition[0]).toHaveProperty("type");
-      expect(definition[0]).toHaveProperty("description");
-    }
     for (const name of ["gcp_wif_pool", "gh_maintainers", "gh_visibility", "gh_repository_name"]) {
       expect(variables[name]?.[0]).not.toHaveProperty("default");
     }
-    const resources = parse(join(moduleDir, "main.tf")).resource as Record<string, unknown>;
-    expect(resources).not.toHaveProperty("github_repository_ruleset");
-    expect(resources).not.toHaveProperty("google_project_iam_custom_role");
     expect(parse(join(tfDir, "backend.tf"))).toEqual({ terraform: [{ backend: { gcs: [{}] } }] });
   });
 

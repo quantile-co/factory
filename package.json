@@ -2,6 +2,7 @@
   "name": "@quantile-co/factory",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.25.0",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

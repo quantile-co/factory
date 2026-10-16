@@ -19,6 +19,12 @@
       description = "Actionlint configuration file.";
     };
 
+    dependabot.configFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../etc/github/dependabot.yml;
+      description = "Optional Dependabot configuration template.";
+    };
+
     actionlint.check.package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.writeShellApplication {
