@@ -105,8 +105,8 @@
       "original": {
         "dir": "src/modules",
         "owner": "cachix",
+        "ref": "main",
         "repo": "devenv",
-        "rev": "fe20b5cba7ab5e93ae73f956a8d3efc50e1753f4",
         "type": "github"
       }
     },
@@ -133,8 +133,8 @@
       },
       "original": {
         "owner": "cachix",
+        "ref": "main",
         "repo": "devenv",
-        "rev": "fe20b5cba7ab5e93ae73f956a8d3efc50e1753f4",
         "type": "github"
       }
     },
@@ -327,8 +327,8 @@
       },
       "original": {
         "owner": "cachix",
+        "ref": "master",
         "repo": "git-hooks.nix",
-        "rev": "a0e4241b51206fbcbf52fd322eb5f0cd80f153c4",
         "type": "github"
       }
     },
@@ -371,8 +371,8 @@
       },
       "original": {
         "owner": "purpleclay",
+        "ref": "main",
         "repo": "go-overlay",
-        "rev": "8e136930a2a34c501d612f7b7b0ee8806531768f",
         "type": "github"
       }
     },
@@ -394,8 +394,8 @@
       },
       "original": {
         "owner": "numtide",
+        "ref": "main",
         "repo": "llm-agents.nix",
-        "rev": "ba24820b562c0e1ff95d283a2e2e1debcbcbad83",
         "type": "github"
       }
     },
@@ -410,8 +410,8 @@
       },
       "original": {
         "owner": "rrbutani",
+        "ref": "main",
         "repo": "nix-mk-shell-bin",
-        "rev": "ff5d8bd4d68a347be5042e2f16caee391cd75887",
         "type": "github"
       }
     },
@@ -478,8 +478,8 @@
       },
       "original": {
         "owner": "nlewo",
+        "ref": "master",
         "repo": "nix2container",
-        "rev": "4e83e6724dcb9eb1b3e855426fa4c8cd19f5ce5a",
         "type": "github"
       }
     },
@@ -626,8 +626,8 @@
       },
       "original": {
         "owner": "cachix",
+        "ref": "rolling",
         "repo": "devenv-nixpkgs",
-        "rev": "c2f38fe7f9e04d9aadd354d380f2bd40531d9737",
         "type": "github"
       }
     },
