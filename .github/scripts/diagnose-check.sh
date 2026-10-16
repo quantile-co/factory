@@ -34,7 +34,6 @@ for key in ("connect-timeout", "stalled-download-timeout", "http-connections", "
 '
 
 monitor() {
-  traced=false
   while sleep 30; do
     idle=$(( $(date +%s) - $(stat -c %Y "$log") ))
     if (( idle < 60 )); then
@@ -49,29 +48,37 @@ monitor() {
       curl --head --silent --show-error --output /dev/null --max-time 8 \
         --write-out 'HTTP %{http_code}, connect %{time_connect}s, total %{time_total}s\n' "$url" || :
     done
-    if [ "$traced" = false ] && command -v strace > /dev/null && command -v sudo > /dev/null; then
-      traced=true
-      devenv_pid=$(ps -eo pid=,comm= | awk '$2 == ".devenv-wrapped" {print $1; exit}')
-      if [ -n "$devenv_pid" ]; then
-        echo "Sampling safe syscalls on stalled devenv PID $devenv_pid for 8s."
-        # Attach only after a stall. No read/write payloads, process arguments or environment values.
-        timeout --signal=INT --kill-after=2 8 sudo -n strace -f -ttT -s 0 \
-          -e trace=futex,epoll_wait,epoll_pwait,poll,ppoll,connect,getsockopt,flock,fcntl,wait4,waitid \
-          -p "$devenv_pid" -o "$trace_dir/stall" > "$trace_dir/strace-output" 2>&1 || :
-        if [ -s "$trace_dir/strace-output" ]; then
-          echo 'strace status:'
-          tail -n 5 "$trace_dir/strace-output"
-        fi
-        if [ -s "$trace_dir/stall" ]; then
-          echo 'Last 60 selected syscall events:'
-          tail -n 60 "$trace_dir/stall"
-        fi
+    # Include blocked threads even when their trace files have stopped changing.
+    while read -r tid; do
+      if [ -f "$trace_dir/syscalls.$tid" ]; then
+        printf '\nLast syscalls for thread %s:\n' "$tid"
+        tail -n 12 "$trace_dir/syscalls.$tid"
+        printf '\n'
       fi
+    done < <(ps -eLo lwp=,comm= | awk '$2 ~ /devenv/ {print $1}' | head -24)
+    if (( idle >= 180 )); then
+      echo 'Ending diagnostic run after capturing three minutes of stalled progress.' >&2
+      # Only target the process launched by this script, never another runner job.
+      kill -TERM "$trace_pid" 2>/dev/null || :
+      return
     fi
   done
 }
+# Parent tracing works on this runner; late attachment is forbidden. Seccomp
+# filtering avoids stops on unrelated syscalls. Do not enable pretty/verbose tracing.
+command -v strace > /dev/null
+setsid strace --seccomp-bpf -ff -ttt -T -s 0 \
+  -e trace=futex,epoll_wait,epoll_pwait,poll,ppoll,connect,getsockopt,flock,fcntl,wait4,waitid,clone,clone3 \
+  -o "$trace_dir/syscalls" \
+  nix run path:.#devenv-cli -- tasks run check:all > "$log" 2>&1 &
+trace_pid=$!
+tail --pid="$trace_pid" -n +1 -f "$log" &
+tail_pid=$!
 monitor &
 monitor_pid=$!
-
-# Keep the ordinary check command: verbose tracing from process start obscured the stall.
-nix run path:.#devenv-cli -- tasks run check:all 2>&1 | tee "$log"
+status=0
+wait "$trace_pid" || status=$?
+# Stop any tracees left behind by a watchdog-triggered termination.
+kill -TERM -- "-$trace_pid" 2>/dev/null || :
+wait "$tail_pid" || :
+exit "$status"
