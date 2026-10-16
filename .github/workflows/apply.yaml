@@ -60,4 +60,4 @@ jobs:
       - name: Plan and apply the exact plan
         env:
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
-        run: nix run path:.#devenv-cli -- tasks run apply:production
+        run: nix run path:.#devenv-cli -- tasks run --show-output apply:production
