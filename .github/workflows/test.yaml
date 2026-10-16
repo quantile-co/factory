@@ -10,7 +10,7 @@ jobs:
   tests:
     name: Tests
     if: github.ref == 'refs/heads/main'
-    runs-on: namespace-profile-quantile
+    runs-on: namespace-profile-quantile-4x8
     timeout-minutes: 20
     steps:
       - name: Check out repository
