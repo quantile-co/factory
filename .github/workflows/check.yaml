@@ -12,7 +12,7 @@ permissions:
 jobs:
   all:
     name: All
-    runs-on: namespace-profile-quantile
+    runs-on: namespace-profile-quantile-4x8
     timeout-minutes: 20
     steps:
       - name: Check out repository
