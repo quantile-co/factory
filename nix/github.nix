@@ -24,7 +24,13 @@
       default = pkgs.writeShellApplication {
         name = "check-actionlint";
         runtimeInputs = [ config.quantile.github.actionlint.package ];
-        text = "actionlint";
+        text = ''
+          if [ -n "''${ACTIONLINT_CONFIG_FILE:-}" ]; then
+            actionlint -config-file "$ACTIONLINT_CONFIG_FILE"
+          else
+            actionlint
+          fi
+        '';
       };
       description = "GitHub Actions check.";
     };
