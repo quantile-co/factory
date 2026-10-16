@@ -52,7 +52,8 @@
     };
 
     "test:all" = {
-      description = "Run all tests.";
+      description = "Run all checks, then tests.";
+      after = [ "check:all" ];
       exec = ''
         ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.ts.pnpm.package} test

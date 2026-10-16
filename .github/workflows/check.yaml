@@ -12,9 +12,14 @@ permissions:
 jobs:
   all:
     name: All
-    runs-on: namespace-profile-quantile-4x8
-    # Temporary diagnostic allowance: command deadline is 10m; reserve upload time.
-    timeout-minutes: 15
+    runs-on: namespace-profile-quantile-8x16
+    # About 10m covered observed local rebuilds from completely empty Nix stores.
+    # Most checks should reuse the main-populated Namespace persistent cache.
+    # Empty stores or Nix changes can lower cache hits and require large downloads.
+    # Variable Namespace, Cachix or cache.nixos.org network throughput can push
+    # low-hit runs beyond this budget, causing flaky timeouts. A timeout alone
+    # does not identify the cause.
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,15 +42,5 @@ jobs:
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
 
-      - name: Run checks with temporary Nix diagnostics
-        run: bash .github/scripts/diagnose-check.sh
-
-      - name: Retain complete Nix diagnostics, including successful runs
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: nix-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/factory-check-diagnostics/
-          retention-days: 3
-          compression-level: 1
-          if-no-files-found: warn
+      - name: Run checks
+        run: nix run path:.#devenv-cli -- tasks run check:all
