@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Payload-free /proc snapshots of ONLY the traced process group (Linux CI)."""
+"""Payload-free snapshots of the tracer and all its tracees, including builders."""
 
 import json
 import os
@@ -14,6 +14,7 @@ def process_stat(path):
     # comm may contain spaces or parentheses; never emit command arguments.
     fields = text[text.rfind(")") + 2 :].split()
     return {
+        "comm": text[text.find("(") + 1 : text.rfind(")")],
         "state": fields[0],
         "ppid": int(fields[1]),
         "pgrp": int(fields[2]),
@@ -31,14 +32,25 @@ def snapshot(group):
             continue
         try:
             info = process_stat(proc / "stat")
-            if info["pgrp"] != group:
+            tracer = next(
+                int(line.split()[1])
+                for line in (proc / "status").read_text().splitlines()
+                if line.startswith("TracerPid:")
+            )
+            # Nix builders call setsid: process-group membership alone misses them.
+            if info["pgrp"] != group and tracer != group:
                 continue
             info["pid"] = int(proc.name)
-            info["io"] = {
-                key: int(value)
-                for line in (proc / "io").read_text().splitlines()
-                for key, value in [line.split(":", 1)]
-            }
+            info["tracer_pid"] = tracer
+            result["processes"].append(info)
+            try:
+                info["io"] = {
+                    key: int(value)
+                    for line in (proc / "io").read_text().splitlines()
+                    for key, value in [line.split(":", 1)]
+                }
+            except OSError as error:
+                info["io_error"] = type(error).__name__
             info["threads"] = []
             for task in (proc / "task").iterdir():
                 try:
@@ -84,8 +96,7 @@ def snapshot(group):
                             "retransmits_hex": fields[6],
                             "inode": fields[9],
                         })
-            result["processes"].append(info)
-        except (OSError, ValueError, IndexError):
+        except (OSError, ValueError, IndexError, StopIteration):
             pass  # Process exit/access races must not interrupt the workload.
     return result
 

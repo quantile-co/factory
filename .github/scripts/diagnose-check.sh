@@ -58,12 +58,12 @@ trap 'exit 143' TERM
   printf 'started=%s\ncommand_deadline_seconds=%s\n' "$(date -u +%FT%TZ)" "$max_seconds"
   df -h /nix "$output"
   nix --version
-  strace --version 2>/dev/null | head -1 || :
 } | tee "$output/metadata.txt"
 if ! command -v strace > /dev/null; then
   timeout 90 sudo apt-get update -qq
   timeout 60 sudo apt-get install -y -qq --no-install-recommends strace
 fi
+strace --version | head -1 | tee -a "$output/metadata.txt"
 # Allowlist only. Never dump credentials, full config, environments or argv.
 timeout 10 nix config show --json | python3 -c '
 import json, sys
@@ -83,7 +83,8 @@ if (( $# )); then command=("$@"); fi
 # Trace all threads from startup. Raw I/O arguments retain fd/pointer/count/timing,
 # NEVER buffer contents. No execve, argv, environment, file names or TLS headers.
 # Do not use -y/-yy: descriptor paths can contain private information.
-setsid strace --seccomp-bpf -ff -ttt -T -s 0 \
+# EXITKILL also covers Nix builders that create their own session/process group.
+setsid strace --kill-on-exit --seccomp-bpf -ff -ttt -T -s 0 \
   -e trace=futex,epoll_wait,epoll_pwait,epoll_ctl,poll,ppoll,connect,getsockopt,setsockopt,socket,socketpair,shutdown,flock,fcntl,wait4,waitid,clone,clone3,read,write,readv,writev,pread64,pwrite64,recvfrom,recvmsg,recvmmsg,sendto,sendmsg,sendmmsg,close,dup,dup2,dup3,pipe,pipe2,fsync,fdatasync \
   -e raw=read,write,readv,writev,pread64,pwrite64,recvfrom,recvmsg,recvmmsg,sendto,sendmsg,sendmmsg,setsockopt \
   -o "$output/trace/syscalls" "${command[@]}" > "$log" 2>&1 &
