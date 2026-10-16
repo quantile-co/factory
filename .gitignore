@@ -3,6 +3,7 @@
 .direnv/
 /node_modules/
 .envrc.local
+/.editorconfig
 /.github/actionlint.yaml
 gha-creds-*.json
 .pi/npm/
@@ -10,13 +11,20 @@ gha-creds-*.json
 result
 result-*
 /.semgrep
-tf/.terraform/
-tf/.terraform.tfstate.lock.info
-tf/backend_override.tf
-tf/*.tfstate
-tf/*.tfstate.*
-tf/*.tfplan
+# Keep local Terraform data, backend overrides, plans, and diagnostics out of Git.
+.terraform/
+.terraform.tfstate.lock.info
+backend_override.tf
+*.tfstate
+*.tfstate.*
+*.tfplan
+plan.json
+crash.log
 
-# Review daily memory logs before staging; keep scratchpad and recovery local.
+# Review and sanitize daily memory logs before committing; keep scratchpad and recovery local.
 /.pi/memory/SCRATCHPAD.md
 /.pi/memory/recovery/
+
+# QMD's Nix-managed config link and writable search index stay worktree-local.
+/.qmd/index.yml
+/.qmd/index.sqlite*

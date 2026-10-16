@@ -1,12 +1,14 @@
 { inputs }:
 let
   modules = {
+    editorconfig = import ./editorconfig.nix;
     gcp = import ./gcp.nix;
     github = import ./github.nix;
     json = import ./json.nix;
     pi = import ./pi.nix { llmAgents = inputs.llm-agents; };
+    qmd = import ./qmd.nix { llmAgents = inputs.llm-agents; };
     semgrep = import ./semgrep.nix;
-    tf = import ./tf;
+    tf = import ./tf.nix;
     ts = import ./ts.nix;
   };
 in
