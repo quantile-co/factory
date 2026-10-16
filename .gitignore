@@ -2,6 +2,7 @@
 .devenv.flake.nix
 .direnv/
 .envrc.local
+/.github/actionlint.yaml
 gha-creds-*.json
 .pi/npm/
 /.pi/settings.json

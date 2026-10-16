@@ -27,25 +27,5 @@ jobs:
           extra_nix_config: |
             require-sigs = true
 
-      - name: Check shared flake
-        run: nix flake check path:.
-
-      - name: Semgrep
-        env:
-          SEMGREP_SEND_METRICS: "off"
-          SEMGREP_ENABLE_VERSION_CHECK: "0"
-        run: |
-          nix shell --inputs-from path:. nixpkgs#semgrep --command bash -euo pipefail -c '
-            semgrep --test etc/semgrep --metrics off
-            git ls-files --cached --others --exclude-standard -z -- \
-              "*.tf" "*.tofu" "*.tf.json" "*.tofu.json" ":(exclude)etc/semgrep/**" | \
-              xargs -0 -r semgrep scan --config etc/semgrep --metrics off --error --strict --scan-unknown-extensions --quiet
-          '
-
-      - name: Check Terraform formatting
-        run: nix shell --inputs-from path:. nixpkgs#opentofu --command tofu -chdir=tf fmt -check -recursive
-
-      - name: Validate Terraform without a backend or credentials
-        run: |
-          nix shell --inputs-from path:. nixpkgs#opentofu --command tofu -chdir=tf init -backend=false -input=false -lockfile=readonly
-          nix shell --inputs-from path:. nixpkgs#opentofu --command tofu -chdir=tf validate -no-color
+      - name: Run checks
+        run: nix run path:.#devenv-cli -- tasks run check:all
