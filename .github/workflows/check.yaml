@@ -36,10 +36,10 @@ jobs:
           SEMGREP_ENABLE_VERSION_CHECK: "0"
         run: |
           nix shell --inputs-from path:. nixpkgs#semgrep --command bash -euo pipefail -c '
-            semgrep --test .semgrep --metrics off
+            semgrep --test etc/semgrep --metrics off
             git ls-files --cached --others --exclude-standard -z -- \
-              "*.tf" "*.tofu" "*.tf.json" "*.tofu.json" ":(exclude).semgrep/**" | \
-              xargs -0 -r semgrep scan --config .semgrep --metrics off --error --strict --scan-unknown-extensions --quiet
+              "*.tf" "*.tofu" "*.tf.json" "*.tofu.json" ":(exclude)etc/semgrep/**" | \
+              xargs -0 -r semgrep scan --config etc/semgrep --metrics off --error --strict --scan-unknown-extensions --quiet
           '
 
       - name: Check Terraform formatting

@@ -5,6 +5,7 @@ let
     github = import ./github.nix;
     json = import ./json.nix;
     pi = import ./pi.nix { llmAgents = inputs.llm-agents; };
+    semgrep = import ./semgrep.nix;
     tf = import ./tf.nix;
     ts = import ./ts.nix;
   };

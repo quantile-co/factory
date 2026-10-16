@@ -4,8 +4,10 @@
 .envrc.local
 gha-creds-*.json
 .pi/npm/
+/.pi/settings.json
 result
 result-*
+/.semgrep
 tf/.terraform/
 tf/.terraform.tfstate.lock.info
 tf/backend_override.tf
