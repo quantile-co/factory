@@ -6,7 +6,7 @@ let
     json = import ./json.nix;
     pi = import ./pi.nix { llmAgents = inputs.llm-agents; };
     semgrep = import ./semgrep.nix;
-    tf = import ./tf.nix;
+    tf = import ./tf;
     ts = import ./ts.nix;
   };
 in

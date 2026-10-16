@@ -1,6 +1,7 @@
 .devenv/
 .devenv.flake.nix
 .direnv/
+/node_modules/
 .envrc.local
 /.github/actionlint.yaml
 gha-creds-*.json

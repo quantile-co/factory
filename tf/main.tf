@@ -1,5 +1,7 @@
 # An existing repository must be imported rather than recreated. Infrastructure
 # for its protected state lives in the reusable module; auth/backend stay here.
+# This repository is intentionally public; scope the scanner exception to this call.
+# trivy:ignore:AVD-GIT-0001
 module "project" {
   source = "./project"
 
