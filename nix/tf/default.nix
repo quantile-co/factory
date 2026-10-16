@@ -27,6 +27,18 @@ in
       description = "OpenTofu CLI.";
     };
 
+    conftest.package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.conftest;
+      description = "Conftest CLI.";
+    };
+
+    trivy.package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.trivy;
+      description = "Trivy CLI.";
+    };
+
     check.package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.writeShellApplication {
