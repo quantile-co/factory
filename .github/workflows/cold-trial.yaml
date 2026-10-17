@@ -1,0 +1,126 @@
+name: Cold cache trial (temporary)
+
+on:
+  workflow_call:
+    inputs:
+      variant:
+        required: true
+        type: string
+      trial:
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  trial:
+    name: ${{ inputs.variant }} ${{ inputs.trial }}
+    runs-on: namespace-profile-quantile-4x8
+    timeout-minutes: 20
+    env:
+      BENCH_VARIANT: ${{ inputs.variant }}
+      BENCH_TRIAL: ${{ inputs.trial }}
+      BENCH_SOURCE: 68d2a20369a8b0246c2c833206de55022e265932
+    steps:
+      - name: Check out fixed benchmark source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 68d2a20369a8b0246c2c833206de55022e265932
+          persist-credentials: false
+
+      # Intentionally no Namespace cache mount or Cachix publishing action.
+      - name: Require an empty active Nix store
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, re, subprocess
+          variant = os.environ['BENCH_VARIANT']
+          trial = int(os.environ['BENCH_TRIAL'])
+          assert variant in ('upstream', 'baseline')
+          assert 1 <= trial <= 30
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['BENCH_SOURCE']
+          store = pathlib.Path('/nix/store')
+          count = sum(bool(re.match(r'^[a-z0-9]{32}-', p.name)) for p in store.iterdir()) if store.exists() else 0
+          db_exists = pathlib.Path('/nix/var/nix/db/db.sqlite').exists()
+          record = dict(variant=variant, trial=trial, source=head,
+                        initial_store_paths=count, initial_database_exists=db_exists,
+                        cpus=os.cpu_count(), affinity_cpus=len(os.sched_getaffinity(0)),
+                        cold_preflight_passed=count == 0 and not db_exists)
+          metrics = pathlib.Path(os.environ['RUNNER_TEMP']) / 'factory-cold-metrics'
+          metrics.mkdir(mode=0o700)
+          (metrics / 'preflight.json').write_text(json.dumps(record))
+          print('FACTORY_COLD_PREFLIGHT ' + json.dumps(record))
+          assert record['cold_preflight_passed'], 'Refusing a nonempty active Nix store; nothing was cleared'
+          PY
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          install_options: --no-daemon
+          extra_nix_config: |
+            require-sigs = true
+            substituters = https://cache.nixos.org https://devenv.cachix.org${{ inputs.variant == 'upstream' && ' https://cache.numtide.com https://cachix.cachix.org https://pre-commit-hooks.cachix.org https://go-overlay.cachix.org' || '' }}
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= cachix.cachix.org-1:eWNHQldwUO7G2VkjpnjDbWwy4KQ/HNxht7H4SSoMckM= pre-commit-hooks.cachix.org-1:Pkk3Panw5AW24TOv6kz3PvLhlH8puAsJTBbOPmBo7Rc= go-overlay.cachix.org-1:rJ155O3K6WUyUcoKE4MqcC6JcLlK2vPXnP5/76BxWD8=
+
+      - name: Verify cache allowlist
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          config = json.loads(subprocess.check_output(['nix', 'config', 'show', '--json'], text=True))
+          allowed = ['https://cache.nixos.org', 'https://devenv.cachix.org']
+          if os.environ['BENCH_VARIANT'] == 'upstream':
+              allowed += ['https://cache.numtide.com', 'https://cachix.cachix.org',
+                          'https://pre-commit-hooks.cachix.org', 'https://go-overlay.cachix.org']
+          actual = config['substituters']['value']
+          if isinstance(actual, str):
+              actual = actual.split()
+          assert set(actual) == set(allowed), 'Unexpected substituter set (values withheld)'
+          assert config['require-sigs']['value'] is True
+          # This is the standalone CLI value, NOT devenv's embedded backend.
+          # The unchanged pinned devenv backend sets http-connections=100.
+          record = dict(substituters=allowed, require_sigs=True,
+                        standalone_http_connections=config['http-connections']['value'],
+                        expected_devenv_http_connections=100)
+          metrics = pathlib.Path(os.environ['RUNNER_TEMP']) / 'factory-cold-metrics'
+          (metrics / 'cache-config.json').write_text(json.dumps(record))
+          print('FACTORY_COLD_CACHE_CONFIG ' + json.dumps(record))
+          PY
+
+      - name: Bootstrap pinned devenv CLI
+        shell: bash
+        run: |
+          /usr/bin/time -q -o "$RUNNER_TEMP/factory-cold-metrics/bootstrap.json" \
+            -f '{"seconds":%e,"exit_code":%x}' \
+            nix build .#devenv-cli --no-link
+
+      - name: Realize environment, run checks and tests
+        shell: bash
+        run: |
+          /usr/bin/time -q -o "$RUNNER_TEMP/factory-cold-metrics/workload.json" \
+            -f '{"seconds":%e,"exit_code":%x}' \
+            nix run .#devenv-cli -- tasks run --show-output --mode before test:all
+
+      - name: Record measurements
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, re
+          metrics = pathlib.Path(os.environ['RUNNER_TEMP']) / 'factory-cold-metrics'
+          result = dict(variant=os.environ['BENCH_VARIANT'], trial=int(os.environ['BENCH_TRIAL']))
+          for name in ('preflight', 'cache-config', 'bootstrap', 'workload'):
+              path = metrics / (name + '.json')
+              if path.exists():
+                  try:
+                      result[name] = json.loads(path.read_text())
+                  except json.JSONDecodeError:
+                      result[name] = {'incomplete': True}
+          store = pathlib.Path('/nix/store')
+          result['final_store_paths'] = sum(bool(re.match(r'^[a-z0-9]{32}-', p.name)) for p in store.iterdir()) if store.exists() else 0
+          print('FACTORY_COLD_RESULT ' + json.dumps(result, sort_keys=True))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('### Cold-cache measurements\n```json\n' + json.dumps(result, indent=2) + '\n```\n')
+          PY

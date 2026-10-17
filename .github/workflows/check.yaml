@@ -1,42 +1,81 @@
-name: Check
+name: Cold cache benchmark (temporary)
 
+# Diagnostic branch only. Never merge this workflow replacement into main.
+# Reuse the existing dispatchable workflow path; every trial checks out the
+# same production source, not these temporary benchmark workflow files.
 on:
-  pull_request:
-  push:
-    # Dependabot branches are checked by their pull requests, not twice.
-    branches-ignore: [main, "dependabot/**"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: factory-cold-cache-benchmark
+  cancel-in-progress: false
+
+# Explicit dependencies guarantee serial execution and stop after any failure.
+# Thirty pairs alternate A/B: 30 upstream-cache and 30 baseline trials.
 jobs:
-  all:
-    name: All
-    if: github.ref != 'refs/heads/main'
-    runs-on: namespace-profile-quantile-4x8
-    timeout-minutes: 10
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Mount the Nix store and database
-        uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
-        with:
-          path: /nix
-          spacectl-version: 0.12.3
-          spacectl-system-binary: ignore
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
-        with:
-          install_options: --no-daemon
-          extra_nix_config: |
-            require-sigs = true
-            extra-substituters = https://devenv.cachix.org https://quantile-co.cachix.org https://cache.numtide.com https://cachix.cachix.org https://pre-commit-hooks.cachix.org https://go-overlay.cachix.org
-            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= quantile-co.cachix.org-1:OM+kQzUqP3Ija8QQMUxvQNs97u6PB5/s83ZJe7c9WIQ= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= cachix.cachix.org-1:eWNHQldwUO7G2VkjpnjDbWwy4KQ/HNxht7H4SSoMckM= pre-commit-hooks.cachix.org-1:Pkk3Panw5AW24TOv6kz3PvLhlH8puAsJTBbOPmBo7Rc= go-overlay.cachix.org-1:rJ155O3K6WUyUcoKE4MqcC6JcLlK2vPXnP5/76BxWD8=
-
-      - name: Run checks
-        run: nix run path:.#devenv-cli -- tasks run check:all
+  a01:
+    if: github.ref == 'refs/heads/bench/cold-cache-comparison'
+    uses: ./.github/workflows/cold-trial.yaml
+    with: { variant: upstream, trial: 1 }
+  b01: { needs: a01, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 1 } }
+  a02: { needs: b01, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 2 } }
+  b02: { needs: a02, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 2 } }
+  a03: { needs: b02, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 3 } }
+  b03: { needs: a03, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 3 } }
+  a04: { needs: b03, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 4 } }
+  b04: { needs: a04, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 4 } }
+  a05: { needs: b04, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 5 } }
+  b05: { needs: a05, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 5 } }
+  a06: { needs: b05, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 6 } }
+  b06: { needs: a06, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 6 } }
+  a07: { needs: b06, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 7 } }
+  b07: { needs: a07, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 7 } }
+  a08: { needs: b07, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 8 } }
+  b08: { needs: a08, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 8 } }
+  a09: { needs: b08, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 9 } }
+  b09: { needs: a09, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 9 } }
+  a10: { needs: b09, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 10 } }
+  b10: { needs: a10, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 10 } }
+  a11: { needs: b10, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 11 } }
+  b11: { needs: a11, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 11 } }
+  a12: { needs: b11, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 12 } }
+  b12: { needs: a12, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 12 } }
+  a13: { needs: b12, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 13 } }
+  b13: { needs: a13, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 13 } }
+  a14: { needs: b13, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 14 } }
+  b14: { needs: a14, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 14 } }
+  a15: { needs: b14, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 15 } }
+  b15: { needs: a15, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 15 } }
+  a16: { needs: b15, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 16 } }
+  b16: { needs: a16, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 16 } }
+  a17: { needs: b16, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 17 } }
+  b17: { needs: a17, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 17 } }
+  a18: { needs: b17, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 18 } }
+  b18: { needs: a18, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 18 } }
+  a19: { needs: b18, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 19 } }
+  b19: { needs: a19, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 19 } }
+  a20: { needs: b19, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 20 } }
+  b20: { needs: a20, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 20 } }
+  a21: { needs: b20, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 21 } }
+  b21: { needs: a21, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 21 } }
+  a22: { needs: b21, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 22 } }
+  b22: { needs: a22, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 22 } }
+  a23: { needs: b22, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 23 } }
+  b23: { needs: a23, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 23 } }
+  a24: { needs: b23, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 24 } }
+  b24: { needs: a24, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 24 } }
+  a25: { needs: b24, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 25 } }
+  b25: { needs: a25, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 25 } }
+  a26: { needs: b25, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 26 } }
+  b26: { needs: a26, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 26 } }
+  a27: { needs: b26, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 27 } }
+  b27: { needs: a27, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 27 } }
+  a28: { needs: b27, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 28 } }
+  b28: { needs: a28, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 28 } }
+  a29: { needs: b28, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 29 } }
+  b29: { needs: a29, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 29 } }
+  a30: { needs: b29, uses: ./.github/workflows/cold-trial.yaml, with: { variant: upstream, trial: 30 } }
+  b30: { needs: a30, uses: ./.github/workflows/cold-trial.yaml, with: { variant: baseline, trial: 30 } }
