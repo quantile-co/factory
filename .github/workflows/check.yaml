@@ -12,8 +12,14 @@ permissions:
 jobs:
   all:
     name: All
-    runs-on: namespace-profile-quantile
-    timeout-minutes: 20
+    runs-on: namespace-profile-quantile-8x16
+    # About 10m covered observed local rebuilds from completely empty Nix stores.
+    # Most checks should reuse the main-populated Namespace persistent cache.
+    # Empty stores or Nix changes can lower cache hits and require large downloads.
+    # Variable Namespace, Cachix or cache.nixos.org network throughput can push
+    # low-hit runs beyond this budget, causing flaky timeouts. A timeout alone
+    # does not identify the cause.
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

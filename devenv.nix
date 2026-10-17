@@ -37,6 +37,10 @@
       env.SEMGREP_FIXTURES_DIR = "etc/semgrep";
       exec = ''
         ${lib.getExe pkgs.nix} flake check path:.
+        ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} flake.lock devenv.lock factory
+        if [ "''${CI:-}" = true ]; then
+          ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} --git-index flake.lock devenv.lock factory
+        fi
         ${lib.getExe config.quantile.github.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.check.package}
         ${lib.getExe config.quantile.tf.check.package}
@@ -48,7 +52,8 @@
     };
 
     "test:all" = {
-      description = "Run all tests.";
+      description = "Run all checks, then tests.";
+      after = [ "check:all" ];
       exec = ''
         ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.ts.pnpm.package} test

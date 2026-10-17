@@ -10,7 +10,7 @@ jobs:
   tests:
     name: Tests
     if: github.ref == 'refs/heads/main'
-    runs-on: namespace-profile-quantile
+    runs-on: namespace-profile-quantile-8x16
     timeout-minutes: 20
     steps:
       - name: Check out repository
@@ -34,5 +34,5 @@ jobs:
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
 
-      - name: Run tests
-        run: nix run path:.#devenv-cli -- tasks run test:all
+      - name: Run checks, then tests
+        run: nix run path:.#devenv-cli -- tasks run --mode before test:all
