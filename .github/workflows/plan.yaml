@@ -55,10 +55,20 @@ jobs:
           install_options: --no-daemon
           extra_nix_config: |
             require-sigs = true
-            extra-substituters = https://devenv.cachix.org
-            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            extra-substituters = https://devenv.cachix.org https://quantile-co.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= quantile-co.cachix.org-1:OM+kQzUqP3Ija8QQMUxvQNs97u6PB5/s83ZJe7c9WIQ=
 
+      - name: Set up Cachix
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: quantile-co
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipAddingSubstituter: true
+          useDaemon: false
+
+      # Git-aware inputs keep ignored credentials and Terraform files out of the store.
       - name: Plan
         env:
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
-        run: nix run path:.#devenv-cli -- tasks run --show-output plan:production
+          REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
+        run: nix run .#devenv-cli -- tasks run --show-output plan:production

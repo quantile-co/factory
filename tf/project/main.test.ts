@@ -172,6 +172,7 @@ describe("Terraform project module", () => {
         "resource/github_branch_protection/main/0/required_status_checks/0/strict": false,
         "resource/github_repository/self/0/lifecycle/0/prevent_destroy": false,
         "resource/github_actions_repository_permissions/self/0/sha_pinning_required": false,
+        "resource/restapi_object/fork_workflow_approval/0/destroy_method": "DELETE",
         "resource/github_repository_environment_deployment_policy/main/0/branch_pattern": "*",
         "resource/google_project/state/0/deletion_policy": "DELETE",
         "resource/google_storage_bucket/state/0/public_access_prevention": "inherited",
