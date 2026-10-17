@@ -14,5 +14,10 @@ terraform {
       source  = "hashicorp/random"
       version = "= 3.9.1"
     }
+    # This registry supplies Mastercard's release signing key.
+    restapi = {
+      source  = "registry.terraform.io/Mastercard/restapi"
+      version = "= 3.0.0"
+    }
   }
 }

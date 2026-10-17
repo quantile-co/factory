@@ -5,7 +5,7 @@ import rego.v1
 valid_inventory if {
 	object.keys(input) == {"resource", "data"}
 	object.keys(input.resource) == {
-		"github_repository", "github_branch_protection", "github_actions_repository_permissions",
+		"github_repository", "github_branch_protection", "github_actions_repository_permissions", "restapi_object",
 		"github_repository_vulnerability_alerts", "github_repository_dependabot_security_updates",
 		"github_repository_environment", "github_repository_environment_deployment_policy",
 		"random_id", "google_project", "google_project_service", "google_storage_bucket",
@@ -63,6 +63,18 @@ valid_repository if {
 	}]
 }
 
+valid_fork_approval if {
+	input.resource.restapi_object.fork_workflow_approval == [{
+		"depends_on": ["${github_actions_repository_permissions.self}"],
+		"path": "/repos/${github_repository.self.full_name}/actions/permissions",
+		"object_id": "fork-pr-contributor-approval",
+		"create_path": "/repos/${github_repository.self.full_name}/actions/permissions/{id}",
+		"create_method": "PUT",
+		"destroy_method": "GET",
+		"data": "${jsonencode({ approval_policy = \"all_external_contributors\" })}",
+	}]
+}
+
 valid_state if {
 	input.resource.random_id.state == [{"byte_length": 2}]
 	input.resource.google_project.state == [{
@@ -100,5 +112,7 @@ deny contains "Project module must contain only the reviewed repository and stat
 deny contains "Protection must retain strict checks, signatures and non-destructive branch rules" if not valid_protection
 
 deny contains "Repository must retain deletion guards, security updates, pinned actions and branch-only environments" if not valid_repository
+
+deny contains "Fork workflow approval must require all external contributors and preserve the policy on removal" if not valid_fork_approval
 
 deny contains "State must retain private versioned storage and main/repository/actor-scoped federation" if not valid_state

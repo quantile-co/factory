@@ -35,6 +35,23 @@ resource "github_actions_repository_permissions" "self" {
   sha_pinning_required = true
 }
 
+# External PR workflows require repo-writer approval, even for returning contributors.
+
+# Use the REST API because the GitHub provider does not support this setting.
+resource "restapi_object" "fork_workflow_approval" {
+  depends_on = [github_actions_repository_permissions.self]
+
+  path          = "/repos/${github_repository.self.full_name}/actions/permissions"
+  object_id     = "fork-pr-contributor-approval"
+  create_path   = "/repos/${github_repository.self.full_name}/actions/permissions/{id}"
+  create_method = "PUT"
+
+  # This singleton has no DELETE operation. Removing it from state must not weaken
+  # the remote policy; a GET on destroy is deliberately non-mutating.
+  destroy_method = "GET"
+  data           = jsonencode({ approval_policy = "all_external_contributors" })
+}
+
 resource "github_repository_vulnerability_alerts" "self" {
   repository = github_repository.self.name
   enabled    = true
