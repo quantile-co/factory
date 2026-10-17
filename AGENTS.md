@@ -36,9 +36,14 @@ Workflows are thin wrappers around repository tasks. Use Actionlint and real
 Check runs for workflow integration; do not duplicate fixed YAML values or
 third-party action behavior in unit tests.
 
-`.github/workflows/check.yaml` runs on pull requests, non-main branch pushes, and
-non-main manual dispatch; it runs `check:all` without a remote backend and remains
-the required merge check. `.github/workflows/test.yaml` runs checks then tests on
+For our own changes, push a branch, wait for Check on the exact commit, then
+fast-forward main without opening a PR or bypassing branch protection. External
+contributors use fork PRs and workflow-run approval. Reserve `dependabot/**` for
+Dependabot; those branches are checked by PR events only to avoid duplicate runs.
+
+`.github/workflows/check.yaml` runs on pull requests, non-main branch pushes
+except `dependabot/**`, and non-main manual dispatch; it runs `check:all` without
+a remote backend and remains the required merge check. `.github/workflows/test.yaml` runs checks then tests on
 manual dispatch from main only; it is not a required merge check. Test, Plan and
 Apply use the Cachix action's store-scan mode to upload newly built or downloaded
 store paths; pre-existing Namespace paths are not uploaded. Check only reads Cachix.

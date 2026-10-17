@@ -3,7 +3,8 @@ name: Check
 on:
   pull_request:
   push:
-    branches-ignore: [main]
+    # Dependabot branches are checked by their pull requests, not twice.
+    branches-ignore: [main, "dependabot/**"]
   workflow_dispatch:
 
 permissions:
