@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  plan:
-    name: Infrastructure
+  production:
+    name: Production
     if: >-
       github.ref == 'refs/heads/main' &&
       contains(fromJSON(vars.GH_MAINTAINERS), github.actor) &&

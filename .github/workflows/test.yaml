@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  tests:
-    name: Tests
+  all:
+    name: All
     if: github.ref == 'refs/heads/main'
     runs-on: namespace-profile-quantile-8x16
     timeout-minutes: 20
