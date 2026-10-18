@@ -1,8 +1,9 @@
 # Factory repository guide
 
 This is the public `quantile-co/factory` repository. Its Nix flake and `nix/`
-modules provide the development environment; `tf/` declares this repository's
-settings and its dedicated state infrastructure through `tf/project/`. Keep
+modules provide the development environment. `tf/infrastructure/` is the deployment
+root; `tf/modules/project/github/` owns repository settings and
+`tf/modules/project/gcp/` owns GCP projects, storage and IAM. Keep
 repository-specific knowledge here, not in a workspace index. Do not add
 nested `AGENTS.md` files. Source, tests, and checked-in workflows take
 precedence over historical notes.
@@ -20,8 +21,8 @@ Local, backend-free validation (inside this checkout's pinned direnv shell):
 ```sh
 nix flake check path:.
 tofu -chdir=tf fmt -check -recursive
-tofu -chdir=tf init -backend=false -input=false -lockfile=readonly
-tofu -chdir=tf validate
+tofu -chdir=tf/infrastructure init -backend=false -input=false -lockfile=readonly
+tofu -chdir=tf/infrastructure validate
 ```
 
 For source checks, or checks followed by tests, run:
@@ -63,6 +64,20 @@ use absolute runtime paths with a store-backed manifest. Consumers may instead
 seed and commit a root manifest, then remove the file override for native discovery.
 File-valued `as_path` cleanup is not managed by the shell exporter.
 
+The infrastructure root composes the two project modules. Child-module inputs
+and outputs are unprefixed; root inputs and outputs retain `gcp_`/`gh_` to
+distinguish the systems. Additional GCP module instances can reuse the same
+GitHub repository and maintainer ID outputs without managing GitHub resources
+or requiring its provider. Keep GitHub environments named `prod` and `non-prod`.
+Do not add compatibility flags or `moved` blocks; existing state needs a separately
+approved one-time address migration before deploying the module split. Preserve
+the state bucket and `repository/prod` prefix.
+
+Workflows call `plan:infrastructure` and `apply:infrastructure`. These tasks and
+`check:all` set `TF_DIR=tf/infrastructure`; `fix:all` sets `TF_DIR=tf` to format the
+whole tree. Keep this setting task-scoped. SecretSpec's manifest setting stays
+shell-wide because its loader runs before tasks. Reusable Nix tools retain a
+caller-overridable `TF_DIR`, defaulting to `tf`.
 Workflows are thin wrappers around repository tasks. Use Actionlint and real
 Check runs for workflow integration; do not duplicate fixed YAML values or
 third-party action behavior in unit tests.
@@ -88,7 +103,10 @@ workflows. Plan saves its output in private GCS and publishes a non-sensitive
 GitHub receipt. Apply accepts that artifact ID, verifies provenance, source,
 backend, expiry (24 hours) and integrity, and applies the saved plan without
 replanning. Storage and validation live in `nix/tf.nix`; authorization, stock
-artifact upload and post-upload cleanup stay in the workflows. A source merge
+artifact upload and post-upload cleanup stay in the workflows. `GCP_MAINTAINERS`
+is an explicit JSON array of Google account emails, mapped to `gcp_maintainers`.
+Terraform grants them read access only to `plans/` objects, not state or project
+administration; do not replace this with a manual IAM grant. A source merge
 or green Check authorizes neither workflow. Preserve WIF, backend locks,
 protected environments, and the workflow concurrency guard.
 

@@ -1,0 +1,63 @@
+import { execFileSync } from "node:child_process";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { it } from "vitest";
+
+it("works as an independent GitHub module with caller-owned settings", () => {
+  const moduleDir = dirname(fileURLToPath(import.meta.url));
+  const work = mkdtempSync(join(tmpdir(), "github-consumer-"));
+  try {
+    writeFileSync(
+      join(work, "main.tf"),
+      `
+module "repository" {
+  source = ${JSON.stringify(moduleDir)}
+  repository_name = "fixture"
+  visibility = "private"
+  maintainers = ["fixture-operator"]
+  required_checks = ["Caller / All"]
+  environments = ["preview", "prod"]
+}
+`,
+    );
+    // Init may prune unrelated providers from this temporary copy of the root lockfile.
+    copyFileSync(
+      resolve(moduleDir, "../../../infrastructure/.terraform.lock.hcl"),
+      join(work, ".terraform.lock.hcl"),
+    );
+    mkdirSync(join(work, "providers"));
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      TF_DATA_DIR: join(work, "data"),
+      TF_PLUGIN_CACHE_DIR: join(work, "providers"),
+    };
+    for (const key of Object.keys(env)) {
+      if (
+        key === "TF_WORKSPACE" ||
+        key.startsWith("TF_CLI_ARGS") ||
+        key.startsWith("TF_LOG")
+      )
+        delete env[key];
+    }
+    execFileSync(
+      "tofu",
+      [`-chdir=${work}`, "init", "-backend=false", "-input=false"],
+      { env, timeout: 120_000, stdio: "pipe" },
+    );
+    execFileSync("tofu", [`-chdir=${work}`, "validate", "-no-color"], {
+      env,
+      timeout: 120_000,
+      stdio: "pipe",
+    });
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}, 120_000);

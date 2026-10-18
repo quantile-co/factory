@@ -1,12 +1,23 @@
 # Plan and Apply
 
-Read the current workflows, `devenv.nix`, `nix/tf.nix` and affected `tf/` source.
+Read the current workflows, `devenv.nix`, `nix/tf.nix`, `tf/infrastructure/`
+and affected `tf/modules/project/{gcp,github}/` source.
 Use the pinned direnv shell. Ordinary production changes use protected workflows,
 not local Apply. Validate source without backend access:
 
 ```sh
 devenv tasks run --show-output check:all
 ```
+
+## Layout changes on an existing installation
+
+The module split changes state addresses from `module.project` to `module.github`
+for GitHub resources and `module.gcp` for Google/random resources. Before deploying
+this change, obtain separate approval for a one-time state-address migration.
+Do not apply a plan that recreates or deletes existing resources because of the
+split. The bucket and `repository/prod` prefix are unchanged: this is not a backend
+migration or a new installation. No compatibility blocks or migration commands
+run automatically.
 
 ## 1. Confirm context
 
@@ -30,7 +41,10 @@ Check may have run on the source branch before fast-forwarding main. Confirm its
 exact SHA, not just the branch label. Inspect current production activity; never
 cancel another operator's job. Verify main/maintainer/prod protection, WIF,
 `GCP_TF_STATE_BUCKET`, backend prefix `repository/prod` and `factory-production`
-concurrency. The operator's GitHub CLI login is separate from the provider PAT;
+concurrency. `GCP_MAINTAINERS` supplies `TF_VAR_gcp_maintainers`: an explicit JSON
+array of Google account emails, distinct from GitHub usernames. Terraform grants
+these users object-read access only under the bucket's `plans/` prefix.
+The operator's GitHub CLI login is separate from the provider PAT;
 do not let `GITHUB_TOKEN` or `GH_TOKEN` select the wrong credential.
 
 Plan and Apply receive provider credentials and the Cachix token only at runtime.
@@ -50,8 +64,10 @@ post-steps. Record the artifact ID for `plan-RUN_ID-ATTEMPT` from the run's arti
 
 The GitHub artifact is only a receipt. Plan contents stay in private GCS under
 `plans/REPOSITORY_ID/RUN_ID/ATTEMPT/plan.tfplan`. An authorized reader needs access
-to those objects independently of CI's WIF identity. Missing read access requires
-a separately approved IAM change, not an Owner grant or public artifact upload.
+to those objects independently of CI's WIF identity. Manage missing read access
+through `gcp_maintainers` and a separately approved Terraform Apply, not a manual
+IAM grant, Owner access or a public artifact upload. An existing authorized reader
+must inspect the initial access-grant plan; setting the input alone grants nothing.
 
 ## 3. Inspect the plan privately
 
@@ -80,7 +96,7 @@ gcloud storage cp \
   "$PRIVATE_DIR/plan.tfplan"
 digest=$(jq -er .sha256 "$PRIVATE_DIR/plan.json")
 printf '%s  %s\n' "$digest" "$PRIVATE_DIR/plan.tfplan" | sha256sum --check
-tofu -chdir=tf show -no-color "$PRIVATE_DIR/plan.tfplan" > "$PRIVATE_DIR/plan.txt"
+tofu -chdir=tf/infrastructure show -no-color "$PRIVATE_DIR/plan.tfplan" > "$PRIVATE_DIR/plan.txt"
 ```
 
 Read the complete private `plan.txt`, including replacements, deletions, IAM,

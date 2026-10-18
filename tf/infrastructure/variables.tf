@@ -10,6 +10,12 @@ variable "gcp_folder_id" {
   nullable    = false
 }
 
+variable "gcp_maintainers" {
+  description = "Google account emails allowed to read saved plans, not Terraform state."
+  type        = set(string)
+  nullable    = false
+}
+
 variable "gcp_tf_state_location" {
   description = "Bucket location chosen at Day Zero; changing it replaces the bucket."
   type        = string

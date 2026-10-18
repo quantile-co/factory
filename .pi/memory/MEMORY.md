@@ -48,7 +48,7 @@ reserve that prefix for Dependabot. Avoid creating duplicate writer PRs.
 Check runs on non-main branch pushes, pull requests, and non-main manual
 requests. Test is manual/main-only and runs `check:all` before `test:all` via
 `--mode before`; only Check / All is required for landing. Job names are
-Check/All, Test/All, Plan/Production, and Apply/Production. Continuous batched
+Check/All, Test/All, Plan/Infrastructure, and Apply/Infrastructure. Continuous batched
 Test, failure bisect, revert/fix-forward preparation, and human escalation are
 a TODO, not implemented automation. Do not add a separate Build just to warm
 caches; the old Build realized its environment and ran tests, not every export.
@@ -118,7 +118,7 @@ recipe change. Never run Plan/Apply merely to warm caches.
 ## Fork approval and tests
 
 #decision [[factory-fork-approval]] [[factory-terraform-tests]]
-`tf/project` unconditionally declares `all_external_contributors` workflow
+`tf/modules/project/github` unconditionally declares `all_external_contributors` workflow
 approval, including returning contributors; do not add an opt-in. GitHub's
 membership exemptions still apply, and approval does not itself grant fork
 jobs repository secrets. The REST API provider was selected because the
@@ -185,12 +185,22 @@ The user approved implementing `etc/secretspec/secretspec.toml` plus `nix/secret
 Use Biome for the current lint/format implementation; retain tsc for TypeScript checking. The user chose Biome after comparing ESLint/TypeScript 7, Oxlint/Oxfmt, Ultracite, and React Doctor. Do not add those alternatives or automatic fixing hooks. Keep native package.json check/fix scripts, reusable native configuration under etc/, source-preserving check:all, and explicit fix:all.
 
 
-<!-- 2026-10-18 00:33:05 [01a14275] -->
+<!-- 2026-10-18 00:46:09 [01a14275] -->
 #decision [[factory-production-guards]] [[factory-saved-plans]]
-Plan/Apply remain separate manual protected-main workflows with maintainer and triggering-actor gates, prod, WIF, backend locks, and shared non-cancelling concurrency. A source merge or green Check authorizes neither. The approved saved-plan change is implemented locally on feat/deploy-skills, not yet published or exercised in production: Plan stores sensitive plan contents in private GCS and publishes a one-day GitHub receipt; Apply selects its artifact ID and verifies the original successful producer attempt, repository, current main SHA, 24-hour age, backend and digests before applying without replanning. GCS reads use the receipt's object generation. Lifecycle cleanup is asynchronous, distinct from validity. Operators need an authorized private plan-read route after bootstrap Owner removal; do not silently broaden IAM.
+Saved-plan source and deployment skills landed on main at ffad1eae4cd6c77fed6c19aba33eb47b69c97340 (2026-10-18); branch Check, main Test and the first Plan succeeded. Apply has not yet been exercised. Plan stores sensitive contents in private GCS and publishes a one-day GitHub receipt. Apply selects its artifact ID, validates the original successful producer attempt, repository, current main SHA, 24-hour age, backend and digests, then applies without replanning using the receipt's GCS generation. Lifecycle cleanup is asynchronous, separate from validity. Retain manual protected-main, actor/triggering-actor maintainer gates, prod, WIF, backend locks and shared non-cancelling concurrency. A merge or green Check authorizes neither production workflow. Operators need an authorized private plan-read route after bootstrap Owner removal; never silently broaden IAM.
 
 #preference [[factory-saved-plans]] [[factory-config-layout]]
-Keep this implementation in the existing flat nix/tf.nix: no Python, separate helper files, new test framework, or dedicated test file for this change. Share the GitHub/GCS transport logic internally; keep authorization, the stock artifact-upload action and post-upload always-cleanup in CI. Use simple Plan/Apply step names, parallel option descriptions, and avoid repeated "reviewed" labels. Explain implementation/storage choices next to Nix logic rather than in workflow comments. Avoid overengineering, overtesting and redundant validation.
+Keep implementation in flat nix/tf.nix, with shared internal GitHub/GCS functions. No Python, separate helper files, dedicated test file or new test framework for this change. Keep authorization, stock artifact-upload and post-upload always-cleanup in CI. Use simple Plan/Apply step names and parallel option descriptions; avoid repeated "reviewed" labels. Explain implementation/storage choices beside Nix logic rather than in workflow comments. Avoid overengineering, overtesting and redundant validation.
 
 #decision [[factory-deploy-skills]]
-Operational instructions move from tf/README.md into .pi/skills/day-zero-deploy and deploy. Preserve bootstrap operations and narrow removal of only the bootstrap human's direct Owner grant after CI handoff, checking private plan-read and recovery access first. Keep standing projectCreator/billing.user and CI/WIF grants. Existing installations must never be reseeded. Each dispatch, mutation, migration and retry needs separate approval.
+Operational instructions live in .pi/skills/day-zero-deploy and deploy, replacing tf/README.md. Preserve bootstrap operations and removal of only the bootstrap human's direct Owner grant after CI handoff, verifying private plan-read and recovery access first. Keep standing projectCreator/billing.user and CI/WIF grants. Never reseed an existing installation. Each dispatch, mutation, migration and retry needs separate approval.
+
+<!-- 2026-10-18 00:57:29 [01a14275] -->
+#decision [[factory-plan-readers]] [[factory-saved-plans]]
+The user approved Terraform-managed plan-reader access via a required gcp_maintainers set of Google account emails, separate from gh_maintainers. GCP_MAINTAINERS maps to TF_VAR_gcp_maintainers in Plan/Apply and is required by their SecretSpec profiles. Each account gets a non-authoritative bucket IAM member binding for roles/storage.objectViewer conditioned on the plans/ object prefix; no state, bucket-wide listing or project administration access. Do not make manual IAM grants or restore human Owner. Implementation is locally validated on feat/gcp-maintainer-plan-access, not yet committed/applied; the repository variable is configured for the approved operator. Existing installations still require an already-authorized reader to inspect the first access-grant plan before Apply.
+
+<!-- 2026-10-18 01:50:21 [01a14275] -->
+#decision [[factory-terraform-layout]] [[factory-test-value]]
+Factory's deployment root is tf/infrastructure; reusable modules are tf/modules/project/github and tf/modules/project/gcp. Root inputs/outputs retain gh_/gcp_ prefixes; child interfaces omit them. The root manages GitHub once and passes repository/maintainer IDs to GCP; additional GCP instances do not require a GitHub provider. No management boolean or compatibility/moved blocks. Existing module.project state needs a separately approved one-time migration to module.github/module.gcp without changing the bucket or repository/prod prefix.
+
+Keep TF_DIR task-scoped: check:all, plan:infrastructure and apply:infrastructure use tf/infrastructure; fix:all uses tf. Shared tools default to tf. SECRETSPEC_FILE remains beside enterShell because secret loading precedes task environments. Tests live beside their modules/root, with no shared test-helpers framework or tautological assertions: retain independent consumer smoke checks and the scoped scanner-exception regression. README Skills follows Development and uses the Q1 invocation format.

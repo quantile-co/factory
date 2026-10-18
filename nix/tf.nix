@@ -180,7 +180,7 @@ in
     plan.package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.writeShellApplication {
-        name = "plan-production";
+        name = "plan-terraform";
         runtimeInputs = [ tofu ];
         text = ''
           tf_dir="''${TF_DIR:-tf}"
@@ -198,7 +198,7 @@ in
     apply.package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.writeShellApplication {
-        name = "apply-production";
+        name = "apply-terraform";
         runtimeInputs = [ tofu ];
         text = ''
           tf_dir="''${TF_DIR:-tf}"

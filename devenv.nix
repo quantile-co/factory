@@ -41,6 +41,7 @@
       description = "Run all checks.";
       after = [ "devenv:files" ];
       env.SEMGREP_FIXTURES_DIR = "etc/semgrep";
+      env.TF_DIR = "tf/infrastructure";
       exec = ''
         ${lib.getExe pkgs.nix} flake check path:.
         ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} flake.lock devenv.lock factory
@@ -49,9 +50,11 @@
         fi
         ${lib.getExe config.quantile.github.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.check.package}
+        ${lib.getExe config.quantile.tf.opentofu.package} -chdir=tf fmt -check -recursive
         ${lib.getExe config.quantile.tf.check.package}
-        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf --namespace terraform.repository tf/main.tf
-        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/project --namespace terraform.project tf/project/main.tf
+        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/infrastructure --namespace terraform.infrastructure tf/infrastructure/main.tf
+        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/modules/project/github --namespace terraform.project.github tf/modules/project/github/main.tf
+        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/modules/project/gcp --namespace terraform.project.gcp tf/modules/project/gcp/main.tf
         ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.ts.pnpm.package} run check
       '';
@@ -60,6 +63,7 @@
     "fix:all" = {
       description = "Apply Terraform formatting and safe Biome fixes.";
       after = [ "devenv:files" ];
+      env.TF_DIR = "tf";
       exec = ''
         ${lib.getExe config.quantile.tf.fix.package}
         ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
@@ -76,13 +80,15 @@
       '';
     };
 
-    "plan:production" = {
-      description = "Plan production infrastructure.";
+    "plan:infrastructure" = {
+      description = "Plan infrastructure.";
+      env.TF_DIR = "tf/infrastructure";
       exec = lib.getExe config.quantile.tf.plan.gcs.package;
     };
 
-    "apply:production" = {
-      description = "Apply production infrastructure.";
+    "apply:infrastructure" = {
+      description = "Apply infrastructure.";
+      env.TF_DIR = "tf/infrastructure";
       exec = lib.getExe config.quantile.tf.apply.gcs.package;
     };
   };

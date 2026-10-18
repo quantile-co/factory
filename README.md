@@ -6,7 +6,8 @@
   <p><em>Quantile software factory</em></p>
   <p>
     <a href="#prerequisites">Prerequisites</a> ·
-    <a href="#development">Development</a>
+    <a href="#development">Development</a> ·
+    <a href="#skills">Skills</a>
   </p>
 </div>
 
@@ -38,3 +39,19 @@ devenv tasks run --show-output fix:all
 # Run tests.
 devenv tasks run --show-output --mode single test:all
 ```
+
+## Skills
+
+Run from this repository with Pi:
+
+- **Day Zero deployment**
+
+  ```sh
+  pi "/skill:day-zero-deploy"
+  ```
+
+- **Steady-state deployment**
+
+  ```sh
+  pi "/skill:deploy"
+  ```

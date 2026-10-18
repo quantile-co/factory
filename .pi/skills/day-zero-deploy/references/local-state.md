@@ -30,6 +30,7 @@ gcloud auth login
 gcloud auth application-default login # select the same Google account
 : "${GCP_BILLING_ACCOUNT:?set the authorized billing account}"
 : "${GCP_FOLDER_ID:?set the quantile-co parent folder ID}"
+: "${GCP_MAINTAINERS:?set a JSON array of Google account emails for plan review}"
 : "${GCP_WIF_POOL:?set the Q0 GitHub WIF pool resource path}"
 : "${GCP_WIF_PROVIDER:?set the Q0 quantile-co GitHub WIF provider path}"
 : "${GH_MAINTAINERS:?set a JSON array of GitHub usernames}"
@@ -38,6 +39,7 @@ gcloud auth application-default login # select the same Google account
 # Map public names to Terraform inputs; keep the GitHub token out of TF_VAR_*.
 export TF_VAR_gcp_billing_account="$GCP_BILLING_ACCOUNT"
 export TF_VAR_gcp_folder_id="$GCP_FOLDER_ID"
+export TF_VAR_gcp_maintainers="$GCP_MAINTAINERS"
 export TF_VAR_gcp_wif_pool="$GCP_WIF_POOL"
 export TF_VAR_gh_maintainers="$GH_MAINTAINERS"
 
@@ -57,15 +59,15 @@ resources before creating anything.
 
 ```sh
 # Start with local state: the bucket does not exist yet.
-test ! -e tf/backend_override.tf
-test ! -e tf/terraform.tfstate
+test ! -e tf/infrastructure/backend_override.tf
+test ! -e tf/infrastructure/terraform.tfstate
 unset TF_DATA_DIR TF_WORKSPACE
-printf 'terraform {\n  backend "local" {}\n}\n' > tf/backend_override.tf
-tofu -chdir=tf init -input=false -lockfile=readonly
+printf 'terraform {\n  backend "local" {}\n}\n' > tf/infrastructure/backend_override.tf
+tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly
 
 # The repository already exists. Import it ONLY when it has no state address.
-tofu -chdir=tf import module.project.github_repository.self factory
-tofu -chdir=tf plan
+tofu -chdir=tf/infrastructure import module.github.github_repository.self factory
+tofu -chdir=tf/infrastructure plan
 
 # Review existing repo settings, the passing All check, and all changes.
 # Import any other existing resources before approving a fresh local plan.
@@ -75,7 +77,7 @@ After separate bootstrap Apply approval, inspect the interactive plan again
 before confirming it. This local bootstrap exception is not the ordinary CI path.
 
 ```sh
-tofu -chdir=tf apply
+tofu -chdir=tf/infrastructure apply
 ```
 
 ## 3. State migration
@@ -86,15 +88,15 @@ an existing backend. Stop if the post-migration plan is not clean.
 
 ```sh
 # Move that same local state to its new, versioned GCS bucket.
-GCP_TF_STATE_BUCKET=$(tofu -chdir=tf output -raw gcp_tf_state_bucket)
-GCP_PROJECT_ID=$(tofu -chdir=tf output -raw gcp_tf_state_project_id)
-cp tf/terraform.tfstate tf/terraform.tfstate.pre-gcs
-rm tf/backend_override.tf
-tofu -chdir=tf init -migrate-state -lockfile=readonly \
+GCP_TF_STATE_BUCKET=$(tofu -chdir=tf/infrastructure output -raw gcp_tf_state_bucket)
+GCP_PROJECT_ID=$(tofu -chdir=tf/infrastructure output -raw gcp_tf_state_project_id)
+cp tf/infrastructure/terraform.tfstate tf/infrastructure/terraform.tfstate.pre-gcs
+rm tf/infrastructure/backend_override.tf
+tofu -chdir=tf/infrastructure init -migrate-state -lockfile=readonly \
   -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
   -backend-config="prefix=repository/prod"
-tofu -chdir=tf state list
-tofu -chdir=tf plan # expect no changes; keep the ignored backup securely until verified
+tofu -chdir=tf/infrastructure state list
+tofu -chdir=tf/infrastructure plan # expect no changes; keep the ignored backup securely until verified
 unset GITHUB_TOKEN # gh run watch cannot use the Terraform fine-grained PAT
 unset REST_API_BEARER
 ```
@@ -111,6 +113,7 @@ running the following commands.
 GH_REPOSITORY=quantile-co/factory
 gh variable set GCP_BILLING_ACCOUNT --repo "$GH_REPOSITORY" --body "$GCP_BILLING_ACCOUNT"
 gh variable set GCP_FOLDER_ID --repo "$GH_REPOSITORY" --body "$GCP_FOLDER_ID"
+gh variable set GCP_MAINTAINERS --repo "$GH_REPOSITORY" --body "$GCP_MAINTAINERS"
 gh variable set GCP_WIF_POOL --repo "$GH_REPOSITORY" --body "$GCP_WIF_POOL"
 gh variable set GCP_WIF_PROVIDER --repo "$GH_REPOSITORY" --body "$GCP_WIF_PROVIDER"
 gh variable set GH_MAINTAINERS --repo "$GH_REPOSITORY" --body "$GH_MAINTAINERS"
@@ -160,10 +163,12 @@ run_and_verify apply.yaml -f "plan_artifact_id=$PLAN_ARTIFACT_ID"
 
 ## 6. Remove bootstrap access
 
-After successful CI handoff, verify WIF and Q0-admin recovery access, and a
-non-Owner route for authorized operators to read private plan objects. If that
-read access is missing, stop for a separately approved least-privilege IAM change;
-do not retain or restore Owner merely to inspect plans.
+After successful CI handoff, verify WIF and Q0-admin recovery access, and the
+Terraform-managed plan-reader bindings for `gcp_maintainers`. These grant object
+read access only under `plans/`, not state access or Owner. Verify the operator's
+Google account is included before removing bootstrap access. If read access is
+missing, stop for a separately approved Terraform change; do not retain or
+restore Owner merely to inspect plans.
 
 Inspect IAM first, then obtain separate approval to remove only the bootstrap
 human's direct, unconditional Owner grant. Preserve standing folder
