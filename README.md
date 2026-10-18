@@ -36,5 +36,5 @@ devenv tasks run --show-output --mode before check:all
 devenv tasks run --show-output --mode before fix:all
 
 # Run tests.
-devenv tasks run --show-output --mode before test:all
+devenv tasks run --show-output --mode single test:all
 ```
