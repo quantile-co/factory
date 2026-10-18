@@ -7,6 +7,7 @@ let
     json = import ./json.nix;
     pi = import ./pi.nix { llmAgents = inputs.llm-agents; };
     qmd = import ./qmd.nix { llmAgents = inputs.llm-agents; };
+    secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = import ./semgrep.nix;
     tf = import ./tf.nix;
     ts = import ./ts.nix;

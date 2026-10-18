@@ -8,5 +8,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["*.test.ts", "tf/**/*.test.ts"]
+  "include": ["*.test.ts", "nix/**/*.test.ts", "tf/**/*.test.ts"]
 }

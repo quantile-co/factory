@@ -32,6 +32,19 @@ nix run path:.#devenv-cli -- tasks run --show-output --mode before test:all
 `check:all` includes policy checks against real source and TypeScript type checking;
 `test:all` depends on `check:all` and runs backend-free Vitest integration tests.
 
+SecretSpec uses `etc/secretspec/secretspec.toml` through the overridable
+`quantile.secretspec.configFile`. Factory points `SECRETSPEC_FILE` at its Nix-store
+copy; no root manifest or bootstrap step is needed. Only declarations enter the
+store. `quantile.secretspec.shellHook` exports values at runtime and stops startup
+on failure. Native Devenv SecretSpec resolution stays disabled in `devenv.yaml`;
+never map resolved secrets into Nix `env` attributes. Select a workflow profile
+before starting Devenv; default/check require no credentials, while test/plan/apply
+require the Cachix token. Profiles have no scopes and do not clear ambient secrets.
+For file providers, relative paths are relative to the manifest, not the checkout;
+use absolute runtime paths with a store-backed manifest. Consumers may instead
+seed and commit a root manifest, then remove the file override for native discovery.
+File-valued `as_path` cleanup is not managed by the shell exporter.
+
 Workflows are thin wrappers around repository tasks. Use Actionlint and real
 Check runs for workflow integration; do not duplicate fixed YAML values or
 third-party action behavior in unit tests.

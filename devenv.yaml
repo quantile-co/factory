@@ -1,3 +1,7 @@
+# Runtime shell loading handles validation; avoid evaluation-time secret resolution.
+secretspec:
+  enable: false
+
 # Use this repository's flake as the source of shared input revisions.
 inputs:
   factory:

@@ -16,7 +16,12 @@
     config.quantile.tf.conftest.package
     config.quantile.tf.trivy.package
     config.quantile.semgrep.package
+    config.quantile.secretspec.package
   ];
+
+  # Read the manifest directly from the Nix store; no root secretspec.toml is needed.
+  env.SECRETSPEC_FILE = "${config.quantile.secretspec.configFile}";
+  enterShell = lib.mkBefore config.quantile.secretspec.shellHook;
 
   files = {
     ".editorconfig".source = config.quantile.editorconfig.configFile;

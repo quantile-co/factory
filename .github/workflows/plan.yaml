@@ -69,6 +69,8 @@ jobs:
       # Git-aware inputs keep ignored credentials and Terraform files out of the store.
       - name: Plan
         env:
+          SECRETSPEC_PROFILE: plan
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
         run: nix run .#devenv-cli -- tasks run --show-output plan:production
