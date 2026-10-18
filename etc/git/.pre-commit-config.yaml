@@ -1,0 +1,48 @@
+default_stages: [pre-push]
+repos:
+  - repo: local
+    hooks:
+      - id: check-added-large-files
+        name: Check large source files
+        entry: check-added-large-files
+        language: system
+        types: [file]
+        args: [--maxkb=1200, --enforce-all]
+      - id: check-case-conflicts
+        name: Check case-conflicting paths
+        entry: check-case-conflict
+        language: system
+      - id: check-merge-conflicts
+        name: Check merge conflict markers
+        entry: check-merge-conflict
+        language: system
+        args: [--assume-in-merge]
+      - id: check-symlinks
+        name: Check broken symlinks
+        entry: check-symlinks
+        language: system
+        types: [symlink]
+      - id: destroyed-symlinks
+        name: Check destroyed symlinks
+        entry: destroyed-symlinks
+        language: system
+        types: [file]
+      - id: check-vcs-permalinks
+        name: Check GitHub permalinks
+        entry: quantile-check-permalinks
+        language: system
+        args:
+          - >-
+            github\.com/[^/[:space:]<>"'`]+/[^/[:space:]<>"'`]+/(blob|tree)/[^/[:space:]?#<>"'`()]+
+        exclude: ^\.gitignore$
+      - id: quantile-gitleaks
+        name: Full-history and working-tree secret scanning
+        entry: quantile-git-gitleaks
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: commitizen
+        name: Conventional Commits
+        entry: cz --config .cz.toml check --allow-abort --commit-msg-file
+        language: system
+        stages: [commit-msg]

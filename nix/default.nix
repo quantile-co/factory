@@ -6,6 +6,7 @@ let
     duckdb = import ./duckdb;
     editorconfig = import ./editorconfig;
     gcp = import ./gcp;
+    git = import ./git;
     github = import ./github;
     json = import ./json;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
