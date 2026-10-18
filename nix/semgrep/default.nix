@@ -9,13 +9,13 @@
 
     rulesDir = lib.mkOption {
       type = lib.types.path;
-      default = ../../etc/semgrep;
+      default = ../../etc/semgrep/rules;
       description = "Semgrep rules directory.";
     };
 
     ignoreFile = lib.mkOption {
       type = lib.types.path;
-      default = ../../etc/.semgrepignore;
+      default = ../../etc/semgrep/.semgrepignore;
       description = "Semgrep ignore template.";
     };
 

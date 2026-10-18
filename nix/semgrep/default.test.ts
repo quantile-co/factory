@@ -36,12 +36,14 @@ it("tests caller-owned Semgrep rules and rejects matching source without modifyi
     if (built.error) throw built.error;
     expect(built.status, built.stderr).toBe(0);
     cpSync(
-      fileURLToPath(new URL("../../etc/semgrep", import.meta.url)),
+      fileURLToPath(new URL("../../etc/semgrep/rules", import.meta.url)),
       join(work, ".semgrep"),
       { recursive: true },
     );
     copyFileSync(
-      fileURLToPath(new URL("../../etc/.semgrepignore", import.meta.url)),
+      fileURLToPath(
+        new URL("../../etc/semgrep/.semgrepignore", import.meta.url),
+      ),
       join(work, ".semgrepignore"),
     );
     const source = join(work, "bad.tf");
