@@ -78,12 +78,12 @@
 
     "plan:production" = {
       description = "Plan production infrastructure.";
-      exec = lib.getExe config.quantile.tf.plan.package;
+      exec = lib.getExe config.quantile.tf.plan.gcs.package;
     };
 
     "apply:production" = {
-      description = "Plan and apply production infrastructure.";
-      exec = lib.getExe config.quantile.tf.apply.package;
+      description = "Apply production infrastructure.";
+      exec = lib.getExe config.quantile.tf.apply.gcs.package;
     };
   };
 }

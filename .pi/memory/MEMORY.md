@@ -53,14 +53,6 @@ Test, failure bisect, revert/fix-forward preparation, and human escalation are
 a TODO, not implemented automation. Do not add a separate Build just to warm
 caches; the old Build realized its environment and ran tests, not every export.
 
-#decision [[factory-production-guards]] [[factory-nix-ci-boundary]]
-Plan/Apply remain separate manual protected-main workflows with maintainer and
-triggering-actor gates, protected environment, WIF, backend locks, and shared
-non-cancelling production concurrency. A source merge or green Check does not
-authorize either workflow. Apply creates a fresh private saved plan and applies
-those exact bytes in the same guarded job, then cleans it up. Reusable tools use
-`TF_DIR`, `GCP_TF_STATE_BUCKET`, and `TF_BACKEND_PREFIX`, not CI-specific guards.
-
 #security [[factory-production-flake-source]]
 Production bootstrap must use Git-aware `nix run .#devenv-cli`, not `path:.`.
 A synthetic validation showed `path:.` includes ignored credential, backend,
@@ -184,7 +176,6 @@ Consumer integrations and unrelated infrastructure migrations remain separate.
 #preference [[factory-test-value]]
 Tests must have clear regression-detection value. Avoid overengineered harnesses, tautological assertions, and tests that merely restate known configuration values or upstream behavior. Prefer small behavior-focused tests of Factory-owned boundaries; changing test frameworks alone does not replace meaningful coverage.
 
-
 <!-- 2026-10-17 22:29:18 [01a14275] -->
 #decision [[factory-secretspec]]
 The user approved implementing `etc/secretspec/secretspec.toml` plus `nix/secretspec/default.nix`, preserving automatic runtime export to ordinary shells/tasks, with no scopes. Default/check stay credential-free; test/plan/apply require the Cachix publication token explicitly passed by those workflow steps. Factory selects the store-backed native manifest through `SECRETSPEC_FILE`; no root link, seeding, bootstrap bypass, or missing-file skip is needed. Native Devenv evaluation-time SecretSpec resolution stays disabled. Only declarations/code enter Nix outputs, never resolved values. Downstreams can override the manifest or eject to a seeded, committed root manifest and remove the file override for native discovery. Relative file-provider routes are relative to the manifest; store-backed declarations need absolute file-provider paths. File-valued `as_path` lifetime handling remains deferred. The runtime loader remains explicit opt-in wiring, not a side effect of importing Factory modules. Native `secretspec run` is not equivalent to transparent task inheritance; historical selection of the exporter was deliberate, not evidence that run was broken.
@@ -192,3 +183,14 @@ The user approved implementing `etc/secretspec/secretspec.toml` plus `nix/secret
 <!-- 2026-10-17 23:06:07 [01a14275] -->
 #decision [[factory-check-fix]]
 Use Biome for the current lint/format implementation; retain tsc for TypeScript checking. The user chose Biome after comparing ESLint/TypeScript 7, Oxlint/Oxfmt, Ultracite, and React Doctor. Do not add those alternatives or automatic fixing hooks. Keep native package.json check/fix scripts, reusable native configuration under etc/, source-preserving check:all, and explicit fix:all.
+
+
+<!-- 2026-10-18 00:33:05 [01a14275] -->
+#decision [[factory-production-guards]] [[factory-saved-plans]]
+Plan/Apply remain separate manual protected-main workflows with maintainer and triggering-actor gates, prod, WIF, backend locks, and shared non-cancelling concurrency. A source merge or green Check authorizes neither. The approved saved-plan change is implemented locally on feat/deploy-skills, not yet published or exercised in production: Plan stores sensitive plan contents in private GCS and publishes a one-day GitHub receipt; Apply selects its artifact ID and verifies the original successful producer attempt, repository, current main SHA, 24-hour age, backend and digests before applying without replanning. GCS reads use the receipt's object generation. Lifecycle cleanup is asynchronous, distinct from validity. Operators need an authorized private plan-read route after bootstrap Owner removal; do not silently broaden IAM.
+
+#preference [[factory-saved-plans]] [[factory-config-layout]]
+Keep this implementation in the existing flat nix/tf.nix: no Python, separate helper files, new test framework, or dedicated test file for this change. Share the GitHub/GCS transport logic internally; keep authorization, the stock artifact-upload action and post-upload always-cleanup in CI. Use simple Plan/Apply step names, parallel option descriptions, and avoid repeated "reviewed" labels. Explain implementation/storage choices next to Nix logic rather than in workflow comments. Avoid overengineering, overtesting and redundant validation.
+
+#decision [[factory-deploy-skills]]
+Operational instructions move from tf/README.md into .pi/skills/day-zero-deploy and deploy. Preserve bootstrap operations and narrow removal of only the bootstrap human's direct Owner grant after CI handoff, checking private plan-read and recovery access first. Keep standing projectCreator/billing.user and CI/WIF grants. Existing installations must never be reseeded. Each dispatch, mutation, migration and retry needs separate approval.

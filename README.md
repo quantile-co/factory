@@ -30,10 +30,10 @@ The devenv shell provides all other project tools.
 
 ```sh
 # Check source without rewriting it.
-devenv tasks run --show-output --mode before check:all
+devenv tasks run --show-output check:all
 
 # Apply safe source fixes explicitly.
-devenv tasks run --show-output --mode before fix:all
+devenv tasks run --show-output fix:all
 
 # Run tests.
 devenv tasks run --show-output --mode single test:all

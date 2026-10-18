@@ -96,7 +96,11 @@ valid_state if {
 		"uniform_bucket_level_access": true,
 		"public_access_prevention": "enforced",
 		"versioning": [{"enabled": true}],
-		"lifecycle_rule": [{"action": [{"type": "Delete"}], "condition": [{"days_since_noncurrent_time": 90}]}],
+		"lifecycle_rule": [
+			{"action": [{"type": "Delete"}], "condition": [{"days_since_noncurrent_time": 90}]},
+			{"action": [{"type": "Delete"}], "condition": [{"age": 1, "matches_prefix": ["plans/"]}]},
+			{"action": [{"type": "Delete"}], "condition": [{"days_since_noncurrent_time": 1, "matches_prefix": ["plans/"]}]},
+		],
 		"lifecycle": [{"prevent_destroy": true}],
 	}]
 	input.resource.google_project_iam_member.pipeline_owner == [{

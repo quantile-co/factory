@@ -150,6 +150,28 @@ resource "google_storage_bucket" "state" {
     }
   }
 
+  # Plans are short-lived review material, not state backups. Apply enforces the
+  # exact 24-hour limit; GCS lifecycle cleanup is asynchronous and may run later.
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age            = 1
+      matches_prefix = ["plans/"]
+    }
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      days_since_noncurrent_time = 1
+      matches_prefix             = ["plans/"]
+    }
+  }
+
   lifecycle {
     prevent_destroy = true
   }

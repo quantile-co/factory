@@ -84,9 +84,15 @@ store. The Test workflow's continuous batching and failure-recovery TODO is not
 implemented.
 
 `plan.yaml` and `apply.yaml` are separate, manual, protected-main production
-workflows. Plan reads remote state; Apply creates a fresh saved plan and applies
-those exact bytes in the same guarded job. A source merge or green Check authorizes
-neither workflow. Review the current infrastructure and the proposed Plan before
-a separately authorized Apply. Preserve WIF, backend
-locks, protected environments, and the workflow concurrency guard. Do not use
-the Day 0 runbook in `tf/README.md` to recreate an existing installation.
+workflows. Plan saves its output in private GCS and publishes a non-sensitive
+GitHub receipt. Apply accepts that artifact ID, verifies provenance, source,
+backend, expiry (24 hours) and integrity, and applies the saved plan without
+replanning. Storage and validation live in `nix/tf.nix`; authorization, stock
+artifact upload and post-upload cleanup stay in the workflows. A source merge
+or green Check authorizes neither workflow. Preserve WIF, backend locks,
+protected environments, and the workflow concurrency guard.
+
+Use [deploy](.pi/skills/deploy/SKILL.md) for existing infrastructure and
+[day-zero-deploy](.pi/skills/day-zero-deploy/SKILL.md) only for a confirmed new
+installation. Each mutation, dispatch, migration or retry needs separate approval.
+Never recreate existing state or remove standing/CI access during bootstrap cleanup.

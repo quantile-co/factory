@@ -66,11 +66,24 @@ jobs:
           skipAddingSubstituter: true
           useDaemon: false
 
-      # Git-aware inputs keep ignored credentials and Terraform files out of the store.
+      # Git-aware inputs keep ignored credentials and Terraform files out of Nix.
       - name: Plan
         env:
           SECRETSPEC_PROFILE: plan
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
+          TF_PLAN_DIR: ${{ runner.temp }}/saved-plan
         run: nix run .#devenv-cli -- tasks run --show-output plan:production
+
+      - name: Publish receipt only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/saved-plan/artifact/plan.json
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove local plan files
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/saved-plan"
