@@ -61,7 +61,7 @@
     };
 
     "fix:all" = {
-      description = "Apply Terraform formatting and safe Biome fixes.";
+      description = "Apply safe source fixes.";
       after = [ "devenv:files" ];
       env.TF_DIR = "tf";
       exec = ''
@@ -72,7 +72,7 @@
     };
 
     "test:all" = {
-      description = "Run all checks, then tests.";
+      description = "Run all tests.";
       after = [ "check:all" ];
       exec = ''
         ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts

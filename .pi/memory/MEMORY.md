@@ -204,3 +204,7 @@ The user approved Terraform-managed plan-reader access via a required gcp_mainta
 Factory's deployment root is tf/infrastructure; reusable modules are tf/modules/project/github and tf/modules/project/gcp. Root inputs/outputs retain gh_/gcp_ prefixes; child interfaces omit them. The root manages GitHub once and passes repository/maintainer IDs to GCP; additional GCP instances do not require a GitHub provider. No management boolean or compatibility/moved blocks. Existing module.project state needs a separately approved one-time migration to module.github/module.gcp without changing the bucket or repository/prod prefix.
 
 Keep TF_DIR task-scoped: check:all, plan:infrastructure and apply:infrastructure use tf/infrastructure; fix:all uses tf. Shared tools default to tf. SECRETSPEC_FILE remains beside enterShell because secret loading precedes task environments. Tests live beside their modules/root, with no shared test-helpers framework or tautological assertions: retain independent consumer smoke checks and the scoped scanner-exception regression. README Skills follows Development and uses the Q1 invocation format.
+
+<!-- 2026-10-18 02:10:48 [01a14275] -->
+#preference [[factory-task-descriptions]]
+Task descriptions should state intent, not tool names or implementation details that may change. Use “Apply safe source fixes.” for fix:all and “Run all tests.” for test:all; dependencies still determine execution order.
