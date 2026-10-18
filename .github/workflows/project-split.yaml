@@ -1,0 +1,191 @@
+# Temporary, explicitly authorized bootstrap; remove after reader access is applied.
+name: Project split
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: One-time state migration or encrypted saved-plan review
+        required: true
+        type: choice
+        options: [migrate, review]
+      plan_artifact_id:
+        description: Plan receipt artifact ID (review only)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: factory-production
+  cancel-in-progress: false
+
+jobs:
+  infrastructure:
+    name: Infrastructure
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      contains(fromJSON(vars.GH_MAINTAINERS), github.actor) &&
+      contains(fromJSON(vars.GH_MAINTAINERS), github.triggering_actor)
+    runs-on: namespace-profile-quantile-4x8
+    environment: prod
+    timeout-minutes: 20
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_WORKSPACE: default
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_TF_STATE_BUCKET: ${{ vars.GCP_TF_STATE_BUCKET }}
+      GH_TOKEN: ${{ github.token }}
+      SPLIT_OPERATION: ${{ inputs.operation }}
+      PLAN_ARTIFACT_ID: ${{ inputs.plan_artifact_id }}
+      AGE_RECIPIENT: age1zd759ukq00zckn2rsg9adxh90ddxsq35jy40hhxyxl27n0alka3qffn62n
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+      - name: Mount the Nix store and database
+        uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+        with:
+          path: /nix
+          spacectl-version: 0.12.3
+          spacectl-system-binary: ignore
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          install_options: --no-daemon
+          extra_nix_config: |
+            require-sigs = true
+            extra-substituters = https://devenv.cachix.org https://quantile-co.cachix.org https://cache.numtide.com https://cachix.cachix.org https://pre-commit-hooks.cachix.org https://go-overlay.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= quantile-co.cachix.org-1:OM+kQzUqP3Ija8QQMUxvQNs97u6PB5/s83ZJe7c9WIQ= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= cachix.cachix.org-1:eWNHQldwUO7G2VkjpnjDbWwy4KQ/HNxht7H4SSoMckM= pre-commit-hooks.cachix.org-1:Pkk3Panw5AW24TOv6kz3PvLhlH8puAsJTBbOPmBo7Rc= go-overlay.cachix.org-1:rJ155O3K6WUyUcoKE4MqcC6JcLlK2vPXnP5/76BxWD8=
+
+      - name: Migrate or prepare encrypted review
+        run: |
+          nix shell --inputs-from . nixpkgs#opentofu nixpkgs#google-cloud-sdk \
+            nixpkgs#gh nixpkgs#jq nixpkgs#unzip nixpkgs#age --command bash <<'SCRIPT'
+          set -euo pipefail
+          set +x
+          umask 077
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$GITHUB_SHA"
+          work="$RUNNER_TEMP/project-split"
+          private="$work/private"
+          mkdir -p "$private" "$work/review"
+          export TF_DATA_DIR="$private/tofu"
+          gcloud storage buckets describe "gs://$GCP_TF_STATE_BUCKET" --raw --format=json > "$private/bucket.json"
+          jq -e '.iamConfiguration.publicAccessPrevention == "enforced" and .iamConfiguration.uniformBucketLevelAccess.enabled and .versioning.enabled' "$private/bucket.json" > /dev/null
+
+          case "$SPLIT_OPERATION" in
+            migrate)
+              tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly \
+                -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
+                -backend-config="prefix=repository/prod" > "$private/init.log" 2>&1
+              test "$(tofu -chdir=tf/infrastructure workspace show)" = default
+              state_uri="gs://$GCP_TF_STATE_BUCKET/repository/prod/default.tfstate"
+              generation=$(gcloud storage objects describe "$state_uri" --raw --format='value(generation)')
+              [[ "$generation" =~ ^[1-9][0-9]*$ ]]
+              gcloud storage cp "$state_uri#$generation" "$private/before.tfstate" --quiet > "$private/download.log" 2>&1
+              jq -e --arg bucket "$GCP_TF_STATE_BUCKET" --arg project "$GCP_PROJECT_ID" --arg repo "$GITHUB_REPOSITORY_ID" '
+                ["data.github_user.maintainer", "managed.github_repository.self",
+                 "managed.github_actions_repository_permissions.self", "managed.restapi_object.fork_workflow_approval",
+                 "managed.github_repository_vulnerability_alerts.self", "managed.github_repository_dependabot_security_updates.self",
+                 "managed.github_branch_protection.main", "managed.github_repository_environment.main",
+                 "managed.github_repository_environment_deployment_policy.main", "managed.random_id.state",
+                 "managed.google_project.state", "managed.google_project_service.storage",
+                 "managed.google_storage_bucket.state", "managed.google_project_iam_member.pipeline_owner"] as $allowed |
+                [.resources[] | .mode + "." + .type + "." + .name] as $actual |
+                .version == 4 and (.lineage | type == "string") and
+                all(.resources[]; .module == "module.project") and
+                ($actual - $allowed == []) and
+                ($allowed - ["managed.restapi_object.fork_workflow_approval"] - $actual == []) and
+                all(.resources[].instances[]; .deposed == null and (.status == null or .status == "ready")) and
+                ([.resources[] | select(.type == "google_storage_bucket") | .instances[].attributes.name] == [$bucket]) and
+                ([.resources[] | select(.type == "google_project") | .instances[].attributes.project_id] == [$project]) and
+                ([.resources[] | select(.type == "github_repository") | .instances[].attributes.repo_id | tostring] == [$repo])
+              ' "$private/before.tfstate" > /dev/null || { echo 'Unexpected live state; no migration performed.' >&2; exit 1; }
+              echo 'Verified the old module inventory and repository/project/bucket identities.'
+              # Keep recovery state private and OUTSIDE plans/, which humans will be able to read.
+              gcloud storage cp "$private/before.tfstate" \
+                "gs://$GCP_TF_STATE_BUCKET/migrations/project-split/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/before.tfstate" \
+                --if-generation-match=0 --quiet > "$private/backup.log" 2>&1
+              test "$(gcloud storage objects describe "$state_uri" --raw --format='value(generation)')" = "$generation"
+              test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" = "$GITHUB_SHA"
+              tofu -chdir=tf/infrastructure state mv -lock-timeout=5m module.project module.github > "$private/move.log" 2>&1
+              echo 'Renamed module.project to module.github.'
+              for address in random_id.state google_project.state google_project_service.storage google_storage_bucket.state google_project_iam_member.pipeline_owner; do
+                tofu -chdir=tf/infrastructure state mv -lock-timeout=5m "module.github.$address" "module.gcp.$address" >> "$private/move.log" 2>&1
+                printf 'Moved %s into module.gcp.\n' "$address"
+              done
+              tofu -chdir=tf/infrastructure state pull > "$private/after.tfstate"
+              jq -e --slurpfile before "$private/before.tfstate" '
+                def normalized: map(del(.instances[].dependencies) | .instances |= sort_by(.index_key, .deposed)) | sort_by(.module, .mode, .type, .name);
+                .lineage == $before[0].lineage and .serial > $before[0].serial and .outputs == $before[0].outputs and
+                (.resources | normalized) == ($before[0].resources | map(
+                  .module = (if .type == "random_id" or (.type | startswith("google_")) then "module.gcp" else "module.github" end)
+                ) | normalized)
+              ' "$private/after.tfstate" > /dev/null
+              echo 'Verified address-only migration: resource identities, attributes, providers and outputs preserved.'
+              ;;
+            review)
+              [[ "$PLAN_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+              gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PLAN_ARTIFACT_ID" > "$private/artifact.json"
+              jq -e --arg sha "$GITHUB_SHA" --arg repo "$GITHUB_REPOSITORY_ID" '
+                (.expired | not) and .workflow_run.head_sha == $sha and .workflow_run.repository_id == ($repo | tonumber) and
+                (.created_at | fromdateiso8601) <= now and (.created_at | fromdateiso8601) > now - 86400 and
+                (.expires_at | fromdateiso8601) > now and (.digest | test("^sha256:[a-f0-9]{64}$"))
+              ' "$private/artifact.json" > /dev/null
+              read -r run_id attempt < <(jq -er '.name | capture("^plan-(?<run>[1-9][0-9]*)-(?<attempt>[1-9][0-9]*)$") | [.run, .attempt] | @tsv' "$private/artifact.json")
+              test "$(jq -r .workflow_run.id "$private/artifact.json")" = "$run_id"
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/attempts/$attempt" > "$private/run.json"
+              jq -e --arg sha "$GITHUB_SHA" --arg repo "$GITHUB_REPOSITORY" --arg attempt "$attempt" '
+                .head_sha == $sha and .repository.full_name == $repo and .run_attempt == ($attempt | tonumber) and
+                .status == "completed" and .conclusion == "success" and .head_branch == "main" and
+                .event == "workflow_dispatch" and .path == ".github/workflows/plan.yaml"
+              ' "$private/run.json" > /dev/null
+              gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PLAN_ARTIFACT_ID/zip" > "$private/receipt.zip"
+              digest=$(jq -er '.digest | ltrimstr("sha256:")' "$private/artifact.json")
+              printf '%s  %s\n' "$digest" "$private/receipt.zip" | sha256sum --check --status
+              test "$(unzip -Z1 "$private/receipt.zip")" = plan.json
+              unzip -p "$private/receipt.zip" plan.json > "$private/receipt.json"
+              backend=$(printf '%s\n%s\n' "$GCP_TF_STATE_BUCKET" repository/prod | sha256sum | cut -d ' ' -f1)
+              jq -e --arg backend "$backend" '
+                .schema == 1 and .storage == "gcs" and .backend == $backend and
+                (.generation | test("^[1-9][0-9]*$")) and (.sha256 | test("^[a-f0-9]{64}$"))
+              ' "$private/receipt.json" > /dev/null
+              generation=$(jq -r .generation "$private/receipt.json")
+              gcloud storage cp "gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/$run_id/$attempt/plan.tfplan#$generation" \
+                "$private/plan.tfplan" --quiet > "$private/download.log" 2>&1
+              digest=$(jq -r .sha256 "$private/receipt.json")
+              printf '%s  %s\n' "$digest" "$private/plan.tfplan" | sha256sum --check --status
+              age --recipient "$AGE_RECIPIENT" --output "$work/review/plan.tfplan.age" "$private/plan.tfplan"
+              echo 'Encrypted the exact generation-pinned saved plan; no Apply performed.'
+              ;;
+            *) echo 'Unsupported operation.' >&2; exit 1 ;;
+          esac
+          SCRIPT
+
+      - name: Publish ciphertext only
+        if: inputs.operation == 'review'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: project-split-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/project-split/review/plan.tfplan.age
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove local private files
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/project-split"
