@@ -29,8 +29,12 @@ The devenv shell provides all other project tools.
 ## Development
 
 ```sh
-nix flake check path:.
-tofu -chdir=tf fmt -check -recursive
-tofu -chdir=tf init -backend=false -input=false -lockfile=readonly
-tofu -chdir=tf validate
+# Check source without rewriting it.
+devenv tasks run --show-output --mode before check:all
+
+# Run checks, then tests.
+devenv tasks run --show-output --mode before test:all
+
+# Apply safe source fixes explicitly.
+devenv tasks run --show-output --mode before fix:all
 ```
