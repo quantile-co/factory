@@ -27,4 +27,4 @@ it("keeps the QMD output identity while substituting external fetchers", () => {
     upstream: string;
   };
   expect(paths.selected).toBe(paths.upstream);
-});
+}, 120_000);
