@@ -1,5 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -84,7 +90,22 @@ jobs:
       "--print-out-paths",
     ]);
     run("git", ["init", "--quiet", "--initial-branch=main"]);
-    run(join(output, "bin", "check-actionlint"), []);
+    const checker = join(output, "bin", "check-actionlint");
+    run(checker, []);
+
+    const workflow = join(consumer, ".github/workflows/check.yaml");
+    const invalid = `name: Consumer\non: push\njobs:\n  check:\n    runs-on: consumer-runner\n    steps:\n      - run: echo $GITHUB_WORKSPACE\n`;
+    writeFileSync(workflow, invalid);
+    const rejected = spawnSync(checker, [], {
+      cwd: consumer,
+      env,
+      encoding: "utf8",
+      timeout: 120_000,
+    });
+    if (rejected.error) throw rejected.error;
+    expect(rejected.status).not.toBe(0);
+    expect(rejected.stdout + rejected.stderr).toContain("SC2086");
+    expect(readFileSync(workflow, "utf8")).toBe(invalid);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
