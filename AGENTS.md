@@ -19,7 +19,7 @@ Scratchpad and recovery data stay ignored.
 Local, backend-free validation (inside this checkout's pinned direnv shell):
 
 ```sh
-nix flake check path:.
+nix flake check .
 tofu -chdir=tf fmt -check -recursive
 tofu -chdir=tf/infrastructure init -backend=false -input=false -lockfile=readonly
 tofu -chdir=tf/infrastructure validate
@@ -28,8 +28,8 @@ tofu -chdir=tf/infrastructure validate
 For source checks, or checks followed by tests, run:
 
 ```sh
-nix run path:.#devenv-cli -- tasks run --show-output check:all
-nix run path:.#devenv-cli -- tasks run --show-output --mode before test:all
+nix run .#devenv-cli -- tasks run --show-output check:all
+nix run .#devenv-cli -- tasks run --show-output --mode before test:all
 ```
 
 `check:all` includes policy checks against real source, TypeScript type checking,
@@ -39,7 +39,7 @@ and Biome lint/format checks without rewriting source. `test:all` depends on
 Apply source fixes explicitly:
 
 ```sh
-nix run path:.#devenv-cli -- tasks run --show-output --mode before fix:all
+nix run .#devenv-cli -- tasks run --show-output --mode before fix:all
 ```
 
 `fix:all` runs Terraform formatting (no backend initialization) and safe Biome
@@ -74,11 +74,14 @@ is complete; do not repeat it. Other existing installations need their own revie
 migration before adopting the split. Preserve the state bucket and
 `repository/prod` prefix.
 
-Workflows call `plan:infrastructure` and `apply:infrastructure`. These tasks and
-`check:all` set `TF_DIR=tf/infrastructure`; `fix:all` sets `TF_DIR=tf` to format the
-whole tree. Keep this setting task-scoped. SecretSpec's manifest setting stays
-shell-wide because its loader runs before tasks. Reusable Nix tools retain a
-caller-overridable `TF_DIR`, defaulting to `tf`.
+Workflows call `plan:infrastructure` and `apply:infrastructure`; these tasks set
+`TF_DIR=tf/infrastructure`. In `devenv.nix`, `terraformSourceDir` selects the tree
+for recursive formatting checks/fixes, while `terraformRoots` explicitly lists
+roots to initialize and validate independently. Check/fix tasks do not set a
+task-wide `TF_DIR`; each tool invocation selects its directory. The reusable root
+checker does not check formatting. SecretSpec's manifest setting stays shell-wide
+because its loader runs before tasks. Reusable Nix tools retain a caller-overridable
+`TF_DIR`, defaulting to `tf`.
 Workflows are thin wrappers around repository tasks. Use Actionlint and real
 Check runs for workflow integration; do not duplicate fixed YAML values or
 third-party action behavior in unit tests.
@@ -97,7 +100,9 @@ store paths; pre-existing Namespace paths are not uploaded. Check only reads Cac
 Namespace Cache Volume commits remain main-only. Production workflows use Git-aware
 flake references to keep ignored credentials and Terraform files out of the Nix
 store. The Test workflow's continuous batching and failure-recovery TODO is not
-implemented.
+implemented. Use Git-aware flake references for local checks and CI alike; `path:.`
+also copies ignored recovery data, indexes, credentials and state into Nix. New
+source files must be added to Git before Git-aware evaluation can see them.
 
 `plan.yaml` and `apply.yaml` are separate, manual, protected-main production
 workflows. Plan saves its output in private GCS and publishes a non-sensitive

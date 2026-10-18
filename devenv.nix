@@ -1,4 +1,8 @@
 { config, inputs, lib, pkgs, ... }:
+let
+  terraformSourceDir = "tf";
+  terraformRoots = [ "tf/infrastructure" ];
+in
 {
   imports = [ inputs.factory.nixModules.default ];
 
@@ -41,17 +45,18 @@
       description = "Run all checks.";
       after = [ "devenv:files" ];
       env.SEMGREP_FIXTURES_DIR = "etc/semgrep";
-      env.TF_DIR = "tf/infrastructure";
       exec = ''
-        ${lib.getExe pkgs.nix} flake check path:.
+        ${lib.getExe pkgs.nix} flake check .
         ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} flake.lock devenv.lock factory
         if [ "''${CI:-}" = true ]; then
           ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} --git-index flake.lock devenv.lock factory
         fi
         ${lib.getExe config.quantile.github.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.check.package}
-        ${lib.getExe config.quantile.tf.opentofu.package} -chdir=tf fmt -check -recursive
-        ${lib.getExe config.quantile.tf.check.package}
+        ${lib.getExe config.quantile.tf.opentofu.package} -chdir=${lib.escapeShellArg terraformSourceDir} fmt -check -recursive
+        ${lib.concatMapStringsSep "\n" (root: ''
+          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.tf.check.package}
+        '') terraformRoots}
         ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/infrastructure --namespace terraform.infrastructure tf/infrastructure/main.tf
         ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/modules/project/github --namespace terraform.project.github tf/modules/project/github/main.tf
         ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/modules/project/gcp --namespace terraform.project.gcp tf/modules/project/gcp/main.tf
@@ -63,9 +68,8 @@
     "fix:all" = {
       description = "Run all fixes.";
       after = [ "devenv:files" ];
-      env.TF_DIR = "tf";
       exec = ''
-        ${lib.getExe config.quantile.tf.fix.package}
+        TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.tf.fix.package}
         ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.ts.pnpm.package} run fix
       '';

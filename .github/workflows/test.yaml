@@ -50,4 +50,4 @@ jobs:
         env:
           SECRETSPEC_PROFILE: test
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        run: nix run path:.#devenv-cli -- tasks run --mode before test:all
+        run: nix run .#devenv-cli -- tasks run --mode before test:all

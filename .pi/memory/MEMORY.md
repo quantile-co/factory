@@ -54,9 +54,12 @@ a TODO, not implemented automation. Do not add a separate Build just to warm
 caches; the old Build realized its environment and ran tests, not every export.
 
 #security [[factory-production-flake-source]]
-Production bootstrap must use Git-aware `nix run .#devenv-cli`, not `path:.`.
-A synthetic validation showed `path:.` includes ignored credential, backend,
-and saved-plan files in the Nix source, while Git-aware inputs exclude them.
+All local/CI checks and workflow bootstrap must use Git-aware flake references
+(`nix flake check .`, `nix run .#devenv-cli`), not `path:.`. A synthetic validation
+showed `path:.` includes ignored credential, backend and saved-plan files in the
+Nix source, while Git-aware inputs exclude them. The final audit also extended
+this protection to ignored recovery data and indexes. Credential-free synthetic
+consumer fixtures may still use path inputs.
 Keep runtime credential files ignored and unstaged; never publish them or state
 through Cachix. Do not rerun an installation's Day 0 bootstrap as reconciliation.
 
@@ -203,7 +206,7 @@ The user approved Terraform-managed plan-reader access via a required gcp_mainta
 #decision [[factory-terraform-layout]] [[factory-test-value]]
 Factory's deployment root is tf/infrastructure; reusable modules are tf/modules/project/github and tf/modules/project/gcp. Root inputs/outputs retain gh_/gcp_ prefixes; child interfaces omit them. The root manages GitHub once and passes repository/maintainer IDs to GCP; additional GCP instances do not require a GitHub provider. No management boolean or compatibility/moved blocks. Factory's module.project state was migrated to module.github/module.gcp in guarded run 39110692702, preserving resource identities, attributes, providers and outputs. The bucket and repository/prod prefix did not change. Do not repeat the migration; other existing installations need their own reviewed migration.
 
-Keep TF_DIR task-scoped: check:all, plan:infrastructure and apply:infrastructure use tf/infrastructure; fix:all uses tf. Shared tools default to tf. SECRETSPEC_FILE remains beside enterShell because secret loading precedes task environments. Tests live beside their modules/root, with no shared test-helpers framework or tautological assertions: retain independent consumer smoke checks and the scoped scanner-exception regression. README Skills follows Development and uses the Q1 invocation format.
+Plan/apply tasks keep TF_DIR=tf/infrastructure. Check/fix tasks have no task-wide TF_DIR: devenv.nix declares terraformSourceDir for one recursive formatting check/fix and terraformRoots for independent backend-free initialization/validation, passing TF_DIR per tool invocation. The reusable root checker no longer checks formatting. Shared tools default to tf. SECRETSPEC_FILE remains beside enterShell because secret loading precedes task environments. Tests live beside their modules/root, with no shared test-helpers framework or tautological assertions: retain independent consumer smoke checks and the scoped scanner-exception regression. README Skills follows Development and uses the Q1 invocation format.
 
 <!-- 2026-10-18 02:10:48 [01a14275] -->
 #preference [[factory-task-descriptions]]

@@ -41,4 +41,4 @@ jobs:
       - name: Run checks
         env:
           SECRETSPEC_PROFILE: check
-        run: nix run path:.#devenv-cli -- tasks run check:all
+        run: nix run .#devenv-cli -- tasks run check:all

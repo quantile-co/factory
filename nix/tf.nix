@@ -154,12 +154,11 @@ in
         runtimeInputs = [ tofu ];
         text = ''
           tf_dir="''${TF_DIR:-tf}"
-          tofu -chdir="$tf_dir" fmt -check -recursive
           tofu -chdir="$tf_dir" init -backend=false -input=false -lockfile=readonly
           tofu -chdir="$tf_dir" validate -no-color
         '';
       };
-      description = "Terraform check.";
+      description = "Initialize and validate a Terraform root without a backend.";
     };
 
     fix.package = lib.mkOption {
