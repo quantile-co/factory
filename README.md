@@ -35,6 +35,6 @@ devenv tasks run --show-output --mode before check:all
 # Apply safe source fixes explicitly.
 devenv tasks run --show-output --mode before fix:all
 
-# Run checks, then tests.
+# Run tests.
 devenv tasks run --show-output --mode before test:all
 ```
