@@ -8,6 +8,7 @@ let
     gcp = import ./gcp;
     git = import ./git;
     github = import ./github;
+    go = import ./go;
     json = import ./json;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };

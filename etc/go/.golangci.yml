@@ -1,0 +1,103 @@
+version: "2"
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - copyloopvar
+    - depguard
+    - errcheck
+    - errorlint
+    - gocheckcompilerdirectives
+    - gocritic
+    - godox
+    - goprintffuncname
+    - gosec
+    - govet
+    - intrange
+    - ineffassign
+    - misspell
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - testifylint
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+    - gocyclo
+    - funlen
+    - goconst
+    - dogsled
+    - lll
+  settings:
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: use the stdlib errors package + fmt.Errorf %w wrap
+            - pkg: io/ioutil
+              desc: deprecated; use io or os
+            - pkg: golang.org/x/exp
+              desc: experimental; prefer stable equivalents
+    dogsled:
+      max-blank-identifiers: 3
+    dupl:
+      threshold: 100
+    funlen:
+      lines: -1
+      statements: 60
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-tags: [diagnostic, experimental, opinionated, performance, style]
+      disabled-checks: [dupImport, ifElseChain, octalLiteral, whyNoLint]
+    gocyclo:
+      min-complexity: 35
+    godox:
+      keywords: [FIXME]
+    govet:
+      enable: [nilness, shadow]
+    errorlint:
+      asserts: false
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    nolintlint:
+      allow-unused: false
+      require-explanation: false
+      require-specific: true
+    revive:
+      rules:
+        - name: indent-error-flow
+        - name: unexported-return
+          disabled: true
+        - name: unused-parameter
+        - name: unused-receiver
+  exclusions:
+    presets: [comments, std-error-handling, common-false-positives, legacy]
+    paths:
+      - '.*\.pb\.go'
+      - '.*\.gen\.go'
+      - '.*_templ\.go'
+      - 'vendor$'
+    rules:
+      - path: '_test\.go'
+        linters: [dupl, funlen, lll]
+formatters:
+  enable: [gofumpt, goimports]
+  settings:
+    gofumpt:
+      extra-rules: true
+issues:
+  max-same-issues: 50
+run:
+  relative-path-mode: wd
+  allow-parallel-runners: true
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
