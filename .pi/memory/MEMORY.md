@@ -206,8 +206,8 @@ port. The old Update workflow and its policy harness are superseded by
 Dependabot and current checks. Do not port the old Build merely for caching.
 Top-level `tf/` was reviewed; old `devenv/tf/` is a distinct pending directory.
 The pending inventory includes old
-`devenv/{gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
-`devenv/{c,checkov,duckdb,editorconfig}/`, `secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
+`devenv/{git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
+`devenv/{c,checkov,duckdb,editorconfig,gcp}/`, `secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
 Existing tool modules do not mean the remaining directories were all reviewed.
 Consumer integrations and unrelated infrastructure migrations remain separate.
 
@@ -269,6 +269,9 @@ Checkov's opt-in `nix/checkov/default.nix` keeps the hash-pinned isolated Checko
 
 #decision [[factory-duckdb]]
 Old `devenv/duckdb` only installed an overridable CLI when enabled, ran a version smoke on `enterTest`, and added no tasks or database. Factory's opt-in `nix/duckdb/default.nix` exposes the overridable `quantile.duckdb.package` without installing it or creating a database on import. Its single colocated consumer test runs the version smoke, an in-memory SQL query, a real package override and checks for no project files. The old `enable` gate is replaced by explicit consumer installation; `enterTest` is not registered implicitly. No inline tool policy or CLI settings existed to move into an `etc/` asset.
+
+#decision [[factory-gcp]]
+Old `devenv/gcp` opt-in installed an overridable `pkgs.google-cloud-sdk` and ran credential-free `gcloud --version` on enterTest with telemetry and component-update checks disabled. It had no tasks, cloud operations, project/ADC setup, or tool-policy/config data to migrate into `etc/`; Google's native SDK config is a caller-owned writable authentication/project profile, not an appropriate static Factory template for two smoke-test flags. Factory's existing `quantile.gcp.gcloud.package` already exposes the same overridable package without implicit installation; Factory explicitly installs it in its own Devenv shell. Its colocated consumer test now exercises the real pinned `gcloud --version` in an isolated HOME/CLOUDSDK_CONFIG with the old noninteractive/telemetry/update guards and verifies no ADC file is created; it retains the actual package-override smoke. No new module wrapper, static asset, hooks, or automatic cloud actions are warranted.
 
 #decision [[factory-editorconfig]]
 Old `devenv/editorconfig` mixed read-only checker hooks, Nix-generated checker exclusions and a Nix-generated, manual-only Prek EOF fixer. Factory retains the consumer-owned native `etc/editorconfig/.editorconfig` and offers `etc/editorconfig/.editorconfig-checker.json` for native regex exclusions (including its tracked `devenv.lock`, which need not end in a newline). The opt-in `nix/editorconfig/default.nix` exposes native config paths and separate read-only check / explicit EOF-fix packages. They select tracked regular text files from the Git root, skip binaries, symlinks and untracked files, and use the same native exclusion list; a missing `.editorconfig` fails checks. The fixer invokes pinned `end-of-file-fixer` only when explicitly run, repeats after its rewrite exit 1 and propagates other failures, so a successful rewrite does not block later consumer fixes. Importing the module installs neither tools nor hooks/tasks; orchestration stays consumer-owned. The focused test covers actual checker diagnostics, no mutation on check, scoped fixes, missing native config and a failing fixer. No generated Prek config or duplicate Nix exclusion options.
