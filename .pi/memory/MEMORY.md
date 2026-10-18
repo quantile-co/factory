@@ -323,3 +323,7 @@ The final integration audit concerns the consuming file `devenv.nix` (in the rel
 <!-- 2026-10-18 16:58:53 [01a14275] -->
 #correction #decision [[factory-nix-module]] [[factory-devenv-cli]]
 For the old `devenv/nix` review, do **not** conflate `direnv` with `devenv-cli`: `direnv` is a user-installed host prerequisite and should not be included in the new Nix module's package list. Factory builds the pinned `devenv-cli` via its flake output (`.#devenv-cli`), and `.envrc` explicitly selects that CLI and loads its direnv integration. The old input-update task registry and direct dual-pin checker are obsolete for Factory's current flake-follow/Dependabot model; retain existing `check-devenv-locks` and review only useful Nixfmt/Deadnix/Statix check/explicit-fix behavior. Audit the consuming `devenv.nix` later for explicit wiring.
+
+<!-- 2026-10-18 17:05:55 [01a14275] -->
+#verification [[factory-batched-ci]] [[factory-old-devenv]] [[factory-nix-module]]
+The batched keep-sorted, logs, Markdown, optional Prek selection, and Nix module ports (local commits `4cda4bf` through `0b5d7be`) passed exact-head branch Check 39174923712 on `0b5d7be4892ffcb657a571cb1a6b176245555c49`; protected main and the local main checkout advanced by ordinary fast-forward to that SHA. No manual main Test, production Plan/Apply, PR bypass, or force push. The remaining old Devenv module reviews and consuming `devenv.nix` integration audit remain open.
