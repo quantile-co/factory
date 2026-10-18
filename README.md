@@ -32,9 +32,9 @@ The devenv shell provides all other project tools.
 # Check source without rewriting it.
 devenv tasks run --show-output --mode before check:all
 
-# Run checks, then tests.
-devenv tasks run --show-output --mode before test:all
-
 # Apply safe source fixes explicitly.
 devenv tasks run --show-output --mode before fix:all
+
+# Run checks, then tests.
+devenv tasks run --show-output --mode before test:all
 ```
