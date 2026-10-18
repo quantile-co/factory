@@ -41,6 +41,13 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: check-json
+        name: Check strict JSON
+        entry: check-json
+        language: system
+        stages: [pre-push]
+        types: [json]
+        exclude: 'tsconfig\.json$'
       - id: commitizen
         name: Conventional Commits
         entry: cz --config .cz.toml check --allow-abort --commit-msg-file
