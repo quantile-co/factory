@@ -33,7 +33,7 @@ in
     ".github/actionlint.yaml".source = config.quantile.github.actionlint.configFile;
     ".github/dependabot.yml" = {
       source = config.quantile.github.dependabot.configFile;
-      copyMode = "seed";
+      copyMode = "copy";
     };
     ".pi/settings.json".source = config.quantile.pi.settingsFile;
     ".qmd/index.yml".source = config.quantile.qmd.configFile;
@@ -47,6 +47,10 @@ in
       after = [ "devenv:files" ];
       exec = ''
         ${lib.getExe pkgs.nix} flake check .
+        ${lib.getExe pkgs.git} show :.github/dependabot.yml | ${lib.getExe' pkgs.diffutils "cmp"} -s - etc/github/dependabot.yml || {
+          echo "Commit the Dependabot config copied from etc/github/dependabot.yml." >&2
+          exit 1
+        }
         ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} flake.lock devenv.lock factory
         if [ "''${CI:-}" = true ]; then
           ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} --git-index flake.lock devenv.lock factory

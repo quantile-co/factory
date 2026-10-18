@@ -115,7 +115,10 @@ it does not automatically land changes. Its Nix updater does not update
 Review and synchronize both locks. The CLI/module revision guard and
 `check-devenv-locks --git-index` in CI prevent an automatic working-copy repair
 from hiding committed lock drift. Keep CODEOWNERS and a regular committed
-Dependabot file; the optional native template uses `files.copyMode = "seed"`.
+Dependabot file. Factory's `etc/github/dependabot.yml` is authoritative;
+Devenv `copyMode = "copy"` refreshes `.github/dependabot.yml` on shell entry.
+Commit both files together. `check:all` compares the Git-indexed root file to
+the native template, so a working-copy repair cannot conceal missing commits.
 
 ## Runner and cache policy
 
