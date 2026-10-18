@@ -24,14 +24,23 @@ it("a standalone consumer can use the public module and its own native configura
     };
     const run = (command: string, args: string[]) => {
       const result = spawnSync(command, args, {
-        cwd: consumer, env, encoding: "utf8", timeout: 120_000, maxBuffer: 8 * 1024 * 1024,
+        cwd: consumer,
+        env,
+        encoding: "utf8",
+        timeout: 120_000,
+        maxBuffer: 8 * 1024 * 1024,
       });
       if (result.error) throw result.error;
-      expect(result.status, `${command}:\n${result.stdout}\n${result.stderr}`).toBe(0);
+      expect(
+        result.status,
+        `${command}:\n${result.stdout}\n${result.stderr}`,
+      ).toBe(0);
       return result.stdout.trim();
     };
 
-    writeFileSync(join(consumer, "flake.nix"), `
+    writeFileSync(
+      join(consumer, "flake.nix"),
+      `
 {
   inputs.factory.url = ${JSON.stringify(factory)};
   outputs = { factory, ... }: {
@@ -43,12 +52,18 @@ it("a standalone consumer can use the public module and its own native configura
     }) factory.inputs.nixpkgs.legacyPackages;
   };
 }
-`);
-    writeFileSync(join(consumer, ".github", "actionlint.yaml"), `
+`,
+    );
+    writeFileSync(
+      join(consumer, ".github", "actionlint.yaml"),
+      `
 self-hosted-runner:
   labels: [consumer-runner]
-`);
-    writeFileSync(join(consumer, ".github", "workflows", "check.yaml"), `
+`,
+    );
+    writeFileSync(
+      join(consumer, ".github", "workflows", "check.yaml"),
+      `
 name: Consumer
 on: push
 jobs:
@@ -56,12 +71,17 @@ jobs:
     runs-on: consumer-runner
     steps:
       - run: echo consumer
-`);
+`,
+    );
 
     // Only this synthetic, credential-free consumer uses a path input.
     const output = run("nix", [
-      "--extra-experimental-features", "nix-command flakes",
-      "build", "path:.#default", "--no-link", "--print-out-paths",
+      "--extra-experimental-features",
+      "nix-command flakes",
+      "build",
+      "path:.#default",
+      "--no-link",
+      "--print-out-paths",
     ]);
     run("git", ["init", "--quiet", "--initial-branch=main"]);
     run(join(output, "bin", "check-actionlint"), []);

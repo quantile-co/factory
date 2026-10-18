@@ -10,8 +10,10 @@ precedence over historical notes.
 **README edits require explicit approval.** Never commit credentials, provider
 payloads, state, saved plans, or local backend overrides. Keep unrelated
 uncommitted changes intact. Review `.pi/memory/MEMORY.md` before changing
-knowledge files. Review and sanitize dated daily logs before committing them;
-scratchpad and recovery data stay ignored.
+knowledge files. Memory updates, including dated daily logs, may be included in
+normal commits after checking that they contain no sensitive details; no separate
+commit or approval is required. Remove sensitive content before staging.
+Scratchpad and recovery data stay ignored.
 
 Local, backend-free validation (inside this checkout's pinned direnv shell):
 
@@ -29,8 +31,24 @@ nix run path:.#devenv-cli -- tasks run --show-output check:all
 nix run path:.#devenv-cli -- tasks run --show-output --mode before test:all
 ```
 
-`check:all` includes policy checks against real source and TypeScript type checking;
-`test:all` depends on `check:all` and runs backend-free Vitest integration tests.
+`check:all` includes policy checks against real source, TypeScript type checking,
+and Biome lint/format checks without rewriting source. `test:all` depends on
+`check:all` and runs backend-free Vitest integration tests.
+
+Apply source fixes explicitly:
+
+```sh
+nix run path:.#devenv-cli -- tasks run --show-output --mode before fix:all
+```
+
+`fix:all` runs Terraform formatting (no backend initialization) and safe Biome
+fixes; it never enables `--unsafe`. TypeScript commands and the pinned Biome
+version live in `package.json`. Both Biome scripts use the same configuration and
+file selection, excluding README files and unrelated native fixtures. The shared
+native template is `etc/biome/default.json`, exposed by
+`quantile.ts.biome.configFile` and linked as root `biome.json` by Devenv. Consumers
+choose their own placement, overrides, and package scripts. No automatic fixing
+hooks are installed.
 
 SecretSpec uses `etc/secretspec/secretspec.toml` through the overridable
 `quantile.secretspec.configFile`. Factory points `SECRETSPEC_FILE` at its Nix-store

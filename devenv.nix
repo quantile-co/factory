@@ -25,6 +25,7 @@
 
   files = {
     ".editorconfig".source = config.quantile.editorconfig.configFile;
+    "biome.json".source = config.quantile.ts.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.github.actionlint.configFile;
     ".github/dependabot.yml" = {
       source = config.quantile.github.dependabot.configFile;
@@ -52,7 +53,17 @@
         ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf --namespace terraform.repository tf/main.tf
         ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/project --namespace terraform.project tf/project/main.tf
         ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
-        ${lib.getExe config.quantile.ts.pnpm.package} run typecheck
+        ${lib.getExe config.quantile.ts.pnpm.package} run check
+      '';
+    };
+
+    "fix:all" = {
+      description = "Apply Terraform formatting and safe Biome fixes.";
+      after = [ "devenv:files" ];
+      exec = ''
+        ${lib.getExe config.quantile.tf.fix.package}
+        ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
+        ${lib.getExe config.quantile.ts.pnpm.package} run fix
       '';
     };
 

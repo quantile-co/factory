@@ -4,6 +4,7 @@
 /node_modules/
 .envrc.local
 /.editorconfig
+/biome.json
 /.github/actionlint.yaml
 gha-creds-*.json
 .pi/npm/

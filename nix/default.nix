@@ -10,7 +10,7 @@ let
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = import ./semgrep.nix;
     tf = import ./tf.nix;
-    ts = import ./ts.nix;
+    ts = import ./ts;
   };
 in
 {

@@ -3,8 +3,10 @@
 Source, tests, current workflows, and the root `AGENTS.md` take precedence over
 historical notes. Keep only reviewed, repository-specific knowledge here.
 Never commit credentials, customer data, provider payloads, state, saved plans,
-raw transcripts, scratchpad, or recovery data. Review and sanitize daily logs
-before committing them; the user wants reviewed daily history preserved.
+raw transcripts, scratchpad, or recovery data. Memory updates, including dated
+daily logs, may accompany normal commits after checking for sensitive details;
+no separate commit or approval is required. Remove sensitive content before
+staging. The user wants non-sensitive project history preserved.
 
 ## Configuration and tool boundaries
 
@@ -171,7 +173,22 @@ Review old source directories individually, with user approval before each
 port. The old Update workflow and its policy harness are superseded by
 Dependabot and current checks. Do not port the old Build merely for caching.
 Top-level `tf/` was reviewed; old `devenv/tf/` is a distinct pending directory.
-The last reviewed pending inventory also included `secretspec.toml` and old
-`devenv/{c,checkov,duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,secrets,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
-Existing tool modules do not mean those old directories were all reviewed.
+The pending inventory includes old
+`devenv/{c,checkov,duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
+`secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
+Existing tool modules do not mean the remaining directories were all reviewed.
 Consumer integrations and unrelated infrastructure migrations remain separate.
+
+<!-- 2026-10-17 20:43:40 [01a14275] -->
+
+#preference [[factory-test-value]]
+Tests must have clear regression-detection value. Avoid overengineered harnesses, tautological assertions, and tests that merely restate known configuration values or upstream behavior. Prefer small behavior-focused tests of Factory-owned boundaries; changing test frameworks alone does not replace meaningful coverage.
+
+
+<!-- 2026-10-17 22:29:18 [01a14275] -->
+#decision [[factory-secretspec]]
+The user approved implementing `etc/secretspec/secretspec.toml` plus `nix/secretspec/default.nix`, preserving automatic runtime export to ordinary shells/tasks, with no scopes. Default/check stay credential-free; test/plan/apply require the Cachix publication token explicitly passed by those workflow steps. Factory selects the store-backed native manifest through `SECRETSPEC_FILE`; no root link, seeding, bootstrap bypass, or missing-file skip is needed. Native Devenv evaluation-time SecretSpec resolution stays disabled. Only declarations/code enter Nix outputs, never resolved values. Downstreams can override the manifest or eject to a seeded, committed root manifest and remove the file override for native discovery. Relative file-provider routes are relative to the manifest; store-backed declarations need absolute file-provider paths. File-valued `as_path` lifetime handling remains deferred. The runtime loader remains explicit opt-in wiring, not a side effect of importing Factory modules. Native `secretspec run` is not equivalent to transparent task inheritance; historical selection of the exporter was deliberate, not evidence that run was broken.
+
+<!-- 2026-10-17 23:06:07 [01a14275] -->
+#decision [[factory-check-fix]]
+Use Biome for the current lint/format implementation; retain tsc for TypeScript checking. The user chose Biome after comparing ESLint/TypeScript 7, Oxlint/Oxfmt, Ultracite, and React Doctor. Do not add those alternatives or automatic fixing hooks. Keep native package.json check/fix scripts, reusable native configuration under etc/, source-preserving check:all, and explicit fix:all.

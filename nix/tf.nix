@@ -44,6 +44,19 @@ in
       description = "Terraform check.";
     };
 
+    fix.package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.writeShellApplication {
+        name = "fix-terraform";
+        runtimeInputs = [ tofu ];
+        text = ''
+          tf_dir="''${TF_DIR:-tf}"
+          tofu -chdir="$tf_dir" fmt -recursive
+        '';
+      };
+      description = "Format Terraform source without initializing a backend.";
+    };
+
     plan.package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.writeShellApplication {
