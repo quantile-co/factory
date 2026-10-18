@@ -35,7 +35,7 @@ repos:
           - >-
             github\.com/[^/[:space:]<>"'`]+/[^/[:space:]<>"'`]+/(blob|tree)/[^/[:space:]?#<>"'`()]+
         exclude: ^\.gitignore$
-      - id: quantile-gitleaks
+      - id: gitleaks
         name: Full-history and working-tree secret scanning
         entry: quantile-git-gitleaks
         language: system
@@ -48,7 +48,7 @@ repos:
         stages: [pre-push]
         types: [json]
         exclude: 'tsconfig\.json$'
-      - id: quantile-kubeconform
+      - id: kubeconform
         name: Kubernetes manifest validation
         entry: check-k8s
         language: system
@@ -72,6 +72,13 @@ repos:
         stages: [manual]
         types: [text]
         exclude: *keep-sorted-excludes
+      - id: markdown
+        name: Markdown linting
+        entry: check-markdown
+        language: system
+        stages: [manual] # Consumers opt in to pre-push checks here.
+        pass_filenames: false
+        always_run: true
       - id: commitizen
         name: Conventional Commits
         entry: cz --config .cz.toml check --allow-abort --commit-msg-file

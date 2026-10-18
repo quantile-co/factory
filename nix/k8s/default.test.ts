@@ -115,7 +115,7 @@ it("validates selected Kubernetes manifests using only local schemas and ignores
           "--config",
           ".pre-commit-config.yaml",
           "run",
-          "quantile-kubeconform",
+          "kubeconform",
           "--all-files",
           "--stage",
           "pre-push",
