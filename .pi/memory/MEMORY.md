@@ -3,10 +3,18 @@
 Source, tests, current workflows, and the root `AGENTS.md` take precedence over
 historical notes. Keep only reviewed, repository-specific knowledge here.
 Never commit credentials, customer data, provider payloads, state, saved plans,
-raw transcripts, scratchpad, or recovery data. Memory updates, including dated
-daily logs, may accompany normal commits after checking for sensitive details;
-no separate commit or approval is required. Remove sensitive content before
-staging. The user wants non-sensitive project history preserved.
+local backend overrides, raw transcripts, scratchpad, or recovery data.
+
+#preference [[factory-memory-publication]]
+Review and sanitize MEMORY.md and daily-log updates, then stage and commit them
+with the other changes; this is required, not optional. Do not defer them as
+“unrelated” or leave them for an unspecified next commit. Check every Factory
+worktree before declaring completion and reconcile unique publishable history.
+No separate approval is required. Commit post-CI/deployment outcomes in a follow-up
+when necessary, without generating another dirty note about that commit itself.
+Scratchpad, raw recovery and sensitive material remain excluded. While a saved
+plan pins main, commit memory on a branch without advancing main until the
+deployment is resolved.
 
 ## Configuration and tool boundaries
 
@@ -31,6 +39,32 @@ packages; do not migrate or delete ignored `.pi/npm/` data. Launch Pi through
 the repository's direnv shell so `.envrc` supplies `PI_MEMORY_DIR`; do not add a
 global memory-routing extension. QMD's native template is under `etc/qmd/` and
 its local configuration is linked by `devenv.nix`.
+
+## Local validation
+
+Use this checkout's pinned direnv shell. Source checks do not rewrite files;
+fixing is explicit and safe. The task entry points are:
+
+```sh
+devenv tasks run --show-output check:all
+devenv tasks run --show-output --mode before test:all
+devenv tasks run --show-output --mode before fix:all
+```
+
+For tests without rerunning checks, use `--mode single test:all`. Backend-free
+Terraform validation uses `tofu -chdir=tf fmt -check -recursive`, then
+`tofu -chdir=tf/infrastructure init -backend=false -input=false -lockfile=readonly`
+and `tofu -chdir=tf/infrastructure validate`. `nix flake check .` checks the flake;
+`nix run .#devenv-cli -- tasks run ...` selects the pinned CLI explicitly. New
+source files must be added to Git before Git-aware evaluation can see them.
+
+Biome's native template is `etc/biome/default.json`, exposed as
+`quantile.ts.biome.configFile` and linked to `biome.json` by Devenv. Consumers own
+placement and scripts. Both project scripts use the same file selection and
+exclude READMEs and unrelated native fixtures; fixing never enables `--unsafe`.
+The root task checks source policies, types and formatting; colocated Vitest tests
+exercise backend-free consumers. Provider/CLI versions remain in source and locks,
+not copied into this guide.
 
 ## Workflow and production boundaries
 
@@ -211,3 +245,8 @@ Plan/apply tasks keep TF_DIR=tf/infrastructure. Check/fix tasks have no task-wid
 <!-- 2026-10-18 02:10:48 [01a14275] -->
 #preference [[factory-task-descriptions]]
 Task descriptions should state intent, not tool names or implementation details that may change. Use “Run all fixes.” for fix:all and “Run all tests.” for test:all; dependencies still determine execution order.
+
+
+<!-- 2026-10-18 03:15:47 [01a14275] -->
+#preference [[factory-agent-guide]]
+AGENTS.md must remain a lightweight navigational resource: point to source, tasks, skills and the required project-memory entry point. Persist repository rules, durable decisions, preferences and operational context in memory rather than expanding or duplicating them in AGENTS.md. Dated logs record history; current source and curated memory distinguish current decisions from superseded steps.

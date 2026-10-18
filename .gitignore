@@ -22,10 +22,11 @@ backend_override.tf
 plan.json
 crash.log
 
-# Review and sanitize daily memory logs before committing; keep scratchpad and recovery local.
+# Commit reviewed MEMORY.md and daily logs; only scratchpad and recovery stay local.
 /.pi/memory/SCRATCHPAD.md
 /.pi/memory/recovery/
 
 # QMD's Nix-managed config link and writable search index stay worktree-local.
 /.qmd/index.yml
 /.qmd/index.sqlite*
+/.qmd/.qmd-embed.lock
