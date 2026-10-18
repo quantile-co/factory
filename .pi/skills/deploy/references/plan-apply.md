@@ -11,9 +11,10 @@ devenv tasks run --show-output check:all
 
 ## Layout changes on an existing installation
 
-The module split changes state addresses from `module.project` to `module.github`
-for GitHub resources and `module.gcp` for Google/random resources. Before deploying
-this change, obtain separate approval for a one-time state-address migration.
+Factory completed this migration in run `39110692702` on 2026-10-18; do not repeat
+it. For other existing installations, the split changes `module.project` addresses
+to `module.github` for GitHub resources and `module.gcp` for Google/random resources.
+Obtain separate approval for each installation's one-time migration.
 Do not apply a plan that recreates or deletes existing resources because of the
 split. The bucket and `repository/prod` prefix are unchanged: this is not a backend
 migration or a new installation. No compatibility blocks or migration commands

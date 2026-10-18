@@ -69,9 +69,10 @@ and outputs are unprefixed; root inputs and outputs retain `gcp_`/`gh_` to
 distinguish the systems. Additional GCP module instances can reuse the same
 GitHub repository and maintainer ID outputs without managing GitHub resources
 or requiring its provider. Keep GitHub environments named `prod` and `non-prod`.
-Do not add compatibility flags or `moved` blocks; existing state needs a separately
-approved one-time address migration before deploying the module split. Preserve
-the state bucket and `repository/prod` prefix.
+Do not add compatibility flags or `moved` blocks. Factory's state-address migration
+is complete; do not repeat it. Other existing installations need their own reviewed
+migration before adopting the split. Preserve the state bucket and
+`repository/prod` prefix.
 
 Workflows call `plan:infrastructure` and `apply:infrastructure`. These tasks and
 `check:all` set `TF_DIR=tf/infrastructure`; `fix:all` sets `TF_DIR=tf` to format the
