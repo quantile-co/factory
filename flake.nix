@@ -4,7 +4,7 @@
   inputs = {
     # Moving refs propose updates; the committed flake.lock fixes exact revisions.
     nixpkgs.url = "github:cachix/devenv-nixpkgs/rolling";
-    # The CLI and module must resolve to the same revision (checked in nix/devenv.nix).
+    # The CLI and module must resolve to the same revision (checked in nix/devenv/default.nix).
     devenv.url = "github:cachix/devenv/main?dir=src/modules";
     devenv-cli.url = "github:cachix/devenv/main";
     git-hooks.url = "github:cachix/git-hooks.nix/master";

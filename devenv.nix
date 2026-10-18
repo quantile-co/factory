@@ -4,7 +4,10 @@ let
   terraformRoots = [ "tf/infrastructure" ];
 in
 {
-  imports = [ inputs.factory.nixModules.default ];
+  imports = [
+    inputs.factory.nixModules.default
+    inputs.factory.devenvModules.files
+  ];
 
   packages = [
     config.quantile.tf.opentofu.package
