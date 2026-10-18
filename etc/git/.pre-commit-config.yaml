@@ -81,6 +81,34 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: nixfmt
+        name: Check Nix formatting
+        entry: check-nixfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: deadnix
+        name: Check unused Nix bindings
+        entry: check-deadnix
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: statix
+        name: Check Nix static analysis
+        entry: check-statix
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: nixfmt-fix
+        name: Format tracked Nix source explicitly
+        entry: fix-nixfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: commitizen
         name: Conventional Commits
         entry: cz --config .cz.toml check --allow-abort --commit-msg-file

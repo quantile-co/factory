@@ -14,6 +14,7 @@ let
     keep-sorted = import ./keep-sorted;
     logs = import ./logs;
     markdown = import ./markdown;
+    nix = import ./nix;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
