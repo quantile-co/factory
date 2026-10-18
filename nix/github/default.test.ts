@@ -9,7 +9,7 @@ it("a standalone consumer can use the public module and its own native configura
   const consumer = join(work, "consumer");
   const home = join(work, "home");
   // Git-aware input includes tracked edits, not ignored credentials or local state.
-  const factory = `git+${new URL(".", import.meta.url).href}`;
+  const factory = `git+${new URL("../../", import.meta.url).href}`;
   try {
     mkdirSync(home);
     mkdirSync(join(consumer, ".github", "workflows"), { recursive: true });

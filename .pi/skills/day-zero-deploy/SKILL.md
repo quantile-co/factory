@@ -7,7 +7,7 @@ description: Bootstrap a genuinely new Factory installation, migrate local state
 
 Read [the bootstrap procedure](references/local-state.md) completely before acting.
 Work from the repository root in its pinned direnv shell. Read `AGENTS.md`,
-`.pi/memory/MEMORY.md`, current `tf/`, `nix/tf.nix` and the production workflows.
+`.pi/memory/MEMORY.md`, current `tf/`, `nix/tf/default.nix` and the production workflows.
 
 Confirm the target and inventory existing resources and state first. An empty
 checkout or missing local state does not prove this is a new installation.

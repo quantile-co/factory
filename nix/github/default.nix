@@ -15,13 +15,13 @@
 
     actionlint.configFile = lib.mkOption {
       type = lib.types.path;
-      default = ../etc/github/actionlint.yaml;
+      default = ../../etc/github/actionlint.yaml;
       description = "Actionlint configuration file.";
     };
 
     dependabot.configFile = lib.mkOption {
       type = lib.types.path;
-      default = ../etc/github/dependabot.yml;
+      default = ../../etc/github/dependabot.yml;
       description = "Optional Dependabot configuration template.";
     };
 

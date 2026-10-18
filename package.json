@@ -6,8 +6,8 @@
   "scripts": {
     "check": "pnpm run typecheck && pnpm run lint",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check --error-on-warnings *.ts nix tf package.json tsconfig.json etc/biome",
-    "fix": "biome check --write --error-on-warnings *.ts nix tf package.json tsconfig.json etc/biome",
+    "lint": "biome check --error-on-warnings nix tf package.json tsconfig.json etc/biome",
+    "fix": "biome check --write --error-on-warnings nix tf package.json tsconfig.json etc/biome",
     "test": "vitest run"
   },
   "devDependencies": {

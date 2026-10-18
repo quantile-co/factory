@@ -16,13 +16,13 @@
 
     resourcesDir = lib.mkOption {
       type = lib.types.path;
-      default = ../etc/pi;
+      default = ../../etc/pi;
       description = "Pi resources directory.";
     };
 
     settingsFile = lib.mkOption {
       type = lib.types.path;
-      default = ../etc/pi/settings.json;
+      default = ../../etc/pi/settings.json;
       description = "Pi settings file.";
     };
   };

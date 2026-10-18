@@ -83,7 +83,7 @@ it("checks without editing and safely fixes consumer files using the store-backe
     ];
     for (const file of untouched)
       writeFileSync(join(work, file), "deliberately unformatted fixture\n");
-    const source = join(work, "probe.test.ts");
+    const source = join(work, "nix", "probe.test.ts");
     const original = "export const answer=42\n";
     writeFileSync(source, original);
     expect(run("pnpm", ["run", "check"], false)).toContain("format");

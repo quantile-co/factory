@@ -19,7 +19,7 @@ in
 
     configFile = lib.mkOption {
       type = lib.types.path;
-      default = ../etc/qmd/index.yml;
+      default = ../../etc/qmd/index.yml;
       description = "Optional project-local QMD configuration template.";
     };
   };

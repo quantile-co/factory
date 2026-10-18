@@ -23,7 +23,7 @@ Factory is a shared Nix flake, not a shared devenv configuration. Keep reusable
 native-format assets under `etc/`, separate from `nix/`. Downstream repositories
 choose whether to copy, patch, generate, or link those assets and where to put
 them. Do not encode elaborate mergeable tool configurations in Nix or force
-placement. Keep simple tool modules flat unless they need multiple files.
+placement. Use a uniform `nix/<tool>/default.nix` layout even for small modules, with a colocated `default.test.ts` containing at least one meaningful smoke or consumer test. Keep individual implementations in one file unless they genuinely need more.
 
 Reusable check/plan/apply executables are ordinary Nix packages, independent of
 devenv and CI. They read the consuming repository's native configuration at
@@ -179,7 +179,7 @@ fork/backport. No usable fixed upgrade or known-safe downgrade was established
 in that dated audit; changing standalone Nix alone does not replace the library
 embedded in devenv. Recheck upstream status before recommending a future fix.
 
-Commit `68d2a20` makes `nix/qmd.nix` reconstruct bun2nix with upstream
+Commit `68d2a20` makes `nix/qmd/default.nix` reconstruct bun2nix with upstream
 llm-agents' own nixpkgs and ordinary external `fetchurl` builders. This avoids
 QMD's known builtin-fetcher route while preserving cached output identities;
 it is not a global Nix fork-safety repair. All 303 tarball derivations were
@@ -203,8 +203,8 @@ port. The old Update workflow and its policy harness are superseded by
 Dependabot and current checks. Do not port the old Build merely for caching.
 Top-level `tf/` was reviewed; old `devenv/tf/` is a distinct pending directory.
 The pending inventory includes old
-`devenv/{c,checkov,duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
-`secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
+`devenv/{checkov,duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
+`devenv/c/`, `secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
 Existing tool modules do not mean the remaining directories were all reviewed.
 Consumer integrations and unrelated infrastructure migrations remain separate.
 
@@ -227,7 +227,7 @@ Use Biome for the current lint/format implementation; retain tsc for TypeScript 
 Saved-plan source and deployment skills landed on main at ffad1eae4cd6c77fed6c19aba33eb47b69c97340 (2026-10-18); branch Check, main Test and the first Plan succeeded. The approved Factory saved-plan Apply 39111226816 succeeded using artifact 12130102012 on 6ffb6f3; Q0's approved no-op Apply 39109793857 also succeeded. Plan stores sensitive contents in private GCS and publishes a one-day GitHub receipt. Apply selects its artifact ID, validates the original successful producer attempt, repository, current main SHA, 24-hour age, backend and digests, then applies without replanning using the receipt's GCS generation. Lifecycle cleanup is asynchronous, separate from validity. Retain manual protected-main, actor/triggering-actor maintainer gates, prod, WIF, backend locks and shared non-cancelling concurrency. A merge or green Check authorizes neither production workflow. Operators need an authorized private plan-read route after bootstrap Owner removal; never silently broaden IAM.
 
 #preference [[factory-saved-plans]] [[factory-config-layout]]
-Keep implementation in flat nix/tf.nix, with shared internal GitHub/GCS functions. No Python, separate helper files, dedicated test file or new test framework for this change. Keep authorization, stock artifact-upload and post-upload always-cleanup in CI. Use simple Plan/Apply step names and parallel option descriptions; avoid repeated "reviewed" labels. Explain implementation/storage choices beside Nix logic rather than in workflow comments. Avoid overengineering, overtesting and redundant validation.
+Keep saved-plan implementation in one nix/tf/default.nix, with shared internal GitHub/GCS functions. No Python, separate saved-plan helper files, dedicated test file or new test framework for this change. Keep authorization, stock artifact-upload and post-upload always-cleanup in CI. Use simple Plan/Apply step names and parallel option descriptions; avoid repeated "reviewed" labels. Explain implementation/storage choices beside Nix logic rather than in workflow comments. Avoid overengineering, overtesting and redundant validation.
 
 #decision [[factory-deploy-skills]]
 Operational instructions live in .pi/skills/day-zero-deploy and deploy, replacing tf/README.md. Preserve bootstrap operations and removal of only the bootstrap human's direct Owner grant after CI handoff, verifying private plan-read and recovery access first. Keep standing projectCreator/billing.user and CI/WIF grants. Never reseed an existing installation. Each dispatch, mutation, migration and retry needs separate approval.
@@ -250,3 +250,10 @@ Task descriptions should state intent, not tool names or implementation details 
 <!-- 2026-10-18 03:15:47 [01a14275] -->
 #preference [[factory-agent-guide]]
 AGENTS.md must remain a lightweight navigational resource: point to source, tasks, skills and the required project-memory entry point. Persist repository rules, durable decisions, preferences and operational context in memory rather than expanding or duplicating them in AGENTS.md. Dated logs record history; current source and curated memory distinguish current decisions from superseded steps.
+
+<!-- 2026-10-18 12:30:29 [01a14275] -->
+#decision [[factory-clang]] [[factory-config-layout]] [[factory-test-value]]
+Reviewed old `devenv/c/` implementation and tests, then selectively ported it to opt-in `nix/c/default.nix` and native templates `etc/clang/{.clang-format,.clang-tidy}`. Keep LLVM/4-space/100-column formatting and analyzer/bugprone/performance/portability tidy checks with analyzer/bugprone errors. Reusable packages expose Clang tools plus optional Bear/CMake/Meson/Ninja/pkg-config and Linux GDB/Valgrind, read-only format and compilation-database-backed tidy checks, and explicit format fixes. They select tracked, regular non-binary C/C++ source (headers only for formatting), skip build/vendor/third_party and accept caller exclusions, selected paths, native config overrides and compilation-database directory at runtime. Missing database/selected translation unit entry fails; compilation flags and database generation remain consumer-owned. Importing the module installs no hooks, starts no tool, and adds no tasks: downstreams decide when to install/register/execute checks/fixes. Do not bake Factory's `etc/clang/` paths into reusable executables or rebuild the old generated Prek hook configuration, Nix YAML settings or root Python/Nix harness.
+
+#preference [[factory-module-layout]]
+Use `nix/<module>/default.nix` and a colocated `default.test.ts` for each reusable module. One simple, meaningful smoke/consumer test per small module is fine; avoid tautological configuration snapshots and shared helper frameworks. Root `nix/default.nix` is the flake aggregate, and `nix/devenv.nix` is a flake package export, not a reusable tool module. Existing flake consumer smoke test belongs under `nix/github/default.test.ts`. Moving it leaves no root `*.ts`; the Biome project check/fix selectors must not pass a nonmatching root glob.

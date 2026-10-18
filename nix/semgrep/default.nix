@@ -9,7 +9,7 @@
 
     rulesDir = lib.mkOption {
       type = lib.types.path;
-      default = ../etc/semgrep;
+      default = ../../etc/semgrep;
       description = "Semgrep rules directory.";
     };
 

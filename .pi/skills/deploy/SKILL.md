@@ -7,7 +7,7 @@ description: Plan, review, apply or troubleshoot existing Factory infrastructure
 
 Read [Plan and Apply](references/plan-apply.md). Work from the repository root in
 its pinned direnv shell. Read `AGENTS.md`, `.pi/memory/MEMORY.md`, current `tf/`,
-`nix/tf.nix`, `devenv.nix` and the relevant workflow before acting.
+`nix/tf/default.nix`, `devenv.nix` and the relevant workflow before acting.
 
 Skill invocation, a source merge or a green Check is not authorization to run
 Plan or Apply. Obtain separate approval for each dispatch, credential operation,

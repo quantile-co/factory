@@ -1,6 +1,6 @@
 # Plan and Apply
 
-Read the current workflows, `devenv.nix`, `nix/tf.nix`, `tf/infrastructure/`
+Read the current workflows, `devenv.nix`, `nix/tf/default.nix`, `tf/infrastructure/`
 and affected `tf/modules/project/{gcp,github}/` source.
 Use the pinned direnv shell. Ordinary production changes use protected workflows,
 not local Apply. Validate source without backend access:
