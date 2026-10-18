@@ -23,6 +23,8 @@ it("checks without editing and safely fixes consumer files using the store-backe
     NIX_SSL_CERT_FILE: process.env.NIX_SSL_CERT_FILE,
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_TERMINAL_PROMPT: "0",
+    // Reuse the already-installed tools; this fixture must never reinstall shared dependencies.
+    pnpm_config_verify_deps_before_run: "false",
   };
   const run = (command: string, args: string[], success = true) => {
     const result = spawnSync(command, args, {
@@ -33,7 +35,10 @@ it("checks without editing and safely fixes consumer files using the store-backe
     });
     if (result.error) throw result.error;
     if (success) expect(result.status, result.stdout + result.stderr).toBe(0);
-    else expect(result.status, result.stdout + result.stderr).not.toBe(0);
+    else {
+      expect(result.status, result.stdout + result.stderr).not.toBe(0);
+      return result.stdout + result.stderr;
+    }
     return result.stdout.trim();
   };
   try {
@@ -81,7 +86,7 @@ it("checks without editing and safely fixes consumer files using the store-backe
     const source = join(work, "probe.test.ts");
     const original = "export const answer=42\n";
     writeFileSync(source, original);
-    run("pnpm", ["run", "check"], false);
+    expect(run("pnpm", ["run", "check"], false)).toContain("format");
     expect(readFileSync(source, "utf8")).toBe(original);
     run("pnpm", ["run", "fix"]);
     const fixed = readFileSync(source, "utf8");
@@ -96,7 +101,7 @@ it("checks without editing and safely fixes consumer files using the store-backe
     }
     // A formatted, type-correct lint violation must still fail the read-only command.
     writeFileSync(source, "export const answer: any = 42;\n");
-    run("pnpm", ["run", "check"], false);
+    expect(run("pnpm", ["run", "check"], false)).toContain("noExplicitAny");
     expect(readFileSync(source, "utf8")).toBe(
       "export const answer: any = 42;\n",
     );
