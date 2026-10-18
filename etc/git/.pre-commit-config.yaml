@@ -58,6 +58,20 @@ repos:
         # Consumers opt in with stages: [pre-push] and
         # args: [-schema-location, LOCAL_SCHEMA_TEMPLATE].
         # An enabled hook without local schemas fails closed.
+      - id: keep-sorted
+        name: Check annotated blocks are sorted
+        entry: keep-sorted --mode lint
+        language: system
+        stages: [manual] # Consumers opt in to pre-push checks here.
+        types: [text]
+        exclude: &keep-sorted-excludes '^$'
+      - id: keep-sorted-fix
+        name: Sort annotated blocks explicitly
+        entry: keep-sorted --mode fix
+        language: system
+        stages: [manual]
+        types: [text]
+        exclude: *keep-sorted-excludes
       - id: commitizen
         name: Conventional Commits
         entry: cz --config .cz.toml check --allow-abort --commit-msg-file

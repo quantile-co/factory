@@ -11,6 +11,7 @@ let
     go = import ./go;
     json = import ./json;
     k8s = import ./k8s;
+    keep-sorted = import ./keep-sorted;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
