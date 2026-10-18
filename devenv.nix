@@ -61,7 +61,7 @@
     };
 
     "fix:all" = {
-      description = "Apply safe source fixes.";
+      description = "Run all fixes.";
       after = [ "devenv:files" ];
       env.TF_DIR = "tf";
       exec = ''

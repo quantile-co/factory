@@ -207,4 +207,4 @@ Keep TF_DIR task-scoped: check:all, plan:infrastructure and apply:infrastructure
 
 <!-- 2026-10-18 02:10:48 [01a14275] -->
 #preference [[factory-task-descriptions]]
-Task descriptions should state intent, not tool names or implementation details that may change. Use “Apply safe source fixes.” for fix:all and “Run all tests.” for test:all; dependencies still determine execution order.
+Task descriptions should state intent, not tool names or implementation details that may change. Use “Run all fixes.” for fix:all and “Run all tests.” for test:all; dependencies still determine execution order.
