@@ -132,11 +132,12 @@ it("validates selected Kubernetes manifests using only local schemas and ignores
     writeFileSync(
       config,
       readFileSync(config, "utf8").replace(
-        "        # args: [-schema-location, LOCAL_SCHEMA_TEMPLATE].",
-        "        args: [-schema-location, 'schemas/{{.ResourceKind}}{{.KindSuffix}}.json']\n        # args: [-schema-location, LOCAL_SCHEMA_TEMPLATE].",
+        "        # args: [-schema-location, LOCAL_SCHEMA_TEMPLATE]",
+        "        args: [-schema-location, 'schemas/{{.ResourceKind}}{{.KindSuffix}}.json']\n        # args: [-schema-location, LOCAL_SCHEMA_TEMPLATE]",
       ),
     );
-    expect(check().status).toBe(0);
+    const verified = check();
+    expect(verified.status, verified.output).toBe(0);
     for (const [text, diagnostic] of [
       [valid.replace("message: hello", "message: 42"), "Invalid: 1"],
       [`${valid}unknownField: true\n`, "Invalid: 1"],

@@ -184,3 +184,64 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
     rmSync(work, { recursive: true, force: true });
   }
 }, 240_000);
+
+it("generates an opt-in pre-push config without enabling fixes or changing other hooks", () => {
+  const source = new URL("../../", import.meta.url);
+  const template = readFileSync(
+    new URL("../../etc/git/.pre-commit-config.yaml", import.meta.url),
+    "utf8",
+  );
+  const buildConfig = (ids: string[]) => {
+    const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${source.href}`)};
+      pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    in (pkgs.lib.evalModules {
+      modules = [ f.nixModules.git ]; specialArgs = { inherit pkgs; };
+    }).config.quantile.git.hooks.withPrePush [ ${ids.map((id) => JSON.stringify(id)).join(" ")} ]`;
+    const result = spawnSync(
+      "nix",
+      [
+        "--extra-experimental-features",
+        "nix-command flakes",
+        "build",
+        "--no-link",
+        "--print-out-paths",
+        "--impure",
+        "--expr",
+        expr,
+      ],
+      { encoding: "utf8", timeout: 120_000 },
+    );
+    if (result.error) throw result.error;
+    return result;
+  };
+  const enabled = buildConfig(["keep-sorted", "markdown", "check-json"]);
+  expect(enabled.status, enabled.stderr).toBe(0);
+  const generated = readFileSync(enabled.stdout.trim(), "utf8");
+  expect(generated).toBe(
+    template
+      .replace(
+        "entry: keep-sorted --mode lint\n        language: system\n        stages: [manual]",
+        "entry: keep-sorted --mode lint\n        language: system\n        stages: [pre-push]",
+      )
+      .replace(
+        "entry: check-markdown\n        language: system\n        stages: [manual]",
+        "entry: check-markdown\n        language: system\n        stages: [pre-push]",
+      ),
+  );
+  expect(generated).toContain("exclude: *keep-sorted-excludes");
+  expect(generated).toContain(
+    "entry: keep-sorted --mode fix\n        language: system\n        stages: [manual]",
+  );
+  expect(
+    readFileSync(
+      new URL("../../etc/git/.pre-commit-config.yaml", import.meta.url),
+      "utf8",
+    ),
+  ).toBe(template);
+  expect(buildConfig(["keep-sorted-fix"]).stderr).toContain(
+    "Fix hooks must stay manual",
+  );
+  expect(buildConfig(["does-not-exist"]).stderr).toContain(
+    "Expected one native Prek hook",
+  );
+}, 180_000);
