@@ -19,7 +19,7 @@ in
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/secretspec/secretspec.toml;
-      description = "Native SecretSpec template; consumers choose where to install it.";
+      description = "SecretSpec manifest template.";
     };
 
     shellHook = lib.mkOption {

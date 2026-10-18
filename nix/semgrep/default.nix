@@ -13,6 +13,12 @@
       description = "Semgrep rules directory.";
     };
 
+    ignoreFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/.semgrepignore;
+      description = "Semgrep ignore template.";
+    };
+
     check.package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.writeShellApplication {
@@ -22,11 +28,7 @@
           export SEMGREP_SEND_METRICS=off SEMGREP_ENABLE_VERSION_CHECK=0
           rules="''${SEMGREP_RULES_DIR:-.semgrep}"
           semgrep --test "$rules" --metrics off
-          excludes=(--exclude "$rules/**")
-          if [ -n "''${SEMGREP_FIXTURES_DIR:-}" ]; then
-            excludes+=(--exclude "$SEMGREP_FIXTURES_DIR/**")
-          fi
-          semgrep scan --config "$rules" "''${excludes[@]}" --metrics off \
+          semgrep scan --config "$rules" --metrics off \
             --error --strict --scan-unknown-extensions --quiet .
         '';
       };

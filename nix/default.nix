@@ -2,6 +2,7 @@
 let
   modules = {
     c = import ./c;
+    checkov = import ./checkov;
     editorconfig = import ./editorconfig;
     gcp = import ./gcp;
     github = import ./github;

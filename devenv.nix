@@ -38,13 +38,13 @@ in
     ".pi/settings.json".source = config.quantile.pi.settingsFile;
     ".qmd/index.yml".source = config.quantile.qmd.configFile;
     ".semgrep".source = config.quantile.semgrep.rulesDir;
+    ".semgrepignore".source = config.quantile.semgrep.ignoreFile;
   };
 
   tasks = {
     "check:all" = {
       description = "Run all checks.";
       after = [ "devenv:files" ];
-      env.SEMGREP_FIXTURES_DIR = "etc/semgrep";
       exec = ''
         ${lib.getExe pkgs.nix} flake check .
         ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} flake.lock devenv.lock factory

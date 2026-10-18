@@ -203,8 +203,8 @@ port. The old Update workflow and its policy harness are superseded by
 Dependabot and current checks. Do not port the old Build merely for caching.
 Top-level `tf/` was reviewed; old `devenv/tf/` is a distinct pending directory.
 The pending inventory includes old
-`devenv/{checkov,duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
-`devenv/c/`, `secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
+`devenv/{duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
+`devenv/{c,checkov}/`, `secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
 Existing tool modules do not mean the remaining directories were all reviewed.
 Consumer integrations and unrelated infrastructure migrations remain separate.
 
@@ -257,3 +257,11 @@ Reviewed old `devenv/c/` implementation and tests, then selectively ported it to
 
 #preference [[factory-module-layout]]
 Use `nix/<module>/default.nix` and a colocated `default.test.ts` for each reusable module. One simple, meaningful smoke/consumer test per small module is fine; avoid tautological configuration snapshots and shared helper frameworks. Root `nix/default.nix` is the flake aggregate, and `nix/devenv.nix` is a flake package export, not a reusable tool module. Existing flake consumer smoke test belongs under `nix/github/default.test.ts`. Moving it leaves no root `*.ts`; the Biome project check/fix selectors must not pass a nonmatching root glob.
+
+<!-- 2026-10-18 13:10:33 [01a14275] -->
+#decision [[factory-native-config]] [[factory-checkov]] [[factory-semgrep]]
+Downstreams customize tool behavior by generating or patching native files under their control, not by passing tool settings through Nix options, generated files, or dynamically assembled CLI flags. Keep module wrappers small: select caller-native config at runtime and retain only required execution/safety validation. Do not write explanatory boilerplate such as “consumers choose where to install and patch it” in option descriptions; explain only non-obvious behavior.
+
+Checkov's opt-in `nix/checkov/default.nix` keeps the hash-pinned isolated Checkov 3.2.527 package (to avoid the primary package set's insecure ecdsa closure) and exposes `etc/checkov/.checkov.yaml` as an optional native template. The consuming repository owns scan directories, frameworks, CKV/CKV2 check and skip IDs, output modes, and no-download/no-upload settings in that file. A standalone read-only checker loads `.checkov.yaml`/`.checkov.yml` at the Git root or `CHECKOV_CONFIG_FILE`, rejects missing/nonexistent roots, empty frameworks, severity-based checks and enabled metadata/module downloads or result uploads, then invokes Checkov with the native config. Validation matters: pinned Checkov silently skips missing roots and `check: [HIGH]` can succeed without running local checks when platform metadata is unavailable. The wrapper unsets inherited Python paths to prevent mixing its Python 3.13 closure with the caller's Python. Importing the module installs no tools/hooks/tasks. No Checkov check is active on Factory's source.
+
+Semgrep's policy stays in `etc/semgrep/`. Its native ignore template is `etc/.semgrepignore`, linked at Factory's root and excluded from Git there; downstreams patch rule/fixture paths. `nix/semgrep/default.nix` still explicitly tests local rules and fails on source findings with metrics disabled, but no longer constructs `--exclude` arguments or uses `SEMGREP_FIXTURES_DIR`. Place the ignore template outside the `etc/semgrep/` source directory: changing a linked directory's store target triggered pinned Devenv's `ln -sf` directory-symlink update bug in an existing checkout; keeping the rules directory unchanged avoids that unrelated update failure. Other Nix modules were reviewed: Clang/Biome/Actionlint/EditorConfig/Pi/QMD/SecretSpec already use native assets, while Terraform's remaining flags enforce execution and saved-plan safety, not tool policy. Package-only GCP/JSON need no asset.

@@ -53,17 +53,17 @@ in
       type = lib.types.listOf lib.types.package;
       default = [ cfg.package pkgs.bear pkgs.cmake pkgs.meson pkgs.ninja pkgs.pkg-config ]
         ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.gdb pkgs.valgrind ];
-      description = "Optional C/C++ build and debug tools; consumers install only what they select.";
+      description = "Optional C/C++ build and debug tools.";
     };
     format.configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/clang/.clang-format;
-      description = "Native clang-format template; consumers choose where to install it.";
+      description = "clang-format configuration template.";
     };
     tidy.configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/clang/.clang-tidy;
-      description = "Native clang-tidy template; consumers choose where to install it.";
+      description = "clang-tidy configuration template.";
     };
     format.check.package = lib.mkOption {
       type = lib.types.package;

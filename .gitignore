@@ -12,6 +12,7 @@ gha-creds-*.json
 result
 result-*
 /.semgrep
+/.semgrepignore
 # Keep local Terraform data, backend overrides, plans, and diagnostics out of Git.
 .terraform/
 .terraform.tfstate.lock.info

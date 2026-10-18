@@ -1,0 +1,3 @@
+# Rule fixtures are tested, not scanned as source.
+.semgrep/
+etc/semgrep/

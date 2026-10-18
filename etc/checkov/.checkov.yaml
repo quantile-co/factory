@@ -1,0 +1,12 @@
+# Use CKV/CKV2 IDs, not severity names: severities require platform metadata.
+directory:
+  - tf
+framework:
+  - [terraform]
+skip-download: true
+skip-results-upload: true
+download-external-modules: false
+compact: true
+quiet: true
+# check: [CKV_GCP_114]
+# skip-check: [CKV_GCP_62]
