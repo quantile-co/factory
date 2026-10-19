@@ -10,6 +10,7 @@
 /trivy.yaml
 /typos.toml
 /.vale.ini
+/.yamllint.yaml
 /biome.json
 /.github/actionlint.yaml
 gha-creds-*.json

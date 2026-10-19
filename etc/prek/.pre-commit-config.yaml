@@ -72,6 +72,27 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: wabt
+        name: Validate WebAssembly text modules
+        entry: check-wabt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: wasm-tools
+        name: Validate WebAssembly binary modules
+        entry: check-wasm-tools
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: yamllint
+        name: Check YAML syntax and style
+        entry: check-yamllint
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: vale
         name: Check prose style
         entry: check-vale

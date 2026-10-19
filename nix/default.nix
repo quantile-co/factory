@@ -12,6 +12,7 @@ let
     deadnix = ./deadnix;
     duckdb = ./duckdb;
     editorconfig = ./editorconfig;
+    emscripten = ./emscripten;
     gcloud = ./gcloud;
     gh = ./gh;
     git = ./git;
@@ -53,6 +54,9 @@ let
     typos = ./typos;
     uv = ./uv;
     vale = ./vale;
+    wabt = ./wabt;
+    wasm-tools = ./wasm-tools;
+    yamllint = ./yamllint;
   };
 in
 {
