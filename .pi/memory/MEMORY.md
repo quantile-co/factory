@@ -122,7 +122,7 @@ the native template, so a working-copy repair cannot conceal missing commits.
 #decision [[factory-namespace-profiles]] [[factory-cache-locality]]
 As of `68d2a20` (2026-10-17), all four Factory workflows use
 `namespace-profile-quantile-4x8`, superseding the earlier 8x16 selection.
-Check is 10 minutes; Test/Plan/Apply are 20 minutes. Preserve Restricted runtime
+Check and Test are 10 minutes; Plan and Apply are 20 minutes. Preserve Restricted runtime
 access, the 20 GiB Nix volume, provider-enforced main-only commits, and separate
 profile/repository cache identities. Do not change other repositories' profiles
 or silently share their caches.
