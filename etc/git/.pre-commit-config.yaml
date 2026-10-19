@@ -1,7 +1,8 @@
 # This is a reusable template, not an installed Git hook. Optional checks start
 # at the manual stage; consumers can use quantile.git.hooks.withPrePush to
 # generate a copy with selected checks enabled. Install pre-push separately.
-# Fix hooks remain manual. Kubeconform fails closed without local schema args.
+# Fix hooks remain manual. Kubeconform needs local schemas; OPA hooks need
+# consumer policy/namespace args (Conftest also needs workload pathspecs).
 default_stages: [pre-push]
 repos:
   - repo: local
@@ -105,6 +106,20 @@ repos:
       - id: nixfmt-fix
         name: Format tracked Nix source explicitly
         entry: fix-nixfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: conftest
+        name: Check policy against selected workloads
+        entry: check-opa
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: opa-tests
+        name: Run policy unit tests
+        entry: test-opa
         language: system
         stages: [manual]
         pass_filenames: false

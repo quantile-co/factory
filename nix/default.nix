@@ -15,6 +15,7 @@ let
     logs = import ./logs;
     markdown = import ./markdown;
     nix = import ./nix;
+    opa = import ./opa;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
