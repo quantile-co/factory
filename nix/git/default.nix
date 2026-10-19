@@ -61,17 +61,36 @@ in
           ];
           text = ''
             git_dir=$(git rev-parse --path-format=absolute --git-dir)
-            hook_dir="$git_dir/hooks"
+            common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+            hook_dir="$common_dir/hooks"
             hook="$hook_dir/pre-push"
-            active=$(git config --get core.hooksPath || :)
-            if [ -n "$active" ] && [ "$active" != "$hook_dir" ]; then
-              echo "Refusing to replace existing core.hooksPath: $active" >&2
+            is_managed() {
+              [ -f "$1" ] && [ ! -L "$1" ] &&
+              [ "$(wc -l < "$1")" -eq 2 ] &&
+              [ "$(head -n 1 "$1")" = '#!/bin/sh' ] &&
+              tail -n 1 "$1" | grep -Eq '^exec /nix/store/[a-z0-9]{32}-checked-git-lfs-pre-push/bin/checked-git-lfs-pre-push "\$@"$'
+            }
+            shared_override=$(git config --local --get core.hooksPath || :)
+            if [ -n "$shared_override" ] && [ "$shared_override" != "$hook_dir" ]; then
+              echo "Refusing to replace existing shared core.hooksPath: $shared_override" >&2
               exit 1
             fi
-            previous=$(git rev-parse --git-path hooks/pre-push)
-            if [ "$previous" != "$hook" ] && { [ -e "$previous" ] || [ -L "$previous" ]; }; then
-              echo "Review the existing shared pre-push hook before installing: $previous" >&2
-              exit 1
+            # Do not silently install an inactive hook behind a global/system override.
+            if [ -z "$shared_override" ]; then
+              for scope in global system; do
+                inherited=$(git config --"$scope" --get core.hooksPath || :)
+                if [ -n "$inherited" ] && [ "$inherited" != "$hook_dir" ]; then
+                  echo "Refusing to shadow existing $scope core.hooksPath: $inherited" >&2
+                  exit 1
+                fi
+              done
+            fi
+            worktree_override=$(git config --worktree --get core.hooksPath || :)
+            if [ -n "$worktree_override" ] && [ "$worktree_override" != "$hook_dir" ]; then
+              if [ "$worktree_override" != "$git_dir/hooks" ] || ! is_managed "$worktree_override/pre-push"; then
+                echo "Refusing to replace existing worktree core.hooksPath: $worktree_override" >&2
+                exit 1
+              fi
             fi
             mkdir -p "$hook_dir"
             umask 077
@@ -83,13 +102,8 @@ in
             HOOK
             if [ -e "$hook" ] || [ -L "$hook" ]; then
               if ! cmp -s "$candidate" "$hook"; then
-                # Upgrade only a complete two-line hook from this installer;
-                # refuse custom hooks, added commands, and symlinks.
-                if [ -L "$hook" ] || [ ! -f "$hook" ] ||
-                  [ "$(wc -l < "$hook")" -ne 2 ] ||
-                  [ "$(head -n 1 "$hook")" != '#!/bin/sh' ] ||
-                  ! tail -n 1 "$hook" | grep -Eq '^exec /nix/store/[a-z0-9]{32}-checked-git-lfs-pre-push/bin/checked-git-lfs-pre-push "\$@"$'; then
-                  echo "Refusing to replace an existing pre-push hook: $hook" >&2
+                if ! is_managed "$hook"; then
+                  echo "Refusing to replace an existing shared pre-push hook: $hook" >&2
                   exit 1
                 fi
                 chmod 700 "$candidate"
@@ -99,11 +113,14 @@ in
               chmod 700 "$candidate"
               mv -- "$candidate" "$hook"
             fi
-            git config --local extensions.worktreeConfig true
-            git config --worktree core.hooksPath "$hook_dir"
+            # A worktree-local override would shadow the shared hook. Migrate only
+            # our own previous installer; leave its now-inert hook file untouched.
+            if [ -n "$worktree_override" ]; then
+              git config --worktree --unset core.hooksPath
+            fi
           '';
         };
-        description = "Explicitly install the checked pre-push hook for this worktree only.";
+        description = "Explicitly install a checked pre-push hook shared by this repository's worktrees.";
       };
     };
   };

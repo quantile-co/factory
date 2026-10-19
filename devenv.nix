@@ -73,7 +73,7 @@ in
 
   tasks = {
     "git:hooks:install" = {
-      description = "Explicitly install this worktree's checked pre-push hook (never a commit hook).";
+      description = "Explicitly install the shared checked pre-push hook for all worktrees (never a commit hook).";
       after = [ "devenv:files" ];
       exec = lib.getExe config.quantile.git.prePush.install.package;
     };

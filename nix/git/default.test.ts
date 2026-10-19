@@ -187,7 +187,7 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
   }
 }, 240_000);
 
-it("installs only a worktree-local pre-push hook without replacing another hook", () => {
+it("installs one shared pre-push hook inherited by new worktrees without replacing another hook", () => {
   const work = mkdtempSync(join(tmpdir(), "factory-git-install-"));
   try {
     const source = new URL("../../", import.meta.url);
@@ -219,6 +219,14 @@ it("installs only a worktree-local pre-push hook without replacing another hook"
     const repo = join(work, "repo");
     const branch = join(work, "branch");
     mkdirSync(repo);
+    copyFileSync(
+      new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
+      join(repo, ".pre-commit-config.yaml"),
+    );
+    copyFileSync(
+      new URL("../../etc/commitizen/.cz.toml", import.meta.url),
+      join(repo, ".cz.toml"),
+    );
     const run = (command: string, args: string[], cwd = repo) => {
       const result = spawnSync(command, args, {
         cwd,
@@ -230,6 +238,9 @@ it("installs only a worktree-local pre-push hook without replacing another hook"
     };
     expect(run("git", ["init", "-q", "--initial-branch=main"]).status).toBe(0);
     expect(
+      run("git", ["add", ".pre-commit-config.yaml", ".cz.toml"]).status,
+    ).toBe(0);
+    expect(
       run("git", [
         "-c",
         "user.name=Fixture",
@@ -237,35 +248,60 @@ it("installs only a worktree-local pre-push hook without replacing another hook"
         "user.email=fixture@example.invalid",
         "commit",
         "-q",
-        "--allow-empty",
         "-m",
         "chore: initial",
       ]).status,
     ).toBe(0);
-    expect(
-      run("git", ["worktree", "add", "-q", "-b", "topic", branch]).status,
-    ).toBe(0);
     const remote = join(work, "remote.git");
     expect(run("git", ["init", "-q", "--bare", remote]).status).toBe(0);
     expect(run("git", ["remote", "add", "origin", remote]).status).toBe(0);
+    const commonDir = run("git", [
+      "rev-parse",
+      "--path-format=absolute",
+      "--git-common-dir",
+    ]).stdout.trim();
+    const hook = join(commonDir, "hooks/pre-push");
+    const globalConfig = join(work, "global.gitconfig");
+    writeFileSync(
+      globalConfig,
+      `[core]\n\thooksPath = ${join(work, "unrelated-hooks")}\n`,
+    );
+    const refusedGlobal = spawnSync(install, [], {
+      cwd: repo,
+      encoding: "utf8",
+      env: { ...process.env, GIT_CONFIG_GLOBAL: globalConfig },
+    });
+    if (refusedGlobal.error) throw refusedGlobal.error;
+    expect(refusedGlobal.status).not.toBe(0);
+    expect(refusedGlobal.stderr).toContain(
+      "Refusing to shadow existing global core.hooksPath",
+    );
+    expect(existsSync(hook)).toBe(false);
+    expect(run(install, []).status).toBe(0);
+    expect(run(install, []).status).toBe(0);
+    expect(existsSync(hook)).toBe(true);
+    expect(existsSync(join(commonDir, "hooks/commit-msg"))).toBe(false);
+    expect(
+      run("git", ["worktree", "add", "-q", "-b", "topic", branch]).status,
+    ).toBe(0);
     const gitDir = run(
       "git",
       ["rev-parse", "--path-format=absolute", "--git-dir"],
       branch,
     ).stdout.trim();
-    const hook = join(gitDir, "hooks/pre-push");
-    expect(run(install, [], branch).status).toBe(0);
-    expect(run(install, [], branch).status).toBe(0);
+    expect(gitDir).not.toBe(commonDir);
+    expect(run("git", ["config", "--get", "core.hooksPath"]).status).toBe(1);
+    expect(
+      run("git", ["config", "--get", "core.hooksPath"], branch).status,
+    ).toBe(1);
     expect(
       run(
         "git",
-        ["config", "--worktree", "--get", "core.hooksPath"],
+        ["rev-parse", "--git-path", "hooks/pre-push"],
         branch,
       ).stdout.trim(),
-    ).toBe(join(gitDir, "hooks"));
-    expect(run("git", ["config", "--get", "core.hooksPath"]).status).toBe(1);
-    expect(existsSync(join(repo, ".git/hooks/pre-push"))).toBe(false);
-    expect(existsSync(join(gitDir, "hooks/commit-msg"))).toBe(false);
+    ).toBe(hook);
+    expect(existsSync(join(branch, ".pre-commit-config.yaml"))).toBe(true);
     const managed = readFileSync(hook, "utf8");
     expect(managed).toContain("checked-git-lfs-pre-push");
     writeFileSync(
@@ -274,14 +310,6 @@ it("installs only a worktree-local pre-push hook without replacing another hook"
     );
     expect(run(install, [], branch).status).toBe(0);
     expect(readFileSync(hook, "utf8")).toBe(managed);
-    copyFileSync(
-      new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
-      join(branch, ".pre-commit-config.yaml"),
-    );
-    copyFileSync(
-      new URL("../../etc/commitizen/.cz.toml", import.meta.url),
-      join(branch, ".cz.toml"),
-    );
     const executed = spawnSync(hook, ["origin", remote], {
       cwd: branch,
       input: "",
@@ -366,11 +394,66 @@ it("installs only a worktree-local pre-push hook without replacing another hook"
     });
     if (allowed.error) throw allowed.error;
     expect(allowed.status, allowed.stderr).toBe(0);
+    const pushed = run("git", ["push", "origin", "topic"], branch);
+    expect(pushed.status, pushed.stderr).toBe(0);
+    expect(pushed.stdout + pushed.stderr).toContain(
+      "Check pushed Conventional Commits",
+    );
+    expect(
+      run("git", ["rev-parse", "refs/heads/topic"], remote).stdout.trim(),
+    ).toBe(repaired);
+
+    // Migrate a hook installed by the previous worktree-local installer.
+    const localHookDir = join(gitDir, "hooks");
+    mkdirSync(localHookDir, { recursive: true });
+    writeFileSync(join(localHookDir, "pre-push"), managed);
+    expect(
+      run("git", ["config", "--local", "extensions.worktreeConfig", "true"])
+        .status,
+    ).toBe(0);
+    expect(
+      run(
+        "git",
+        ["config", "--worktree", "core.hooksPath", localHookDir],
+        branch,
+      ).status,
+    ).toBe(0);
+    expect(run(install, [], branch).status).toBe(0);
+    expect(
+      run("git", ["config", "--worktree", "--get", "core.hooksPath"], branch)
+        .status,
+    ).toBe(1);
+    expect(readFileSync(hook, "utf8")).toBe(managed);
+    expect(readFileSync(join(localHookDir, "pre-push"), "utf8")).toBe(managed);
+
+    const foreign = join(work, "custom-hooks");
+    mkdirSync(foreign);
+    expect(
+      run("git", ["config", "--worktree", "core.hooksPath", foreign], branch)
+        .status,
+    ).toBe(0);
+    const refusedOverride = run(install, [], branch);
+    expect(refusedOverride.status).not.toBe(0);
+    expect(refusedOverride.stderr).toContain(
+      "Refusing to replace existing worktree core.hooksPath",
+    );
+    expect(
+      run(
+        "git",
+        ["config", "--worktree", "--get", "core.hooksPath"],
+        branch,
+      ).stdout.trim(),
+    ).toBe(foreign);
+    expect(
+      run("git", ["config", "--worktree", "--unset", "core.hooksPath"], branch)
+        .status,
+    ).toBe(0);
+
     writeFileSync(hook, "#!/bin/sh\nexit 0\n");
     const refused = run(install, [], branch);
     expect(refused.status).not.toBe(0);
     expect(refused.stderr).toContain(
-      "Refusing to replace an existing pre-push hook",
+      "Refusing to replace an existing shared pre-push hook",
     );
     expect(readFileSync(hook, "utf8")).toBe("#!/bin/sh\nexit 0\n");
   } finally {
