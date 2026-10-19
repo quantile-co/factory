@@ -485,3 +485,10 @@ c569f215998a84d77165cda830d0cc402a3fb4e6 after local backend-free validation and
 Check 39330886727. Both primary local main checkouts were synchronized. This
 source rollout ran no production Plan/Apply and changed no Terraform module
 contents, backend or provider lock.
+
+#preference [[factory-downstream-github]]
+For a coordinated Factory/.github rollout, finish Factory's source and outcome
+commits first, then pin the organization consumer to the final latest reviewed
+Factory main SHA, including documentation-only commits. Do not deliberately
+leave the consumer on an earlier implementation-only SHA. Keep its flake/Devenv
+pins and locks, workflow callers and Terraform module references aligned.
