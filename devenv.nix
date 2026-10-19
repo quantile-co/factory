@@ -21,6 +21,13 @@ in
     inputs.factory.devenvModules.files
   ];
 
+  cachix.pull = [
+    "quantile-co"
+    "cachix"
+    "pre-commit-hooks"
+    "go-overlay"
+  ];
+
   packages = [
     config.quantile.opentofu.package
     config.quantile.tflint.package

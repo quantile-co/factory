@@ -138,8 +138,16 @@ Do not clear shared caches or contact the provider without authorization.
 #decision [[factory-cachix-policy]]
 All four workflows read the approved public caches: devenv, Quantile, Numtide,
 Cachix, pre-commit-hooks, and go-overlay, using their published signing keys.
-These settings are workflow-local, not automatically inherited by downstream
-flakes or an untrusted local daemon. Check does not publish. Test, Plan, and
+CI's broader cache list is workflow-local, not automatically inherited by downstream
+flakes or an untrusted local daemon. Factory and the organization consumer select
+`quantile-co`, `cachix`, `pre-commit-hooks`, and `go-overlay` through Devenv's
+`cachix.pull`; Devenv already adds its own cache. This does not guarantee daemon
+acceptance for untrusted users or affect the `.envrc` Nix bootstrap before
+Devenv starts. Numtide's `cache.numtide.com` is not a `*.cachix.org` cache name;
+its URL and public key are set through public `NIX_CONFIG` values in each
+consumer's `.envrc`, after the CLI bootstrap and before `use devenv`, rather
+than a fake `cachix.pull` name. Direct Devenv invocations outside direnv and
+untrusted local daemons retain the documented limitations. Check does not publish. Test, Plan, and
 Apply publish only on main through the pinned Cachix action's standard store
 scan (`useDaemon: false`), not a custom task or root collector. The scan uploads
 newly added paths, not every restored path; caches are not guaranteed mirrors.
