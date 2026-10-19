@@ -35,10 +35,7 @@ it("rejects shallow Git history before running a Gitleaks scan", () => {
       expr,
     ]);
     expect(built.status, built.stderr).toBe(0);
-    const rejected = run(
-      `${built.stdout.trim()}/bin/quantile-git-gitleaks`,
-      [],
-    );
+    const rejected = run(`${built.stdout.trim()}/bin/check-gitleaks`, []);
     expect(rejected.status).not.toBe(0);
     expect(rejected.stdout + rejected.stderr).toContain(
       "requires an unshallow checkout",

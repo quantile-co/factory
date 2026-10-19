@@ -2,7 +2,7 @@
 let
   cfg = config.quantile.prek;
   permalinks = pkgs.writeShellApplication {
-    name = "quantile-check-permalinks";
+    name = "check-github-permalinks";
     runtimeInputs = [ pkgs.gnugrep ];
     text = ''
       pattern="''${1:?Native Prek config must supply a GitHub permalink regex}"

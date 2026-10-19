@@ -14,6 +14,8 @@ in
     config.quantile.gcloud.package
     config.quantile.gh.package
     config.quantile.actionlint.package
+    config.quantile.shellcheck.package
+    config.quantile.shfmt.package
     config.quantile.jq.package
     config.quantile.pi.package
     config.quantile.nodejs.package
@@ -31,6 +33,7 @@ in
 
   files = {
     ".editorconfig".source = config.quantile.editorconfig.configFile;
+    ".shellcheckrc".source = config.quantile.shellcheck.configFile;
     "biome.json".source = config.quantile.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
     ".github/dependabot.yml" = {

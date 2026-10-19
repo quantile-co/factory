@@ -33,7 +33,7 @@ repos:
         types: [file]
       - id: check-vcs-permalinks
         name: Check GitHub permalinks
-        entry: quantile-check-permalinks
+        entry: check-github-permalinks
         language: system
         args:
           - >-
@@ -41,8 +41,35 @@ repos:
         exclude: ^\.gitignore$
       - id: gitleaks
         name: Full-history and working-tree secret scanning
-        entry: quantile-git-gitleaks
+        entry: check-gitleaks
         language: system
+        pass_filenames: false
+        always_run: true
+      - id: check-executables-have-shebangs
+        name: Check executable shebangs
+        entry: check-executables-have-shebangs
+        language: system
+        stages: [manual]
+        types: [text, executable]
+      - id: shellcheck
+        name: Lint shell source
+        entry: check-shellcheck
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: shfmt
+        name: Check shell formatting
+        entry: check-shfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: shfmt-fix
+        name: Format tracked shell source explicitly
+        entry: fix-shfmt
+        language: system
+        stages: [manual]
         pass_filenames: false
         always_run: true
       - id: check-json

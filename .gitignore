@@ -4,6 +4,7 @@
 /node_modules/
 .envrc.local
 /.editorconfig
+/.shellcheckrc
 /biome.json
 /.github/actionlint.yaml
 gha-creds-*.json

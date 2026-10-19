@@ -12,7 +12,7 @@ in
     check.package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.writeShellApplication {
-        name = "quantile-git-gitleaks";
+        name = "check-gitleaks";
         runtimeInputs = [ pkgs.git cfg.package ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"

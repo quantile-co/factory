@@ -44,6 +44,7 @@ let
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = ./semgrep;
     shellcheck = ./shellcheck;
+    shfmt = ./shfmt;
     statix = ./statix;
     trivy = ./trivy;
     uv = ./uv;
