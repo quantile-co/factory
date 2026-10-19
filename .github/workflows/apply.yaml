@@ -104,10 +104,6 @@ jobs:
           PLAN_ARTIFACT_ID: ${{ inputs.plan_artifact_id }}
           TF_PLAN_DIR: ${{ runner.temp }}/saved-plan
         run: |
-          if test -z "${GITHUB_TOKEN:-}" || test -z "${REST_API_BEARER:-}"; then
-            echo 'Missing GH_REPO_TOKEN from the protected prod environment.' >&2
-            exit 1
-          fi
           cli="$(nix build --no-link --print-out-paths .#devenv-cli)/bin/devenv"
           "$cli" shell -- "$cli" tasks run --show-output apply:infrastructure
 

@@ -56,9 +56,5 @@ jobs:
           SECRETSPEC_PROFILE: test
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         run: |
-          if test -z "${CACHIX_AUTH_TOKEN:-}"; then
-            echo 'Missing CACHIX_AUTH_TOKEN for Test.' >&2
-            exit 1
-          fi
           cli="$(nix build --no-link --print-out-paths .#devenv-cli)/bin/devenv"
           "$cli" shell -- "$cli" tasks run --mode before test:all

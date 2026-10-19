@@ -13,6 +13,126 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
+it("rejects empty required values using native profile, default and scope semantics", () => {
+  const work = mkdtempSync(join(tmpdir(), "factory-secretspec-required-"));
+  const factory = `git+${new URL("../../", import.meta.url).href}`;
+  const marker = `synthetic-${randomUUID()}`;
+  const special = `${marker}\n'"$()\\ spaces`;
+  try {
+    const expr = `let f = builtins.getFlake ${JSON.stringify(factory)};
+      pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+      cfg = (pkgs.lib.evalModules {
+        modules = [ f.nixModules.secretspec ]; specialArgs = { inherit pkgs; };
+      }).config.quantile.secretspec;
+    in pkgs.writeText "secretspec-hook" cfg.shellHook`;
+    const built = spawnSync(
+      "nix",
+      ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
+      { encoding: "utf8", timeout: 120_000 },
+    );
+    if (built.error) throw built.error;
+    expect(built.status, built.stderr).toBe(0);
+    const hook = built.stdout.trim();
+    expect(readFileSync(hook, "utf8")).not.toContain(marker);
+    const home = join(work, "home");
+    mkdirSync(home);
+    const manifest = join(work, "secretspec.toml");
+    writeFileSync(
+      manifest,
+      `
+[project]
+name = "required-consumer"
+revision = "1.0"
+[profiles.default]
+INHERITED = { description = "Implicitly required", providers = ["env"] }
+OPTIONAL = { description = "Optional fallback", required = false, default = "", providers = ["env"] }
+[profiles.prod]
+INHERITED = { description = "Inherits requiredness" }
+EXPLICIT = { description = "Explicitly required", required = true, providers = ["env"] }
+[profiles.loose]
+INHERITED = { required = false }
+[profiles.standalone.defaults]
+inherit = false
+required = false
+providers = ["env"]
+[profiles.standalone]
+OPTIONAL = { description = "Profile default is optional" }
+FORCED = { description = "Overrides profile default", required = true }
+[scopes.inherited]
+secrets = ["INHERITED"]
+`,
+    );
+    const child = join(work, "child-ran");
+    const run = (extra: Record<string, string>, missing?: string) => {
+      rmSync(child, { force: true });
+      const result = spawnSync(
+        "bash",
+        ["-euxc", 'source "$HOOK"; touch child-ran'],
+        {
+          cwd: work,
+          env: {
+            HOME: home,
+            PATH: process.env.PATH,
+            HOOK: hook,
+            SECRETSPEC_FILE: manifest,
+            ...extra,
+          },
+          encoding: "utf8",
+          timeout: 30_000,
+        },
+      );
+      if (result.error) throw result.error;
+      const output = result.stdout + result.stderr;
+      expect(output).not.toContain(marker);
+      if (missing) {
+        expect(result.status, output).not.toBe(0);
+        expect(existsSync(child)).toBe(false);
+        expect(output).toContain(missing);
+      } else {
+        expect(result.status, output).toBe(0);
+        expect(existsSync(child)).toBe(true);
+      }
+    };
+    const prod = {
+      SECRETSPEC_PROFILE: "prod",
+      INHERITED: special,
+      EXPLICIT: marker,
+    };
+    run(prod); // Missing optional fallback may be empty.
+    run({ ...prod, OPTIONAL: "" });
+    for (const name of ["INHERITED", "EXPLICIT"]) {
+      run(
+        { ...prod, [name]: "" },
+        `Required SecretSpec secret is empty: ${name}`,
+      );
+      const unset = { ...prod } as Record<string, string>;
+      delete unset[name];
+      run(unset, name);
+    }
+    run({ INHERITED: marker }); // Default profile, implicitly required.
+    run({ SECRETSPEC_PROFILE: "loose", INHERITED: "", OPTIONAL: "" });
+    run({ SECRETSPEC_PROFILE: "loose" }); // No required secrets.
+    run({ SECRETSPEC_PROFILE: "standalone", FORCED: marker, OPTIONAL: "" });
+    run({ SECRETSPEC_PROFILE: "standalone", FORCED: "" }, "FORCED");
+    run({
+      SECRETSPEC_PROFILE: "prod",
+      SECRETSPEC_SCOPE: "inherited",
+      INHERITED: marker,
+    });
+    run(
+      {
+        SECRETSPEC_PROFILE: "prod",
+        SECRETSPEC_SCOPE: "inherited",
+        INHERITED: "",
+      },
+      "INHERITED",
+    );
+    run({ SECRETSPEC_PROFILE: "unknown" }, "unknown");
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}, 150_000);
+
 it("loads runtime secrets on fresh shell/task entry and fails closed without serializing values", () => {
   const work = mkdtempSync(join(tmpdir(), "factory-secretspec-"));
   const consumer = join(work, "consumer");
@@ -189,8 +309,21 @@ APP_SECRET = { description = "Synthetic runtime input", required = true, provide
     expect(readFileSync(shell, "utf8")).not.toContain(marker);
     expect(readFileSync(derivation, "utf8")).not.toContain(marker);
 
-    rmSync(join(work, "provider.env"));
+    // A file provider's empty value must also stop shell entry before any child runs.
+    writeFileSync(join(work, "provider.env"), "APP_SECRET=\n", { mode: 0o600 });
     rmSync(child);
+    run(
+      cli,
+      ["--no-tui", "shell", "--", "touch", "child-ran"],
+      selected,
+      false,
+    );
+    expect(existsSync(child)).toBe(false);
+    expect(logs.at(-1)).toContain(
+      "Required SecretSpec secret is empty: APP_SECRET",
+    );
+
+    rmSync(join(work, "provider.env"));
     run(cli, ["--no-tui", "tasks", "run", "fixture:secret"], selected, false);
     expect(existsSync(child)).toBe(false);
     expect(logs.at(-1)).toContain("APP_SECRET");

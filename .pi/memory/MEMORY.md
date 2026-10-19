@@ -440,3 +440,28 @@ The user chose one upstream Markdownlint native policy instead of a downstream
 profile can remain unchanged. Other shared Markdown rules remain enabled.
 Consumers needing stricter line-length policy may opt in through their own
 native configuration, but this consumer uses the upstream template link.
+
+#decision [[factory-secretspec]]
+The shared SecretSpec runtime shell hook enforces nonempty strings for all
+required exports, not tool-specific credential lists. It calls native export
+and the value-free `check --json` report at runtime; the report determines
+effective requiredness, preserving native profile inheritance, defaults and
+scope selection without a second manifest parser. This entails two provider
+resolution passes. Optional empty values remain allowed. Values never enter
+Nix evaluation/store data, tracing stays disabled during handling, and errors
+name only the required keys. Test/Plan/Apply retain explicit secret forwarding
+and shell entry but no longer duplicate nonempty shell tests. The module cites
+SecretSpec's pinned env-provider docs and `EnvProvider::get`, which deliberately
+consider empty values present. This generic rule is independent of a future
+GitHub provider `auth_mode = "token"` release; no upgrade was made here.
+
+#correction #verification [[factory-member-landing]] [[factory-downstream-github]]
+The earlier objection to removing the organization's legacy required-PR and
+maintainer-only push rules was withdrawn after rechecking the user's explicit
+October 5 and October 19 architecture decisions. Consumers use Factory's
+unchanged modules; do not restore those legacy restrictions. Migration Apply
+39319984039 succeeded. Temporary recovery source, moved blocks and provider
+alias were removed; ordinary Plan 39321902718 reported no changes and no-op
+Apply 39322317684 persisted cleaned provider references. The final organization
+outcome note landed at a5e701c82a56e8a37fcaea90ad78bc656d937d13. No Factory
+production workflow ran during this downstream migration.
