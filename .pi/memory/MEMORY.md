@@ -398,3 +398,7 @@ At the user's request, `nix/git/default.nix` now owns an explicit `quantile.git.
 <!-- 2026-10-18 22:43:23 [01a14275] -->
 #decision #verification [[factory-git-prepush]] [[factory-conventional-history]]
 User rejected grandfathering and explicitly approved rewriting the nine unpublished pre-audit commit subjects to Conventional Commits. A controlled interactive rebase reworded only those subjects; all ten unpublished commits (including the already-committed audit) retained byte-identical Git tree IDs and order. A local read-only first-push simulation then passed the native push-time Commitizen checker for the complete unpublished range. No baseline exception or hook bypass was added, and no remote push had been made at this verification point. Publication still requires an exact-head Check before a protected-main merge; main Test was separately authorized.
+
+<!-- 2026-10-18 22:47:50 [01a14275] -->
+#bug #implementation [[factory-ci-check]] [[factory-gitleaks]]
+The first Check after enabling native full-history Gitleaks failed on GitHub checkout's default shallow fetch, not on a leak. Factory's Check and manual Test workflows now set `fetch-depth: 0` on pinned actions/checkout; Test calls `test:all` and therefore also runs `check:all`. Keep `persist-credentials: false`, protected-main guards and production workflow separation. Require a successful Check for the fix-forward commit before merging; do not bypass the secret checker or weaken its unshallow preflight.
