@@ -518,3 +518,8 @@ smoke tests build/run the tool and confirm package overrides. The Pi native
 skill smoke now reads its public skill files during Nix evaluation rather than
 relying on an unrealized store path after evaluation. Local flake check and
 `devenv tasks run test:all` passed; no production workflow ran.
+The signed local-cache commit 1fba32e52762adc15bbb3dc5f4d5baba8f8c48c6 passed
+exact-head Check 39340693542 and was ordinarily fast-forwarded to Factory
+main. The C follow-up 16ca0eee568dc7945d436da8e502556a4fb5482e passed
+exact-head Check 39340723225 on its feature branch. The post-Check outcome
+note follows on that branch before its final separately checked fast-forward.
