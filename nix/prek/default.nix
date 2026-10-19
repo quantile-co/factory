@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.prek;
   permalinks = pkgs.writeShellApplication {
@@ -22,7 +27,10 @@ let
   };
 in
 {
-  imports = [ ../commitizen ../gitleaks ];
+  imports = [
+    ../commitizen
+    ../gitleaks
+  ];
   options.quantile.prek = {
     package = lib.mkOption {
       type = lib.types.package;
@@ -36,7 +44,8 @@ in
     };
     withPrePush = lib.mkOption {
       type = lib.types.functionTo lib.types.path;
-      default = ids:
+      default =
+        ids:
         let
           selected =
             if builtins.isList ids && lib.all builtins.isString ids then
@@ -61,7 +70,7 @@ in
             if yq -e '.repos[].hooks[] | select(.id == strenv(HOOK_ID)) | .stages | contains(["pre-push"])' "$out" > /dev/null; then
               :
             elif yq -e '.repos[].hooks[] | select(.id == strenv(HOOK_ID)) | select((.stages | length) == 0) | .id' "$out" > /dev/null &&
-                 yq -e '.default_stages | contains(["pre-push"])' "$out" > /dev/null; then
+                yq -e '.default_stages | contains(["pre-push"])' "$out" > /dev/null; then
               :
             elif yq -e '.repos[].hooks[] | select(.id == strenv(HOOK_ID)) | select((.stages | length) == 1 and (.stages | contains(["manual"]))) | .id' "$out" > /dev/null; then
               yq -i '(.repos[].hooks[] | select(.id == strenv(HOOK_ID))).stages = ["pre-push"]' "$out"
@@ -77,7 +86,13 @@ in
       type = lib.types.package;
       default = pkgs.symlinkJoin {
         name = "git-hook-tools";
-        paths = [ pkgs.python3Packages.pre-commit-hooks config.quantile.commitizen.package permalinks config.quantile.gitleaks.check.package ];
+        paths = [
+          pkgs.python3Packages.pre-commit-hooks
+          config.quantile.commitizen.package
+          config.quantile.commitizen.prePush.package
+          permalinks
+          config.quantile.gitleaks.check.package
+        ];
       };
       description = "Executables referenced by the native Prek hook template.";
     };
@@ -85,7 +100,11 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-git-hooks";
-        runtimeInputs = [ pkgs.git cfg.package cfg.tools.package ];
+        runtimeInputs = [
+          pkgs.git
+          cfg.package
+          cfg.tools.package
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           config="''${GIT_HOOKS_CONFIG:-.pre-commit-config.yaml}"
@@ -99,7 +118,11 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-json";
-        runtimeInputs = [ cfg.package pkgs.python3Packages.pre-commit-hooks pkgs.git ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.python3Packages.pre-commit-hooks
+          pkgs.git
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           config="''${GIT_HOOKS_CONFIG:-.pre-commit-config.yaml}"

@@ -1,11 +1,9 @@
 {
-  config,
   lib,
   pkgs,
   ...
 }:
 let
-  cfg = config.quantile.prettier;
   runner =
     name: includeUntracked: action:
     pkgs.writeShellApplication {

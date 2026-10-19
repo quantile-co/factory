@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.deadnix;
 in
@@ -13,7 +18,11 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-deadnix";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.coreutils ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.coreutils
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           paths=("$@")

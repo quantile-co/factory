@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.editorconfig;
   selectFiles = ''
@@ -71,7 +76,12 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-editorconfig";
-        runtimeInputs = [ cfg.checker.package pkgs.file pkgs.git pkgs.jq ];
+        runtimeInputs = [
+          cfg.checker.package
+          pkgs.file
+          pkgs.git
+          pkgs.jq
+        ];
         text = selectFiles + ''
           config_args=()
           if [ -n "''${EDITORCONFIG_CHECKER_CONFIG:-}" ] || [ -f "$checker_config" ]; then
@@ -86,7 +96,12 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "fix-editorconfig-eof";
-        runtimeInputs = [ cfg.fixer.package pkgs.file pkgs.git pkgs.jq ];
+        runtimeInputs = [
+          cfg.fixer.package
+          pkgs.file
+          pkgs.git
+          pkgs.jq
+        ];
         text = selectFiles + ''
           if end-of-file-fixer "''${files[@]}"; then
             :

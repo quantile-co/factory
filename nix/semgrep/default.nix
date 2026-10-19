@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   options.quantile.semgrep = {
     package = lib.mkOption {
@@ -23,7 +28,10 @@
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "test-semgrep";
-        runtimeInputs = [ config.quantile.semgrep.package pkgs.jq ];
+        runtimeInputs = [
+          config.quantile.semgrep.package
+          pkgs.jq
+        ];
         text = ''
           set -euo pipefail
           export SEMGREP_SEND_METRICS=off SEMGREP_ENABLE_VERSION_CHECK=0

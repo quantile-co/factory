@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.trivy;
 in
@@ -20,7 +25,11 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-trivy";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.coreutils ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.coreutils
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           config="''${TRIVY_CONFIG_FILE:-trivy.yaml}"

@@ -49,7 +49,6 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
     const check = join(build("prek", "check"), "bin/check-git-hooks");
     const push = join(build("git", "prePush"), "bin/checked-git-lfs-pre-push");
     const lfs = join(build("git", "lfs"), "bin/git-lfs");
-    const prek = join(build("prek", ""), "bin/prek");
     const tools = join(build("prek", "tools"), "bin");
     const env = {
       ...process.env,
@@ -88,38 +87,44 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
       new URL("../../etc/commitizen/.cz.toml", import.meta.url),
       join(repo, ".cz.toml"),
     );
-    writeFileSync(
-      join(repo, "links.txt"),
-      `https://github.com/example/repo/blob/${"a".repeat(40)}/file.go\n`,
-    );
+    const permalink = `https://github.com/example/repo/${["blob", "a".repeat(40)].join("/")}/file.go\n`;
+    writeFileSync(join(repo, "links.txt"), permalink);
     git("init", "--quiet", "--initial-branch=main");
     git("config", "user.name", "Fixture");
     git("config", "user.email", "fixture@example.invalid");
     git("add", ".");
     git("commit", "-qm", "chore: initial fixture");
     expect(existsSync(join(repo, ".git/hooks/pre-push"))).toBe(false);
+    expect(existsSync(join(repo, ".git/hooks/commit-msg"))).toBe(false);
     expect(run(check, []).status).toBe(0);
-    expect(
-      run(prek, [
-        "--config",
-        ".pre-commit-config.yaml",
-        "install",
-        "--hook-type",
-        "commit-msg",
-      ]).status,
-    ).toBe(0);
+    const previous = git("rev-parse", "HEAD");
     const invalidMessage = run("git", [
       "commit",
       "--allow-empty",
       "-m",
       "invalid message",
     ]);
-    expect(invalidMessage.status).not.toBe(0);
-    expect(invalidMessage.output).toContain("commit validation: failed");
-    writeFileSync(
-      join(repo, "links.txt"),
-      "https://github.com/example/repo/blob/main/file.go\n",
+    expect(invalidMessage.status).toBe(0);
+    const rejectedMessage = run(
+      push,
+      ["origin", remote],
+      repo,
+      `refs/heads/main ${git("rev-parse", "HEAD")} refs/heads/main ${previous}\n`,
     );
+    expect(rejectedMessage.status).not.toBe(0);
+    expect(rejectedMessage.output).toContain("Invalid commit message");
+    git(
+      "commit",
+      "--amend",
+      "--allow-empty",
+      "-qm",
+      "chore: corrected message",
+    );
+    const nonPermanent = [
+      "https://github.com/example/repo",
+      "blob/main/file.go",
+    ].join("/");
+    writeFileSync(join(repo, "links.txt"), `${nonPermanent}\n`);
     const invalid = run(check, []);
     expect(invalid.status).not.toBe(0);
     expect(invalid.output).toContain("Non-permanent VCS link");
@@ -157,10 +162,7 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
     expect(existsSync(join(work, "legacy-refs"))).toBe(false);
     expect(existsSync(uploaded)).toBe(false);
 
-    writeFileSync(
-      join(repo, "links.txt"),
-      `https://github.com/example/repo/blob/${"a".repeat(40)}/file.go\n`,
-    );
+    writeFileSync(join(repo, "links.txt"), permalink);
     git("add", "links.txt");
     git("commit", "-qm", "fix: restore permalink");
     // Git LFS may install its own upload-first hook when tracking files. The
@@ -184,6 +186,197 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
     rmSync(work, { recursive: true, force: true });
   }
 }, 240_000);
+
+it("installs only a worktree-local pre-push hook without replacing another hook", () => {
+  const work = mkdtempSync(join(tmpdir(), "factory-git-install-"));
+  try {
+    const source = new URL("../../", import.meta.url);
+    const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${source.href}`)};
+      pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    in (pkgs.lib.evalModules {
+      modules = [ f.nixModules.git ]; specialArgs = { inherit pkgs; };
+    }).config.quantile.git.prePush.install.package`;
+    const built = spawnSync(
+      "nix",
+      [
+        "--extra-experimental-features",
+        "nix-command flakes",
+        "build",
+        "--no-link",
+        "--print-out-paths",
+        "--impure",
+        "--expr",
+        expr,
+      ],
+      { encoding: "utf8", timeout: 150_000 },
+    );
+    if (built.error) throw built.error;
+    expect(built.status, built.stderr).toBe(0);
+    const install = join(
+      built.stdout.trim(),
+      "bin/install-checked-git-pre-push",
+    );
+    const repo = join(work, "repo");
+    const branch = join(work, "branch");
+    mkdirSync(repo);
+    const run = (command: string, args: string[], cwd = repo) => {
+      const result = spawnSync(command, args, {
+        cwd,
+        encoding: "utf8",
+        timeout: 90_000,
+      });
+      if (result.error) throw result.error;
+      return result;
+    };
+    expect(run("git", ["init", "-q", "--initial-branch=main"]).status).toBe(0);
+    expect(
+      run("git", [
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "chore: initial",
+      ]).status,
+    ).toBe(0);
+    expect(
+      run("git", ["worktree", "add", "-q", "-b", "topic", branch]).status,
+    ).toBe(0);
+    const remote = join(work, "remote.git");
+    expect(run("git", ["init", "-q", "--bare", remote]).status).toBe(0);
+    expect(run("git", ["remote", "add", "origin", remote]).status).toBe(0);
+    const gitDir = run(
+      "git",
+      ["rev-parse", "--path-format=absolute", "--git-dir"],
+      branch,
+    ).stdout.trim();
+    const hook = join(gitDir, "hooks/pre-push");
+    expect(run(install, [], branch).status).toBe(0);
+    expect(run(install, [], branch).status).toBe(0);
+    expect(
+      run(
+        "git",
+        ["config", "--worktree", "--get", "core.hooksPath"],
+        branch,
+      ).stdout.trim(),
+    ).toBe(join(gitDir, "hooks"));
+    expect(run("git", ["config", "--get", "core.hooksPath"]).status).toBe(1);
+    expect(existsSync(join(repo, ".git/hooks/pre-push"))).toBe(false);
+    expect(existsSync(join(gitDir, "hooks/commit-msg"))).toBe(false);
+    const managed = readFileSync(hook, "utf8");
+    expect(managed).toContain("checked-git-lfs-pre-push");
+    writeFileSync(
+      hook,
+      `#!/bin/sh\nexec /nix/store/${"0".repeat(32)}-checked-git-lfs-pre-push/bin/checked-git-lfs-pre-push "$@"\n`,
+    );
+    expect(run(install, [], branch).status).toBe(0);
+    expect(readFileSync(hook, "utf8")).toBe(managed);
+    copyFileSync(
+      new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
+      join(branch, ".pre-commit-config.yaml"),
+    );
+    copyFileSync(
+      new URL("../../etc/commitizen/.cz.toml", import.meta.url),
+      join(branch, ".cz.toml"),
+    );
+    const executed = spawnSync(hook, ["origin", remote], {
+      cwd: branch,
+      input: "",
+      encoding: "utf8",
+      timeout: 90_000,
+      env: {
+        ...process.env,
+        HOME: work,
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_NOSYSTEM: "1",
+      },
+    });
+    if (executed.error) throw executed.error;
+    expect(executed.status, executed.stderr).toBe(0);
+    expect(executed.stdout + executed.stderr).toContain(
+      "Check large source files",
+    );
+    const previous = run("git", ["rev-parse", "HEAD"], branch).stdout.trim();
+    expect(
+      run(
+        "git",
+        [
+          "-c",
+          "user.name=Fixture",
+          "-c",
+          "user.email=fixture@example.invalid",
+          "commit",
+          "-q",
+          "--allow-empty",
+          "-m",
+          "bad subject",
+        ],
+        branch,
+      ).status,
+    ).toBe(0);
+    const current = run("git", ["rev-parse", "HEAD"], branch).stdout.trim();
+    const blocked = spawnSync(hook, ["origin", remote], {
+      cwd: branch,
+      input: `refs/heads/topic ${current} refs/heads/topic ${previous}\n`,
+      encoding: "utf8",
+      timeout: 90_000,
+      env: {
+        ...process.env,
+        HOME: work,
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_NOSYSTEM: "1",
+      },
+    });
+    if (blocked.error) throw blocked.error;
+    expect(blocked.status).not.toBe(0);
+    expect(blocked.stdout + blocked.stderr).toContain("Invalid commit message");
+    expect(
+      run(
+        "git",
+        [
+          "-c",
+          "user.name=Fixture",
+          "-c",
+          "user.email=fixture@example.invalid",
+          "commit",
+          "-q",
+          "--amend",
+          "--allow-empty",
+          "-m",
+          "fix: valid message",
+        ],
+        branch,
+      ).status,
+    ).toBe(0);
+    const repaired = run("git", ["rev-parse", "HEAD"], branch).stdout.trim();
+    const allowed = spawnSync(hook, ["origin", remote], {
+      cwd: branch,
+      input: `refs/heads/topic ${repaired} refs/heads/topic ${previous}\n`,
+      encoding: "utf8",
+      timeout: 90_000,
+      env: {
+        ...process.env,
+        HOME: work,
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_NOSYSTEM: "1",
+      },
+    });
+    if (allowed.error) throw allowed.error;
+    expect(allowed.status, allowed.stderr).toBe(0);
+    writeFileSync(hook, "#!/bin/sh\nexit 0\n");
+    const refused = run(install, [], branch);
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain(
+      "Refusing to replace an existing pre-push hook",
+    );
+    expect(readFileSync(hook, "utf8")).toBe("#!/bin/sh\nexit 0\n");
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}, 180_000);
 
 it("generates an opt-in pre-push config without enabling fixes or changing other hooks", () => {
   const source = new URL("../../", import.meta.url);

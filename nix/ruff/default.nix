@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.ruff;
   target = "py${lib.replaceStrings [ "." ] [ "" ] config.quantile.python.package.pythonVersion}";
@@ -6,7 +11,11 @@ let
     name: includeUntracked: includeStubs: package: command:
     pkgs.writeShellApplication {
       inherit name;
-      runtimeInputs = [ package pkgs.git pkgs.coreutils ];
+      runtimeInputs = [
+        package
+        pkgs.git
+        pkgs.coreutils
+      ];
       text = ''
         cd "$(git rev-parse --show-toplevel)"
         paths=("$@")
@@ -19,7 +28,7 @@ let
         files=()
         while IFS= read -r -d "" file; do
           if [ -f "$file" ] && [ ! -L "$file" ] &&
-             [[ "$file" == *.py ${lib.optionalString includeStubs "|| \"$file\" == *.pyi"} ]]; then
+            [[ "$file" == *.py ${lib.optionalString includeStubs "|| \"$file\" == *.pyi"} ]]; then
             files+=("$file")
           fi
         done < "$scratch/paths"

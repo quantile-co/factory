@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.actionlint;
 in
@@ -19,7 +24,12 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-actionlint";
-        runtimeInputs = [ cfg.package config.quantile.shellcheck.package pkgs.findutils pkgs.git ];
+        runtimeInputs = [
+          cfg.package
+          config.quantile.shellcheck.package
+          pkgs.findutils
+          pkgs.git
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           config_args=()

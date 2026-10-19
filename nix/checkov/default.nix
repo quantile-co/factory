@@ -1,15 +1,23 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.checkov;
   # Isolate Checkov from the main package set: its current package has an
   # insecure ecdsa dependency. Do not allow insecure packages globally.
-  isolatedPackages = import (builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/b3da656039dc7a6240f27b2ef8cc6a3ef3bccae7.tar.gz";
-    sha256 = "sha256-I4puXmX1iovcCHZlRmztO3vW0mAbbRvq4F8wgIMQ1MM=";
-  }) {
-    inherit (pkgs.stdenv.hostPlatform) system;
-    config = { };
-  };
+  isolatedPackages =
+    import
+      (builtins.fetchTarball {
+        url = "https://github.com/NixOS/nixpkgs/archive/b3da656039dc7a6240f27b2ef8cc6a3ef3bccae7.tar.gz";
+        sha256 = "sha256-I4puXmX1iovcCHZlRmztO3vW0mAbbRvq4F8wgIMQ1MM=";
+      })
+      {
+        inherit (pkgs.stdenv.hostPlatform) system;
+        config = { };
+      };
 in
 {
   options.quantile.checkov = {
@@ -27,7 +35,12 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-checkov";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.jq pkgs.yq-go ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.jq
+          pkgs.yq-go
+        ];
         text = ''
           # Do not import a different Python's packages from the caller's shell.
           unset PYTHONPATH PYTHONHOME PYTHONUSERBASE

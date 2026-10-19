@@ -1,4 +1,10 @@
-{ config, inputs, lib, pkgs, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 let
   terraformSourceDir = "tf";
   terraformRoots = [ "tf/infrastructure" ];
@@ -16,6 +22,10 @@ in
     config.quantile.gcloud.package
     config.quantile.gh.package
     config.quantile.actionlint.package
+    config.quantile.git.lfs.package
+    config.quantile.git.prePush.package
+    config.quantile.prek.package
+    config.quantile.prek.tools.package
     config.quantile.shellcheck.package
     config.quantile.shfmt.package
     config.quantile.jq.package
@@ -38,6 +48,10 @@ in
 
   files = {
     ".editorconfig".source = config.quantile.editorconfig.configFile;
+    ".editorconfig-checker.json".source = config.quantile.editorconfig.checker.configFile;
+    ".markdownlint-cli2.jsonc".source = config.quantile.markdownlint-cli2.configFile;
+    ".pre-commit-config.yaml".source = config.quantile.prek.configFile;
+    ".cz.toml".source = config.quantile.commitizen.configFile;
     ".shellcheckrc".source = config.quantile.shellcheck.configFile;
     ".tflint.hcl".source = config.quantile.tflint.configFile;
     "taplo.toml".source = config.quantile.taplo.configFile;
@@ -58,6 +72,12 @@ in
   };
 
   tasks = {
+    "git:hooks:install" = {
+      description = "Explicitly install this worktree's checked pre-push hook (never a commit hook).";
+      after = [ "devenv:files" ];
+      exec = lib.getExe config.quantile.git.prePush.install.package;
+    };
+
     "check:all" = {
       description = "Run all checks.";
       after = [ "devenv:files" ];
@@ -67,10 +87,21 @@ in
           echo "Commit the Dependabot config copied from etc/dependabot/dependabot.yml." >&2
           exit 1
         }
-        ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} flake.lock devenv.lock factory
+        ${
+          lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
+        } flake.lock devenv.lock factory
         if [ "''${CI:-}" = true ]; then
-          ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} --git-index flake.lock devenv.lock factory
+          ${
+            lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
+          } --git-index flake.lock devenv.lock factory
         fi
+        ${lib.getExe config.quantile.prek.check.package}
+        ${lib.getExe config.quantile.nixfmt.check.package}
+        ${lib.getExe config.quantile.deadnix.check.package}
+        ${lib.getExe config.quantile.statix.check.package}
+        ${lib.getExe config.quantile.editorconfig.check.package}
+        ${lib.getExe config.quantile.markdownlint-cli2.check.package} '*.md' \
+          ':(exclude,glob).pi/memory/**'
         ${lib.getExe config.quantile.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.test.package}
         ${lib.getExe config.quantile.semgrep.check.package}
@@ -105,7 +136,9 @@ in
       after = [ "devenv:files" ];
       exec = ''
         TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.fix.package}
+        ${lib.getExe config.quantile.nixfmt.fix.package}
         ${lib.getExe config.quantile.taplo.fix.package}
+        ${lib.getExe config.quantile.editorconfig.fix.package}
         ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.pnpm.package} run fix
       '';

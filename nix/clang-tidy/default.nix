@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.clang-tidy;
 in
@@ -18,7 +23,13 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-clang-tidy";
-        runtimeInputs = [ cfg.package pkgs.coreutils pkgs.file pkgs.git pkgs.jq ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.coreutils
+          pkgs.file
+          pkgs.git
+          pkgs.jq
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           files=()

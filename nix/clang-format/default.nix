@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.clang-format;
   selectFiles = ''
@@ -29,15 +34,21 @@ let
       style=("--style=file:$CLANG_FORMAT_CONFIG")
     fi
   '';
-  runner = name: action: pkgs.writeShellApplication {
-    inherit name;
-    runtimeInputs = [ cfg.package pkgs.file pkgs.git ];
-    text = selectFiles + ''
-      for file in "''${files[@]}"; do
-        clang-format "''${style[@]}" ${action} -- "$file"
-      done
-    '';
-  };
+  runner =
+    name: action:
+    pkgs.writeShellApplication {
+      inherit name;
+      runtimeInputs = [
+        cfg.package
+        pkgs.file
+        pkgs.git
+      ];
+      text = selectFiles + ''
+        for file in "''${files[@]}"; do
+          clang-format "''${style[@]}" ${action} -- "$file"
+        done
+      '';
+    };
 in
 {
   options.quantile.clang-format = {

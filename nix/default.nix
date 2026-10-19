@@ -66,4 +66,5 @@ in
       imports = builtins.attrValues modules;
     };
   };
-} // import ./devenv { inherit inputs; }
+}
+// import ./devenv { inherit inputs; }

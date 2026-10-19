@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.gitleaks;
 in
@@ -13,7 +18,10 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-gitleaks";
-        runtimeInputs = [ pkgs.git cfg.package ];
+        runtimeInputs = [
+          pkgs.git
+          cfg.package
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           if [ "$(git rev-parse --is-shallow-repository)" != false ]; then

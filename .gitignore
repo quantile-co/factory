@@ -4,6 +4,10 @@
 /node_modules/
 .envrc.local
 /.editorconfig
+/.editorconfig-checker.json
+/.markdownlint-cli2.jsonc
+/.pre-commit-config.yaml
+/.cz.toml
 /.shellcheckrc
 /.tflint.hcl
 /taplo.toml

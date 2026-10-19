@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.conftest;
   prepare = import ../opa/policy.nix;
@@ -14,7 +19,13 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-opa";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.coreutils pkgs.findutils pkgs.jq ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.coreutils
+          pkgs.findutils
+          pkgs.jq
+        ];
         text = prepare + ''
           if (( ''${#workloads[@]} == 0 )); then
             echo "Pass workload Git pathspecs after --." >&2

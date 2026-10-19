@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.markdownlint-cli2;
 in
@@ -18,7 +23,11 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-markdown";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.coreutils ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.coreutils
+        ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
           config="''${MARKDOWNLINT_CONFIG_FILE:-.markdownlint-cli2.jsonc}"

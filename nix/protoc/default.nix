@@ -14,5 +14,8 @@
   };
 
   # Contribute defaults here so mkAfter can append and mkForce can replace them.
-  config.quantile.protoc.generators = [ pkgs.protoc-gen-go pkgs.protoc-gen-connect-go ];
+  config.quantile.protoc.generators = [
+    pkgs.protoc-gen-go
+    pkgs.protoc-gen-connect-go
+  ];
 }

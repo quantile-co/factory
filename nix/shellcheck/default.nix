@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.shellcheck;
 in
@@ -18,7 +23,11 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-shellcheck";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.coreutils ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.coreutils
+        ];
         text = ''
           set -euo pipefail
           cd "$(git rev-parse --show-toplevel)"
@@ -51,7 +60,10 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-shellcheck-task";
-        runtimeInputs = [ cfg.package pkgs.coreutils ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.coreutils
+        ];
         text = ''
           set -euo pipefail
           rc="''${SHELLCHECK_CONFIG_FILE:-.shellcheckrc}"

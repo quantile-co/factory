@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.taplo;
   select = ''
@@ -15,7 +20,11 @@ let
     done < <(git ls-files -z -- '*.toml')
     if [ "''${#files[@]}" -eq 0 ]; then exit 0; fi
   '';
-  tools = [ cfg.package pkgs.git pkgs.coreutils ];
+  tools = [
+    cfg.package
+    pkgs.git
+    pkgs.coreutils
+  ];
 in
 {
   options.quantile.taplo = {

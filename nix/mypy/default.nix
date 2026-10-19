@@ -1,11 +1,20 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.mypy;
   selected =
     name: package: command:
     pkgs.writeShellApplication {
       inherit name;
-      runtimeInputs = [ package pkgs.git pkgs.coreutils ];
+      runtimeInputs = [
+        package
+        pkgs.git
+        pkgs.coreutils
+      ];
       text = ''
         cd "$(git rev-parse --show-toplevel)"
         paths=("$@")
@@ -16,7 +25,7 @@ let
         files=()
         while IFS= read -r -d "" file; do
           if [ -f "$file" ] && [ ! -L "$file" ] &&
-             [[ "$file" == *.py || "$file" == *.pyi ]]; then
+            [[ "$file" == *.py || "$file" == *.pyi ]]; then
             files+=("$file")
           fi
         done < "$scratch/paths"

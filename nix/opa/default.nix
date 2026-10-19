@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.opa;
   prepare = import ./policy.nix;
@@ -14,7 +19,12 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "test-opa";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.coreutils pkgs.findutils ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.coreutils
+          pkgs.findutils
+        ];
         text = prepare + ''
           if (( ''${#workloads[@]} != 0 )); then
             echo "OPA unit tests do not accept workload pathspecs." >&2

@@ -1,5 +1,10 @@
 { devenvCli }:
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.secretspec;
   cli = devenvCli.packages.${pkgs.stdenv.hostPlatform.system}.default;

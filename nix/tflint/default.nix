@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.quantile.tflint;
 in
@@ -20,7 +25,11 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-tflint";
-        runtimeInputs = [ cfg.package pkgs.git pkgs.coreutils ];
+        runtimeInputs = [
+          cfg.package
+          pkgs.git
+          pkgs.coreutils
+        ];
         text = ''
           tf_dir="''${TF_DIR:-tf}"
           config="''${TFLINT_CONFIG_FILE:-$(git -C "$tf_dir" rev-parse --show-toplevel)/.tflint.hcl}"
