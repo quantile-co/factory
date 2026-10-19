@@ -18,6 +18,7 @@ let
     opa = import ./opa;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
     postgres = import ./postgres;
+    prettier = import ./prettier;
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = import ./semgrep;

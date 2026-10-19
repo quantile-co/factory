@@ -3,6 +3,7 @@
 # generate a copy with selected checks enabled. Install pre-push separately.
 # Fix hooks remain manual. Kubeconform needs local schemas; OPA hooks need
 # consumer policy/namespace args (Conftest also needs workload pathspecs).
+# Prettier needs a selected CLI and consumer-owned file pathspecs.
 default_stages: [pre-push]
 repos:
   - repo: local
@@ -120,6 +121,20 @@ repos:
       - id: opa-tests
         name: Run policy unit tests
         entry: test-opa
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: prettier
+        name: Check selected Prettier formats
+        entry: check-prettier
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: prettier-fix
+        name: Format selected tracked files explicitly
+        entry: fix-prettier
         language: system
         stages: [manual]
         pass_filenames: false
