@@ -38,6 +38,7 @@ in
     ".shellcheckrc".source = config.quantile.shellcheck.configFile;
     ".tflint.hcl".source = config.quantile.tflint.configFile;
     "taplo.toml".source = config.quantile.taplo.configFile;
+    "trivy.yaml".source = config.quantile.trivy.configFile;
     "biome.json".source = config.quantile.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
     ".github/dependabot.yml" = {
@@ -67,6 +68,7 @@ in
         ${lib.getExe config.quantile.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.test.package}
         ${lib.getExe config.quantile.semgrep.check.package}
+        ${lib.getExe config.quantile.trivy.check.package}
         ${lib.getExe config.quantile.taplo.check.package}
         ${lib.getExe config.quantile.taplo.format.package}
         git ls-files -z -- ${lib.escapeShellArg terraformSourceDir} |

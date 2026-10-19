@@ -72,6 +72,13 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: trivy
+        name: Scan repository source
+        entry: check-trivy
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: taplo
         name: Validate TOML source
         entry: check-taplo
