@@ -52,6 +52,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
     };
     const source = join(work, "source with spaces/example.txt");
     const excluded = join(work, "excluded/example.txt");
+    const cpp = join(work, "example.cpp");
     const binary = join(work, "binary.bin");
     const external = join(
       tmpdir(),
@@ -78,6 +79,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
       `${JSON.stringify(checkerConfig)}\n`,
     );
     writeFileSync(source, "first\n  second\n");
+    writeFileSync(cpp, "int main() {\n  return 0;\n}\n");
     writeFileSync(excluded, "excluded without newline");
     writeFileSync(join(work, "devenv.lock"), "lock without newline");
     writeFileSync(binary, Buffer.from([0, 1, 2]));
@@ -89,6 +91,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
       ".editorconfig",
       ".editorconfig-checker.json",
       "source with spaces/example.txt",
+      "example.cpp",
       "excluded/example.txt",
       "devenv.lock",
       "binary.bin",
@@ -98,6 +101,10 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
     const fix = join(build("fix"), "bin/fix-editorconfig-eof");
     const original = readFileSync(source);
     try {
+      const twoSpaces = run(check);
+      expect(twoSpaces.status).not.toBe(0);
+      expect(twoSpaces.output).toContain("example.cpp");
+      writeFileSync(cpp, "int main() {\n    return 0;\n}\n");
       expect(run(check).status).toBe(0);
       writeFileSync(source, original.subarray(0, -1));
       const failing = run(check);

@@ -500,3 +500,21 @@ commits first, then pin the organization consumer to the final latest reviewed
 Factory main SHA, including documentation-only commits. Do not deliberately
 leave the consumer on an earlier implementation-only SHA. Keep its flake/Devenv
 pins and locks, workflow callers and Terraform module references aligned.
+
+#decision [[factory-clang]] [[factory-config-layout]] [[factory-native-config]]
+For C/C++ consumers, Factory exports separate opt-in package selectors at
+`nix/{bear,cmake,meson,ninja,pkg-config,gdb,valgrind}/default.nix`; each is
+overridable and exposes the real Nixpkgs tool without import-time installation,
+config generation, checks or hooks. GDB and Valgrind remain platform-dependent.
+The shared native EditorConfig template sets four-space indentation for C/C++
+source and headers. The native Prek template offers read-only `clang-format`
+and `clang-tidy` manual hooks; consumers may select them with
+`quantile.prek.withPrePush [ "clang-format" "clang-tidy" ]` after explicitly
+providing their checker executables and native Clang configs. Clang-tidy still
+requires a consumer-owned compilation database for tracked translation units;
+fixes never run as pre-push hooks. Factory itself does not enable these hooks.
+A focused EditorConfig consumer rejects two-space C++ indentation; per-tool
+smoke tests build/run the tool and confirm package overrides. The Pi native
+skill smoke now reads its public skill files during Nix evaluation rather than
+relying on an unrealized store path after evaluation. Local flake check and
+`devenv tasks run test:all` passed; no production workflow ran.

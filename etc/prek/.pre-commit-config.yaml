@@ -45,6 +45,20 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: clang-format
+        name: Check C/C++ formatting
+        entry: check-clang-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: clang-tidy
+        name: Analyze C/C++ translation units
+        entry: check-clang-tidy
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: check-executables-have-shebangs
         name: Check executable shebangs
         entry: check-executables-have-shebangs

@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { expect, it } from "vitest";
 
 it("exposes readable native Pi settings and shared skills to a consumer", () => {
@@ -17,7 +16,13 @@ it("exposes readable native Pi settings and shared skills to a consumer", () => 
       `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
          pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
          cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.pi ]; specialArgs = { inherit pkgs; }; }).config;
-     in builtins.toJSON { settings = builtins.readFile cfg.quantile.pi.settingsFile; skills = toString cfg.quantile.pi.skillsDir; }`,
+     in builtins.toJSON {
+       settings = builtins.readFile cfg.quantile.pi.settingsFile;
+       skills = {
+         deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/deploy/SKILL.md");
+         day-zero-deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/day-zero-deploy/SKILL.md");
+       };
+     }`,
     ],
     { encoding: "utf8", timeout: 120_000 },
   );
@@ -33,7 +38,13 @@ it("exposes readable native Pi settings and shared skills to a consumer", () => 
     ),
   );
   for (const name of ["deploy", "day-zero-deploy"]) {
-    const skill = readFileSync(join(resolved.skills, name, "SKILL.md"), "utf8");
+    const skill = resolved.skills[name];
+    expect(skill).toBe(
+      readFileSync(
+        new URL(`../../etc/pi/skills/${name}/SKILL.md`, import.meta.url),
+        "utf8",
+      ),
+    );
     expect(skill).toContain(`name: ${name}`);
     expect(skill).toContain("existing");
   }

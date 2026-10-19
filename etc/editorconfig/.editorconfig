@@ -19,6 +19,10 @@ indent_size = 4
 simplify = true
 switch_case_indent = true
 
+[*.{c,h,cpp,hpp,cc,hh,cxx,hxx}]
+indent_style = space
+indent_size = 4
+
 [*.{yaml,yml,nix}]
 indent_style = space
 indent_size = 2

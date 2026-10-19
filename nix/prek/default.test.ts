@@ -107,3 +107,44 @@ it("runs strict JSON checks from one consumer-owned Prek config without installi
     rmSync(repo, { recursive: true, force: true });
   }
 }, 150_000);
+
+it("offers read-only Clang hooks as explicit pre-push selections", () => {
+  const root = new URL("../../", import.meta.url);
+  const original = readFileSync(
+    new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
+    "utf8",
+  );
+  for (const [id, command] of [
+    ["clang-format", "check-clang-format"],
+    ["clang-tidy", "check-clang-tidy"],
+  ]) {
+    expect(original).toContain(`- id: ${id}\n`);
+    expect(original).toContain(
+      `entry: ${command}\n        language: system\n        stages: [manual]`,
+    );
+  }
+  const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
+    pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    cfg = (pkgs.lib.evalModules {
+      modules = [ f.nixModules.prek ]; specialArgs = { inherit pkgs; };
+    }).config.quantile.prek;
+    in cfg.withPrePush [ "clang-format" "clang-tidy" ]`;
+  const built = spawnSync(
+    "nix",
+    ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
+    { encoding: "utf8", timeout: 120_000 },
+  );
+  if (built.error) throw built.error;
+  expect(built.status, built.stderr).toBe(0);
+  const selected = readFileSync(built.stdout.trim(), "utf8");
+  for (const [id, command] of [
+    ["clang-format", "check-clang-format"],
+    ["clang-tidy", "check-clang-tidy"],
+  ]) {
+    expect(selected).toContain(`- id: ${id}\n`);
+    expect(selected).toContain(
+      `entry: ${command}\n        language: system\n        stages: [pre-push]`,
+    );
+  }
+  expect(original).toContain("stages: [manual]");
+}, 150_000);

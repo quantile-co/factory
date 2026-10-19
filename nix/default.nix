@@ -2,11 +2,13 @@
 let
   modules = {
     actionlint = ./actionlint;
+    bear = ./bear;
     biome = ./biome;
     buf = ./buf;
     checkov = ./checkov;
     clang-format = ./clang-format;
     clang-tidy = ./clang-tidy;
+    cmake = ./cmake;
     commitizen = ./commitizen;
     conftest = ./conftest;
     deadnix = ./deadnix;
@@ -15,6 +17,7 @@ let
     editorconfig = ./editorconfig;
     emscripten = ./emscripten;
     gcloud = ./gcloud;
+    gdb = ./gdb;
     gh = ./gh;
     git = ./git;
     gitleaks = ./gitleaks;
@@ -27,14 +30,17 @@ let
     keep-sorted = ./keep-sorted;
     lnav = ./lnav;
     markdownlint-cli2 = ./markdownlint-cli2;
+    meson = ./meson;
     mypy = ./mypy;
     nix = ./nix;
+    ninja = ./ninja;
     nixfmt = ./nixfmt;
     nodejs = ./nodejs;
     nss = ./nss;
     opa = ./opa;
     opentofu = ./opentofu;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
+    pkg-config = ./pkg-config;
     pnpm = ./pnpm;
     postgresql = ./postgresql;
     prek = ./prek;
@@ -55,6 +61,7 @@ let
     typos = ./typos;
     uv = ./uv;
     vale = ./vale;
+    valgrind = ./valgrind;
     wabt = ./wabt;
     wasm-tools = ./wasm-tools;
     yamllint = ./yamllint;
