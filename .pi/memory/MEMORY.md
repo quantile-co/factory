@@ -425,3 +425,12 @@ existing installation may run Day Zero. `check-devenv-locks` accepts
 Factory's root comparison remains the default. A consumer must still check the
 actual installed state and specific pinned caller contract before any Plan or
 Apply. The local migration and new shared skills are not production approval.
+The shared-skills commit f9d2ea3ff305cdd56bc43cf98af8a3d258e3e401 passed exact-head Check 39215885727 and was fast-forwarded to main without a manual Test or production Plan/Apply.
+
+#decision [[factory-markdown]] [[factory-downstream-github]]
+The user chose one upstream Markdownlint native policy instead of a downstream
+`.markdownlint-cli2.jsonc` fork: disable MD013 line-length enforcement in
+`etc/markdownlint-cli2/.markdownlint-cli2.jsonc` so the approved organization
+profile can remain unchanged. Other shared Markdown rules remain enabled.
+Consumers needing stricter line-length policy may opt in through their own
+native configuration, but this consumer uses the upstream template link.

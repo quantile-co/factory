@@ -89,14 +89,14 @@ it("lints selected Markdown read-only with consumer-native rule overrides", () =
     expect(readFileSync(selected, "utf8")).toBe(duplicate);
     writeFileSync(selected, accepted);
     const longLine =
-      "This is a readable line that exceeds the consumer's stricter limit.\n";
+      '<picture><img src="https://example.org/approved-profile/path?section=long-navigation-and-public-assets" alt="Public organization profile artwork" /></picture>\n';
     writeFileSync(selected, `# Guide\n\n${longLine}`);
     expect(run(check, ["files/*.md"]).status).toBe(0);
     writeFileSync(
       config,
       readFileSync(config, "utf8").replace(
-        '"line_length": 120',
-        '"line_length": 40',
+        '"MD013": false',
+        '"MD013": { "line_length": 40 }',
       ),
     );
     const strict = run(check, ["files/*.md"]);
