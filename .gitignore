@@ -8,6 +8,7 @@
 /.tflint.hcl
 /taplo.toml
 /trivy.yaml
+/typos.toml
 /biome.json
 /.github/actionlint.yaml
 gha-creds-*.json

@@ -1,0 +1,20 @@
+[default]
+extend-ignore-re = [
+  "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+  "[0-9a-fA-F]{32,}",
+]
+
+[files]
+# Git selects tracked and nonignored untracked files, including hidden source.
+extend-exclude = [
+  "*.lock",
+  "devenv.lock",
+  "pnpm-lock.yaml",
+  "package-lock.json",
+  # Factory's agent instructions, negative-rule fixtures, and vendored prose styles.
+  "**/AGENTS.md",
+  "nix/**/fixtures/**",
+  "etc/vale/styles/Google/**",
+]
+ignore-files = false
+ignore-hidden = false

@@ -50,6 +50,7 @@ let
     tflint = ./tflint;
     trivy = ./trivy;
     typescript = ./typescript;
+    typos = ./typos;
     uv = ./uv;
   };
 in

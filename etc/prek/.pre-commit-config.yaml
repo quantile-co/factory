@@ -72,6 +72,13 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: typos
+        name: Check source spelling
+        entry: check-typos
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: typescript
         name: Check selected TypeScript projects
         entry: check-typescript
