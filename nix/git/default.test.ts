@@ -21,13 +21,13 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
   const remote = join(work, "remote with spaces.git");
   mkdirSync(repo);
   try {
-    const build = (selector: string) => {
+    const build = (tool: "git" | "prek", selector: string) => {
       const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${source.href}`)};
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.git ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.git.${selector}.package`;
+      }).config.quantile.${tool}.${selector ? `${selector}.` : ""}package`;
       const result = spawnSync(
         "nix",
         [
@@ -46,11 +46,11 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
       expect(result.status, result.stderr).toBe(0);
       return result.stdout.trim().split("\n")[0];
     };
-    const check = join(build("check"), "bin/check-git-hooks");
-    const push = join(build("prePush"), "bin/checked-git-lfs-pre-push");
-    const lfs = join(build("lfs"), "bin/git-lfs");
-    const prek = join(build("prek"), "bin/prek");
-    const tools = join(build("hooks.tools"), "bin");
+    const check = join(build("prek", "check"), "bin/check-git-hooks");
+    const push = join(build("git", "prePush"), "bin/checked-git-lfs-pre-push");
+    const lfs = join(build("git", "lfs"), "bin/git-lfs");
+    const prek = join(build("prek", ""), "bin/prek");
+    const tools = join(build("prek", "tools"), "bin");
     const env = {
       ...process.env,
       HOME: work,
@@ -81,11 +81,11 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
     };
 
     copyFileSync(
-      new URL("../../etc/git/.pre-commit-config.yaml", import.meta.url),
+      new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
       join(repo, ".pre-commit-config.yaml"),
     );
     copyFileSync(
-      new URL("../../etc/git/.cz.toml", import.meta.url),
+      new URL("../../etc/commitizen/.cz.toml", import.meta.url),
       join(repo, ".cz.toml"),
     );
     writeFileSync(
@@ -188,15 +188,15 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
 it("generates an opt-in pre-push config without enabling fixes or changing other hooks", () => {
   const source = new URL("../../", import.meta.url);
   const template = readFileSync(
-    new URL("../../etc/git/.pre-commit-config.yaml", import.meta.url),
+    new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
     "utf8",
   );
   const buildConfig = (ids: string[]) => {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${source.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
-      modules = [ f.nixModules.git ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.git.hooks.withPrePush [ ${ids.map((id) => JSON.stringify(id)).join(" ")} ]`;
+      modules = [ f.nixModules.prek ]; specialArgs = { inherit pkgs; };
+    }).config.quantile.prek.withPrePush [ ${ids.map((id) => JSON.stringify(id)).join(" ")} ]`;
     const result = spawnSync(
       "nix",
       [
@@ -234,7 +234,7 @@ it("generates an opt-in pre-push config without enabling fixes or changing other
   );
   expect(
     readFileSync(
-      new URL("../../etc/git/.pre-commit-config.yaml", import.meta.url),
+      new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
       "utf8",
     ),
   ).toBe(template);

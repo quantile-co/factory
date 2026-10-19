@@ -60,12 +60,12 @@ deny contains "unselected policy loaded"
       run("git", ["init", "--quiet", "--initial-branch=main"]).status,
     ).toBe(0);
     expect(run("git", ["add", "."]).status).toBe(0);
-    const build = (selector: string) => {
+    const build = (tool: "opa" | "conftest", selector: string) => {
       const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
-        modules = [ f.nixModules.opa ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.opa.${selector}.package`;
+        modules = [ f.nixModules.${tool} ]; specialArgs = { inherit pkgs; };
+      }).config.quantile.${tool}.${selector}.package`;
       const built = run(
         "nix",
         [
@@ -83,8 +83,8 @@ deny contains "unselected policy loaded"
       expect(built.status, built.output).toBe(0);
       return built.stdout.trim();
     };
-    const check = join(build("check"), "bin/check-opa");
-    const test = join(build("test"), "bin/test-opa");
+    const check = join(build("conftest", "check"), "bin/check-opa");
+    const test = join(build("opa", "test"), "bin/test-opa");
     const args = [
       "--policy",
       "policy",

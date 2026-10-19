@@ -10,18 +10,17 @@ in
   ];
 
   packages = [
-    config.quantile.tf.opentofu.package
-    config.quantile.gcp.gcloud.package
-    config.quantile.github.gh.package
-    config.quantile.github.actionlint.package
-    config.quantile.json.jq.package
+    config.quantile.opentofu.package
+    config.quantile.gcloud.package
+    config.quantile.gh.package
+    config.quantile.actionlint.package
+    config.quantile.jq.package
     config.quantile.pi.package
-    config.quantile.pi.npm.package
+    config.quantile.nodejs.package
     config.quantile.qmd.package
-    config.quantile.ts.node.package
-    config.quantile.ts.pnpm.package
-    config.quantile.tf.conftest.package
-    config.quantile.tf.trivy.package
+    config.quantile.pnpm.package
+    config.quantile.conftest.package
+    config.quantile.trivy.package
     config.quantile.semgrep.package
     config.quantile.secretspec.package
   ];
@@ -32,10 +31,10 @@ in
 
   files = {
     ".editorconfig".source = config.quantile.editorconfig.configFile;
-    "biome.json".source = config.quantile.ts.biome.configFile;
-    ".github/actionlint.yaml".source = config.quantile.github.actionlint.configFile;
+    "biome.json".source = config.quantile.biome.configFile;
+    ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
     ".github/dependabot.yml" = {
-      source = config.quantile.github.dependabot.configFile;
+      source = inputs.factory.outPath + "/etc/dependabot/dependabot.yml";
       copyMode = "copy";
     };
     ".pi/settings.json".source = config.quantile.pi.settingsFile;
@@ -50,25 +49,25 @@ in
       after = [ "devenv:files" ];
       exec = ''
         ${lib.getExe pkgs.nix} flake check .
-        ${lib.getExe pkgs.git} show :.github/dependabot.yml | ${lib.getExe' pkgs.diffutils "cmp"} -s - etc/github/dependabot.yml || {
-          echo "Commit the Dependabot config copied from etc/github/dependabot.yml." >&2
+        ${lib.getExe pkgs.git} show :.github/dependabot.yml | ${lib.getExe' pkgs.diffutils "cmp"} -s - etc/dependabot/dependabot.yml || {
+          echo "Commit the Dependabot config copied from etc/dependabot/dependabot.yml." >&2
           exit 1
         }
         ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} flake.lock devenv.lock factory
         if [ "''${CI:-}" = true ]; then
           ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} --git-index flake.lock devenv.lock factory
         fi
-        ${lib.getExe config.quantile.github.actionlint.check.package}
+        ${lib.getExe config.quantile.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.check.package}
-        ${lib.getExe config.quantile.tf.opentofu.package} -chdir=${lib.escapeShellArg terraformSourceDir} fmt -check -recursive
+        ${lib.getExe config.quantile.opentofu.package} -chdir=${lib.escapeShellArg terraformSourceDir} fmt -check -recursive
         ${lib.concatMapStringsSep "\n" (root: ''
-          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.tf.check.package}
+          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package}
         '') terraformRoots}
-        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/infrastructure --namespace terraform.infrastructure tf/infrastructure/main.tf
-        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/modules/project/github --namespace terraform.project.github tf/modules/project/github/main.tf
-        ${lib.getExe config.quantile.tf.conftest.package} test --no-color --policy tf/modules/project/gcp --namespace terraform.project.gcp tf/modules/project/gcp/main.tf
-        ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
-        ${lib.getExe config.quantile.ts.pnpm.package} run check
+        ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/infrastructure --namespace terraform.infrastructure tf/infrastructure/main.tf
+        ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/modules/project/github --namespace terraform.project.github tf/modules/project/github/main.tf
+        ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/modules/project/gcp --namespace terraform.project.gcp tf/modules/project/gcp/main.tf
+        ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
+        ${lib.getExe config.quantile.pnpm.package} run check
       '';
     };
 
@@ -76,9 +75,9 @@ in
       description = "Run all fixes.";
       after = [ "devenv:files" ];
       exec = ''
-        TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.tf.fix.package}
-        ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
-        ${lib.getExe config.quantile.ts.pnpm.package} run fix
+        TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.fix.package}
+        ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
+        ${lib.getExe config.quantile.pnpm.package} run fix
       '';
     };
 
@@ -86,21 +85,21 @@ in
       description = "Run all tests.";
       after = [ "check:all" ];
       exec = ''
-        ${lib.getExe config.quantile.ts.pnpm.package} install --frozen-lockfile --ignore-scripts
-        ${lib.getExe config.quantile.ts.pnpm.package} test
+        ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
+        ${lib.getExe config.quantile.pnpm.package} test
       '';
     };
 
     "plan:infrastructure" = {
       description = "Plan infrastructure.";
       env.TF_DIR = "tf/infrastructure";
-      exec = lib.getExe config.quantile.tf.plan.gcs.package;
+      exec = lib.getExe config.quantile.opentofu.plan.gcs.package;
     };
 
     "apply:infrastructure" = {
       description = "Apply infrastructure.";
       env.TF_DIR = "tf/infrastructure";
-      exec = lib.getExe config.quantile.tf.apply.gcs.package;
+      exec = lib.getExe config.quantile.opentofu.apply.gcs.package;
     };
   };
 }

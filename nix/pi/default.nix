@@ -8,12 +8,6 @@
       description = "Pi coding agent.";
     };
 
-    npm.package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.nodejs_24;
-      description = "Node.js with npm for Pi packages.";
-    };
-
     resourcesDir = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/pi;

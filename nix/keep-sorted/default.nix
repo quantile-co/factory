@@ -3,7 +3,7 @@ let
   cfg = config.quantile.keep-sorted;
   hook = mode: pkgs.writeShellApplication {
     name = if mode == "lint" then "check-keep-sorted" else "fix-keep-sorted";
-    runtimeInputs = [ cfg.package cfg.prek.package pkgs.git pkgs.yq-go ];
+    runtimeInputs = [ cfg.package config.quantile.prek.package pkgs.git pkgs.yq-go ];
     text = ''
       cd "$(git rev-parse --show-toplevel)"
       config="''${GIT_HOOKS_CONFIG:-.pre-commit-config.yaml}"
@@ -29,16 +29,12 @@ let
   };
 in
 {
+  imports = [ ../prek ];
   options.quantile.keep-sorted = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.keep-sorted;
       description = "keep-sorted CLI; sorting options belong in source annotations.";
-    };
-    prek.package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.prek;
-      description = "Prek hook runner.";
     };
     check.package = lib.mkOption {
       type = lib.types.package;

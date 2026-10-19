@@ -38,7 +38,7 @@ it("checks annotated blocks read-only and fixes only selected tracked text on re
     );
     symlinkSync(external, join(repo, "linked.txt"));
     copyFileSync(
-      new URL("../../etc/git/.pre-commit-config.yaml", import.meta.url),
+      new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),
       config,
     );
     const run = (command: string, args: string[] = []) => {
