@@ -20,6 +20,7 @@ let
     postgres = import ./postgres;
     prettier = import ./prettier;
     protobuf = import ./protobuf;
+    python = import ./python;
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = import ./semgrep;

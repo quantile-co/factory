@@ -139,6 +139,34 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: ruff
+        name: Check Python lint
+        entry: check-python-ruff
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: ruff-format
+        name: Check Python formatting
+        entry: check-python-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: mypy
+        name: Check Python types
+        entry: check-python-mypy
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: ruff-fix
+        name: Fix tracked Python lint and formatting explicitly
+        entry: fix-python
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: commitizen
         name: Conventional Commits
         entry: cz --config .cz.toml check --allow-abort --commit-msg-file
