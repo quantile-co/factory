@@ -11,6 +11,7 @@ in
 
   packages = [
     config.quantile.opentofu.package
+    config.quantile.tflint.package
     config.quantile.gcloud.package
     config.quantile.gh.package
     config.quantile.actionlint.package
@@ -34,6 +35,7 @@ in
   files = {
     ".editorconfig".source = config.quantile.editorconfig.configFile;
     ".shellcheckrc".source = config.quantile.shellcheck.configFile;
+    ".tflint.hcl".source = config.quantile.tflint.configFile;
     "biome.json".source = config.quantile.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
     ".github/dependabot.yml" = {
@@ -63,9 +65,14 @@ in
         ${lib.getExe config.quantile.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.test.package}
         ${lib.getExe config.quantile.semgrep.check.package}
-        ${lib.getExe config.quantile.opentofu.package} -chdir=${lib.escapeShellArg terraformSourceDir} fmt -check -recursive
+        git ls-files -z -- ${lib.escapeShellArg terraformSourceDir} |
+          while IFS= read -r -d "" file; do
+            case "$file" in *.tf|*.tofu) printf '%s\0' "$file" ;; esac
+          done | xargs -0 -r ${lib.getExe config.quantile.opentofu.nonempty.package}
+        TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.format.package}
         ${lib.concatMapStringsSep "\n" (root: ''
           TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package}
+          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.tflint.check.package}
         '') terraformRoots}
         ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/infrastructure --namespace terraform.infrastructure tf/infrastructure/main.tf
         ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/modules/project/github --namespace terraform.project.github tf/modules/project/github/main.tf

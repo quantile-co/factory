@@ -46,6 +46,7 @@ let
     shellcheck = ./shellcheck;
     shfmt = ./shfmt;
     statix = ./statix;
+    tflint = ./tflint;
     trivy = ./trivy;
     uv = ./uv;
   };

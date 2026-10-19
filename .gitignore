@@ -5,6 +5,7 @@
 .envrc.local
 /.editorconfig
 /.shellcheckrc
+/.tflint.hcl
 /biome.json
 /.github/actionlint.yaml
 gha-creds-*.json

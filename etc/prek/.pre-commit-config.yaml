@@ -72,6 +72,41 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: opentofu-nonempty
+        name: Check nonempty Terraform source
+        entry: check-terraform-nonempty
+        language: system
+        stages: [manual]
+        types: [file]
+        files: '\.(tf|tofu)$'
+      - id: opentofu-format
+        name: Check Terraform formatting
+        entry: check-terraform-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: opentofu
+        name: Backend-free OpenTofu validation
+        entry: check-terraform
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: tflint
+        name: Lint Terraform source
+        entry: check-tflint
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: opentofu-fix
+        name: Format tracked Terraform source explicitly
+        entry: fix-terraform
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: check-json
         name: Check strict JSON
         entry: check-json
