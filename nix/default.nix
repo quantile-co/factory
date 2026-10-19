@@ -49,6 +49,7 @@ let
     taplo = ./taplo;
     tflint = ./tflint;
     trivy = ./trivy;
+    typescript = ./typescript;
     uv = ./uv;
   };
 in
