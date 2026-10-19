@@ -352,3 +352,7 @@ Factory's coordinated tool-first refactor replaces the old domain bundles with r
 <!-- 2026-10-18 19:34:06 [01a14275] -->
 #verification #decision [[factory-tool-first]] [[factory-native-config]]
 Independent post-refactor inventory of `nix/default.nix`, tool modules and `etc/` found no remaining domain-named bundle to split. EditorConfig Checker and its EOF fixer intentionally share EditorConfig's file/exclusion contract; Git/LFS retains guarded pre-push order; Prek's tool package supplies its hook template. `GIT_PRE_PUSH_LEGACY` is still a supported optional chained-hook input, not a reason to bring back the earlier hook registry. Keep option descriptions about current behavior rather than migration rationale. The ten remaining old-module reviews and the separate consuming `devenv.nix` execution audit remain open.
+
+<!-- 2026-10-18 19:43:12 [01a14275] -->
+#verification [[factory-tool-first]] [[factory-batched-ci]]
+Tool-first ports and the independent module/description audit landed on main at 9b4671316cd425daec21ca1d64b915a8bb2d19b0 after exact-head Check 39186137966. Manual main Test 39186365743 passed. The ten remaining old-module reviews, downstream option migration and final consuming `devenv.nix` execution audit are not finished. No production Plan/Apply was run for this batch.
