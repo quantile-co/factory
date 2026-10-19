@@ -206,8 +206,8 @@ port. The old Update workflow and its policy harness are superseded by
 Dependabot and current checks. Do not port the old Build merely for caching.
 Top-level `tf/` was reviewed; old `devenv/tf/` is a distinct pending directory.
 The pending inventory includes old
-`devenv/{postgres,prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
-`devenv/{c,checkov,duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa}/`, `secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
+`devenv/{prettier,protobuf,python,semgrep,shell,tf,toml,trivy,ts,typos,vale,wasm,yaml}/`.
+`devenv/{c,checkov,duckdb,editorconfig,gcp,git,github,go,json,k8s,keep-sorted,logs,markdown,nix,opa,postgres}/`, `secretspec.toml` and `devenv/secrets/` were reviewed and selectively ported.
 Existing tool modules do not mean the remaining directories were all reviewed.
 Consumer integrations and unrelated infrastructure migrations remain separate.
 
@@ -287,6 +287,9 @@ Old `devenv/keep-sorted` installed overridable keep-sorted, registered read-only
 
 #decision [[factory-logs]] [[factory-native-config]]
 Old `devenv/logs` was an opt-in, overridable `pkgs.lnav` installation with only a credential-free `lnav -V` enterTest. It had no log paths, static formats/preferences, tasks, hooks, reading at startup, or inline policy to migrate to `etc/`. Factory's `nix/logs/default.nix` exposes `quantile.logs.lnav.package` without installing/running it; consuming repositories opt into their own shell and decide which logs to open. Its one colocated consumer test runs the pinned `lnav -V` in an isolated HOME without opening a log. `lnav -V` itself creates per-user writable `.lnav` state, which is not a static Factory asset. No wrapper, central registry or tautological Nix-only tests. The final [[devm-nix-final-audit]] should confirm any downstream that previously enabled this tool now explicitly installs it.
+
+#decision [[factory-postgres]] [[factory-native-config]]
+Old `devenv/postgres` only installed overridable PostgreSQL and NSS tools when enabled and smoke-checked `psql --version`, `postgres --version` and executable `certutil` on enterTest. It explicitly enabled no database service, initialized no database, contacted no server and created no NSS certificate store. Factory's `nix/postgres/default.nix` exposes opt-in `quantile.postgres.package` (default PostgreSQL) and `quantile.postgres.nss.package` (default `pkgs.nssTools` tools output). Consumers explicitly install them; any native `postgresql.conf`, service, cluster or NSS database is consumer-owned, not a static Factory default. No old inline configuration, hook or task warranted an `etc/postgres` asset, new wrapper or central registry. The focused consumer test runs real client/server version commands and certutil help in an isolated HOME with uninitialized PGDATA, confirming neither database nor certificate-store files are created. [[devenv-nix-final-audit]] should verify any downstream previously using the old opt-in explicitly selects both packages if still needed.
 
 #decision [[factory-prek-hook-ids]] [[factory-native-config]]
 The single optional Prek template uses plain tool-oriented IDs without a `quantile-` prefix: `check-vcs-permalinks`, `gitleaks`, `check-json`, `kubeconform`, `keep-sorted`, `keep-sorted-fix`, and `markdown`. Generic third-party hook IDs (`check-added-large-files`, `commitizen`, etc.) stay unchanged. IDs are selectors, not executable names: entries may still call Factory-provided binaries such as `quantile-git-gitleaks` where executable names avoid host collisions. Keep wrapper selectors, tests and downstream hook wiring in sync when IDs change; no added registry or implicit hook installation.
