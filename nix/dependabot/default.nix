@@ -20,6 +20,32 @@ in
       default = ../../etc/dependabot/dependabot.yml;
       description = "Native Dependabot policy template.";
     };
+    check.package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.writeShellApplication {
+        name = "check-dependabot";
+        runtimeInputs = [
+          pkgs.git
+          pkgs.coreutils
+          pkgs.diffutils
+        ];
+        text = ''
+          if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
+            echo 'Usage: check-dependabot EXPECTED_FILE' >&2
+            exit 2
+          fi
+          expected=$(realpath -- "$1")
+          cd "$(git rev-parse --show-toplevel)"
+          # Check the index: a generated working-copy repair must not hide drift.
+          git show :.github/dependabot.yml | cmp -s - "$expected" || {
+            echo 'Commit the selected Dependabot configuration.' >&2
+            exit 1
+          }
+        '';
+      };
+      description = "Compare the indexed Dependabot configuration with a selected native file.";
+    };
+
     withUpdates = lib.mkOption {
       type = lib.types.functionTo lib.types.path;
       default =

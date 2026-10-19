@@ -88,10 +88,12 @@ else
                 ];
                 text = ''
                   index=false
+                  ci=false
                   flake_input=""
                   while [ "$#" -gt 0 ]; do
                     case "$1" in
                       --git-index) index=true; shift ;;
+                      --ci) ci=true; shift ;;
                       --flake-input)
                         [ "$#" -ge 2 ] || { echo 'Missing --flake-input value' >&2; exit 2; }
                         flake_input="$2"; shift 2 ;;
@@ -99,7 +101,7 @@ else
                     esac
                   done
                   if [ "$#" -ne 3 ]; then
-                    echo "Usage: check-devenv-locks [--git-index] [--flake-input name] <flake.lock> <devenv.lock> <devenv-input-name>" >&2
+                    echo "Usage: check-devenv-locks [--ci | --git-index] [--flake-input name] <flake.lock> <devenv.lock> <devenv-input-name>" >&2
                     exit 2
                   fi
                   flake_lock=$1
@@ -126,6 +128,11 @@ else
                   ' "$flake_lock" "$devenv_lock" > /dev/null; then
                     echo "Source flake inputs and followed devenv inputs differ; synchronize both locks." >&2
                     exit 1
+                  fi
+                  # --ci checks the working copy everywhere and also the index in CI.
+                  # Keep --git-index as an explicit index-only check.
+                  if [ "$ci" = true ] && [ "$index" = false ] && [ "''${CI:-}" = true ]; then
+                    "$0" --git-index --flake-input "$flake_input" "$flake_lock" "$devenv_lock" "$input_name"
                   fi
                 '';
               };

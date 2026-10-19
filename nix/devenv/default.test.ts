@@ -228,16 +228,48 @@ it("checks a consumer's nested Factory pins without accepting lock drift", () =>
     const devenvPath = join(work, "devenv.lock");
     writeFileSync(flakePath, JSON.stringify(flake));
     writeFileSync(devenvPath, JSON.stringify(devenv));
-    const check = () =>
+    const check = (ci = "false", mode = "--ci") =>
       spawnSync(
         command,
-        ["--flake-input", "factory", flakePath, devenvPath, "factory"],
-        { encoding: "utf8", timeout: 30_000 },
+        [
+          mode,
+          "--flake-input",
+          "factory",
+          "flake.lock",
+          "devenv.lock",
+          "factory",
+        ],
+        {
+          cwd: work,
+          env: { ...process.env, CI: ci },
+          encoding: "utf8",
+          timeout: 30_000,
+        },
       );
     expect(check().status).toBe(0);
     devenv.nodes.devenv = { ...pin, locked: { rev: "other" } };
     writeFileSync(devenvPath, JSON.stringify(devenv));
     expect(check().status).not.toBe(0);
+
+    // A working-copy repair must not hide a bad indexed pin in CI.
+    expect(spawnSync("git", ["init", "-q"], { cwd: work }).status).toBe(0);
+    expect(
+      spawnSync("git", ["add", "flake.lock", "devenv.lock"], { cwd: work })
+        .status,
+    ).toBe(0);
+    devenv.nodes.devenv = pin;
+    writeFileSync(devenvPath, JSON.stringify(devenv));
+    expect(check().status).toBe(0);
+    expect(check("true").status).not.toBe(0);
+    expect(check("false", "--git-index").status).not.toBe(0);
+    expect(spawnSync("git", ["add", "devenv.lock"], { cwd: work }).status).toBe(
+      0,
+    );
+    const aligned = check("true");
+    expect(aligned.status, aligned.stdout + aligned.stderr).toBe(0);
+    devenv.nodes.devenv = { ...pin, locked: { rev: "unstaged-drift" } };
+    writeFileSync(devenvPath, JSON.stringify(devenv));
+    expect(check("true").status).not.toBe(0);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }

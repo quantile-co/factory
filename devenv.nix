@@ -92,20 +92,10 @@ in
       exec = ''
         # Validate the flake and its tracked, copied Dependabot configuration.
         ${lib.getExe pkgs.nix} flake check .
-        ${lib.getExe pkgs.git} show :.github/dependabot.yml | ${lib.getExe' pkgs.diffutils "cmp"} -s - ${dependabotFile} || {
-          echo "Commit the Dependabot config copied from etc/dependabot/dependabot.yml." >&2
-          exit 1
-        }
-        # Keep the CLI and Factory modules pinned together. CI also compares
-        # the committed index so unstaged lock changes cannot hide drift.
+        ${lib.getExe config.quantile.dependabot.check.package} ${dependabotFile}
         ${
           lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
-        } flake.lock devenv.lock factory
-        if [ "''${CI:-}" = true ]; then
-          ${
-            lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
-          } --git-index flake.lock devenv.lock factory
-        fi
+        } --ci flake.lock devenv.lock factory
         # Read-only source checks; fixes belong exclusively to fix:all.
         ${lib.getExe config.quantile.prek.check.package}
         ${lib.getExe config.quantile.nixfmt.check.package}
@@ -128,21 +118,15 @@ in
         ${lib.getExe config.quantile.yamllint.check.package}
         ${lib.getExe config.quantile.taplo.check.package}
         ${lib.getExe config.quantile.taplo.format.package}
-        # Include only tracked Terraform source, including paths with spaces.
-        git ls-files -z -- ${lib.escapeShellArg terraformSourceDir} |
-          while IFS= read -r -d "" file; do
-            case "$file" in *.tf|*.tofu) printf '%s\0' "$file" ;; esac
-          done | xargs -0 -r ${lib.getExe config.quantile.opentofu.nonempty.package}
-        # Format-check all source, then validate each root without a remote
-        # backend; TFLint follows each root's independent configuration.
+        ${lib.getExe config.quantile.opentofu.nonempty.package} ${lib.escapeShellArg terraformSourceDir}
+        # Format-check all source, then validate and lint each isolated root.
         TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.format.package}
         ${lib.concatMapStringsSep "\n" (root: ''
-          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package}
-          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.tflint.check.package}
+          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package} -- ${lib.getExe config.quantile.tflint.check.package}
         '') terraformRoots}
-        ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/infrastructure --namespace terraform.infrastructure tf/infrastructure/main.tf
-        ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/modules/project/github --namespace terraform.project.github tf/modules/project/github/main.tf
-        ${lib.getExe config.quantile.conftest.package} test --no-color --policy tf/modules/project/gcp --namespace terraform.project.gcp tf/modules/project/gcp/main.tf
+        ${lib.getExe config.quantile.conftest.check.package} --policy tf/infrastructure --namespace terraform.infrastructure -- tf/infrastructure/main.tf
+        ${lib.getExe config.quantile.conftest.check.package} --policy tf/modules/project/github --namespace terraform.project.github -- tf/modules/project/github/main.tf
+        ${lib.getExe config.quantile.conftest.check.package} --policy tf/modules/project/gcp --namespace terraform.project.gcp -- tf/modules/project/gcp/main.tf
         ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.pnpm.package} run check
       '';

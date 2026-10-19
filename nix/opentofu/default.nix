@@ -188,6 +188,13 @@ in
           pkgs.coreutils
         ];
         text = ''
+          if [ "$#" -gt 0 ]; then
+            if [ "$1" != -- ] || [ "$#" -lt 2 ]; then
+              echo 'Usage: check-terraform [-- COMMAND [ARG...]]' >&2
+              exit 2
+            fi
+            shift
+          fi
           tf_dir="''${TF_DIR:-tf}"
           root=$(cd "$tf_dir" && pwd -P)
           git_dir=$(git -C "$root" rev-parse --absolute-git-dir)
@@ -200,9 +207,15 @@ in
           for name in "''${!TF_CLI_ARGS@}" "''${!TF_LOG@}"; do unset "$name"; done
           tofu -chdir="$root" init -backend=false -input=false -lockfile=readonly
           tofu -chdir="$root" validate -no-color
+          # Companion checks such as TFLint reuse the initialized module data.
+          # The consumer selects the command; OpenTofu owns the isolation layout.
+          if [ "$#" -gt 0 ]; then
+            export TF_DIR="$root"
+            exec "$@"
+          fi
         '';
       };
-      description = "Initialize and validate one Terraform root without a backend, using isolated per-root data.";
+      description = "Validate a backend-free root with isolated data, then optionally run -- COMMAND in that environment.";
     };
 
     format.package = lib.mkOption {
@@ -221,9 +234,15 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-terraform-nonempty";
-        runtimeInputs = [ pkgs.gnugrep ];
+        runtimeInputs = [
+          pkgs.git
+          pkgs.gnugrep
+        ];
         text = ''
-          for file in "$@"; do
+          if [ "$#" -eq 0 ]; then set -- "''${TF_DIR:-tf}"; fi
+          git ls-files -z -- "$@" |
+          while IFS= read -r -d "" file; do
+            case "$file" in *.tf|*.tofu) ;; *) continue ;; esac
             if [ ! -f "$file" ] || [ -L "$file" ]; then continue; fi
             result=0
             grep -q '[^[:space:]]' -- "$file" || result=$?
@@ -235,7 +254,7 @@ in
           done
         '';
       };
-      description = "Reject empty or whitespace-only Terraform source passed by the consumer.";
+      description = "Reject empty tracked .tf/.tofu files selected by Git pathspecs (default TF_DIR or tf).";
     };
 
     fix.package = lib.mkOption {

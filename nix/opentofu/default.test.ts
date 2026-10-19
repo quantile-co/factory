@@ -123,12 +123,24 @@ it("checks nonempty source and formats only tracked regular Terraform files on e
         run("git", ["add", "source with spaces.tf", "linked.tf", "empty.tofu"])
           .status,
       ).toBe(0);
-      const rejected = run(exe("check-terraform-nonempty"), [empty]);
+      const rejected = run(exe("check-terraform-nonempty"));
       expect(rejected.status).not.toBe(0);
       expect(rejected.output).toContain("Empty Terraform file:");
       expect(readFileSync(empty, "utf8")).toBe(" \t\n");
       rmSync(empty);
       expect(run("git", ["rm", "--cached", "empty.tofu"]).status).toBe(0);
+      writeFileSync(join(work, "untracked-empty.tf"), "");
+      writeFileSync(join(work, "not-terraform.txt"), "");
+      expect(run("git", ["add", "not-terraform.txt"]).status).toBe(0);
+      expect(run(exe("check-terraform-nonempty"), ["."]).status).toBe(0);
+      writeFileSync(source, "\n");
+      expect(
+        run(exe("check-terraform-nonempty"), ["source with spaces.tf"]).status,
+      ).not.toBe(0);
+      expect(
+        run(exe("check-terraform-nonempty"), ["not-terraform.txt"]).status,
+      ).toBe(0);
+      writeFileSync(source, unformatted);
       expect(run(exe("check-terraform-format")).status).not.toBe(0);
       expect(readFileSync(source, "utf8")).toBe(unformatted);
       expect(run(exe("fix-terraform")).status).toBe(0);

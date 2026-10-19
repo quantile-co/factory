@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -17,7 +18,10 @@ it("lints the selected root with consumer-native TFLint rules without changing s
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.tflint ]; specialArgs = { inherit pkgs; }; }).config.quantile.tflint.check.package`;
+      cfg = (pkgs.lib.evalModules {
+        modules = [ f.nixModules.tflint f.nixModules.opentofu ]; specialArgs = { inherit pkgs; };
+      }).config.quantile;
+    in [ cfg.tflint.check.package cfg.opentofu.check.package ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
@@ -28,7 +32,15 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     );
     if (built.error) throw built.error;
     expect(built.status, built.stderr).toBe(0);
-    const check = join(built.stdout.trim(), "bin/check-tflint");
+    const paths = built.stdout.trim().split("\n");
+    const check = join(
+      paths.find((path) => path.endsWith("-check-tflint")) ?? "",
+      "bin/check-tflint",
+    );
+    const tofuCheck = join(
+      paths.find((path) => path.endsWith("-check-terraform")) ?? "",
+      "bin/check-terraform",
+    );
     const project = join(work, "root with spaces");
     mkdirSync(project);
     const config = join(work, ".tflint.hcl");
@@ -40,8 +52,12 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     const invalid =
       'terraform { required_version = ">= 1.5.0" }\noutput "value" { value = "example" }\n';
     writeFileSync(source, invalid);
-    const run = (env: NodeJS.ProcessEnv = {}) => {
-      const result = spawnSync(check, [], {
+    const run = (
+      env: NodeJS.ProcessEnv = {},
+      command = check,
+      args: string[] = [],
+    ) => {
+      const result = spawnSync(command, args, {
         cwd: work,
         env: { ...process.env, TF_DIR: project, ...env },
         encoding: "utf8",
@@ -70,6 +86,79 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     );
     const accepted = run();
     expect(accepted.status, accepted.output).toBe(0);
+
+    // Use a real Git-downloaded module: a simple local root cannot detect a
+    // lost TF_DATA_DIR handoff between OpenTofu initialization and TFLint.
+    const module = join(work, "module-source");
+    mkdirSync(module);
+    writeFileSync(join(module, "main.tf"), invalid);
+    for (const args of [
+      ["init", "-q"],
+      ["add", "main.tf"],
+      [
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.test",
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "-qm",
+        "fixture",
+      ],
+    ]) {
+      const git = spawnSync("git", args, { cwd: module, encoding: "utf8" });
+      expect(git.status, git.stderr).toBe(0);
+    }
+    const revision = spawnSync("git", ["rev-parse", "HEAD"], {
+      cwd: module,
+      encoding: "utf8",
+    });
+    expect(revision.status).toBe(0);
+    writeFileSync(
+      source,
+      `terraform { required_version = ">= 1.5.0" }\nmodule "downloaded" { source = "git::https://example.invalid/fixture.git?ref=${revision.stdout.trim()}" }\noutput "value" { value = module.downloaded.value }\n`,
+    );
+    mkdirSync(join(project, ".terraform"));
+    const production = join(project, ".terraform/terraform.tfstate");
+    writeFileSync(
+      production,
+      "production backend metadata must remain untouched\n",
+    );
+    const ambient = {
+      TF_DATA_DIR: join(project, ".terraform"),
+      // Exercise a pinned Git source entirely offline without weakening lint rules.
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: `url.file://${module}.insteadOf`,
+      GIT_CONFIG_VALUE_0: "https://example.invalid/fixture.git",
+    };
+    expect(run(ambient).status).not.toBe(0);
+    // Both explicit Devenv storage and the Git-owned fallback must work.
+    for (const state of [join(work, "isolated-data"), ""]) {
+      const env = { ...ambient, DEVENV_STATE: state };
+      const linted = run(env, tofuCheck, ["--", check]);
+      expect(linted.status).not.toBe(0);
+      expect(linted.output).toContain("terraform_documented_outputs");
+      const passed = run({ ...env, TFLINT_CONFIG_FILE: override }, tofuCheck, [
+        "--",
+        check,
+      ]);
+      expect(passed.status, passed.output).toBe(0);
+      expect(readFileSync(production, "utf8")).toBe(
+        "production backend metadata must remain untouched\n",
+      );
+    }
+    expect(existsSync(join(project, ".terraform/modules"))).toBe(false);
+    const child = join(work, "companion-ran");
+    writeFileSync(source, "invalid Terraform syntax\n");
+    expect(
+      run({ DEVENV_STATE: join(work, "isolated-data") }, tofuCheck, [
+        "--",
+        "touch",
+        child,
+      ]).status,
+    ).not.toBe(0);
+    expect(existsSync(child)).toBe(false);
     rmSync(config);
     expect(run().output).toContain("requires consumer-native .tflint.hcl");
   } finally {

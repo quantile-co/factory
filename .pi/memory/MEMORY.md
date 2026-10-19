@@ -465,3 +465,16 @@ alias were removed; ordinary Plan 39321902718 reported no changes and no-op
 Apply 39322317684 persisted cleaned provider references. The final organization
 outcome note landed at a5e701c82a56e8a37fcaea90ad78bc656d937d13. No Factory
 production workflow ran during this downstream migration.
+
+#decision [[factory-shared-checks]]
+Keep check:all as consumer-owned tool orchestration, not a shared all-checks
+framework. Dependabot's check package compares the Git-indexed native file to
+a caller-selected expected file. check-devenv-locks --ci checks working files
+and, when CI=true, the index; --flake-input retains downstream pin selection.
+OpenTofu's nonempty checker owns tracked .tf/.tofu pathspec selection, and
+check-terraform optionally runs -- COMMAND after backend-free initialization
+and validation with the same isolated TF_DATA_DIR and absolute TF_DIR. Consumers
+use this handoff for TFLint rather than duplicating the internal root hash/data
+path; it also works without Devenv. Factory uses the existing Conftest check
+wrapper with consumer-selected policy paths/namespaces. Imports remain inert;
+no task registry, remote backend, hidden fixes or tool-specific data-path copy.
