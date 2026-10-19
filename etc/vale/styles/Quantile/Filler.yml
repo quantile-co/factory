@@ -1,0 +1,12 @@
+# Narrow patterns inspired by:
+# https://github.com/tbhb/vale-ai-tells (OpeningCliches)
+# https://github.com/Syntaf/vale-llm-slop (Ceremony)
+# Rule-based AI-writing detection: flag common formulaic AI prose.
+extends: existence
+message: "AI-writing tell: replace '%s' with a specific claim."
+level: error
+ignorecase: true
+tokens:
+  - '\bit(?:.s| is) worth noting that\b'
+  - '\bin today.s (?:rapidly evolving|fast.paced) (?:landscape|world)\b'
+  - '\bdelve into\b'

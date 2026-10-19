@@ -1,0 +1,10 @@
+# Adapted from Syntaf/vale-llm-slop (ProcessNarration).
+extends: existence
+message: "AI-writing tell: state the result instead of narrating '%s'."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - '\blet me (?:walk you through|dive into|break down)\b'
+  - '\bI.m going to (?:analyze|review|walk through)\b'
+  - '\bI.ll (?:analyze|review|walk through)\b'

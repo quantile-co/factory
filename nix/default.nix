@@ -52,6 +52,7 @@ let
     typescript = ./typescript;
     typos = ./typos;
     uv = ./uv;
+    vale = ./vale;
   };
 in
 {

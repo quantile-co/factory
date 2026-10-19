@@ -1,0 +1,12 @@
+# Adapted from Syntaf/vale-llm-slop (Assistant); only high-signal phrases.
+extends: existence
+message: "AI-writing tell: remove assistant-style address '%s'."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - '\b(?:great|excellent) (?:question|point|catch)\b'
+  - '\byou.re absolutely (?:right|correct)\b'
+  - '\bas an AI\b'
+  - '\bI hope this helps\b'
+  - '\bfeel free to (?:ask|reach out)\b'

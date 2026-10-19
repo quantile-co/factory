@@ -9,6 +9,7 @@
 /taplo.toml
 /trivy.yaml
 /typos.toml
+/.vale.ini
 /biome.json
 /.github/actionlint.yaml
 gha-creds-*.json

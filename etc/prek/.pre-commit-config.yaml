@@ -72,6 +72,13 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: vale
+        name: Check prose style
+        entry: check-vale
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: typos
         name: Check source spelling
         entry: check-typos

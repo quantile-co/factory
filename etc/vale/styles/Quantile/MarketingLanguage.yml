@@ -1,0 +1,11 @@
+# Inspired by Syntaf/vale-llm-slop (Vocabulary) and tbhb/vale-ai-tells.
+# Match promotional constructions, not standalone technical words.
+extends: existence
+message: "AI-writing tell: replace promotional wording '%s' with a concrete claim."
+level: error
+ignorecase: true
+tokens:
+  - '\ba tapestry of\b'
+  - '\ba treasure trove of\b'
+  - '\bunleash(?:es|ing)? the (?:power|potential) of\b'
+  - '\ba game.changing (?:solution|approach)\b'

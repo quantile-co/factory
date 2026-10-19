@@ -1,0 +1,10 @@
+# Inspired by the specific-claims advice in:
+# https://github.com/tbhb/vale-ai-tells (AIAdjectiveNounPairs)
+# https://github.com/Syntaf/vale-llm-slop (SelfPraise)
+extends: existence
+message: "AI-writing tell: replace vague praise '%s' with what actually happens."
+level: error
+ignorecase: true
+tokens:
+  - '\b(?:robust|comprehensive) (?:solution|approach)\b'
+  - '\b(?:this ensures correctness|handles? (?:this|it|the case) gracefully)\b'

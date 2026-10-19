@@ -26,6 +26,7 @@ in
     config.quantile.conftest.package
     config.quantile.trivy.package
     config.quantile.typos.package
+    config.quantile.vale.package
     config.quantile.semgrep.package
     config.quantile.secretspec.package
   ];
@@ -41,6 +42,7 @@ in
     "taplo.toml".source = config.quantile.taplo.configFile;
     "trivy.yaml".source = config.quantile.trivy.configFile;
     "typos.toml".source = config.quantile.typos.configFile;
+    ".vale.ini".source = config.quantile.vale.configFile;
     "biome.json".source = config.quantile.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
     ".github/dependabot.yml" = {
@@ -72,6 +74,10 @@ in
         ${lib.getExe config.quantile.semgrep.check.package}
         ${lib.getExe config.quantile.trivy.check.package}
         ${lib.getExe config.quantile.typos.check.package}
+        # Vale targets docs, not agent instructions or append-only history.
+        ${lib.getExe config.quantile.vale.check.package} '*.md' \
+          ':(exclude,glob)**/AGENTS.md' ':(exclude,glob)nix/**/fixtures/**' \
+          ':(exclude,glob).pi/memory/**' ':(exclude,glob).pi/skills/**'
         ${lib.getExe config.quantile.taplo.check.package}
         ${lib.getExe config.quantile.taplo.format.package}
         git ls-files -z -- ${lib.escapeShellArg terraformSourceDir} |
