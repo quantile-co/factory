@@ -478,3 +478,10 @@ use this handoff for TFLint rather than duplicating the internal root hash/data
 path; it also works without Devenv. Factory uses the existing Conftest check
 wrapper with consumer-selected policy paths/namespaces. Imports remain inert;
 no task registry, remote backend, hidden fixes or tool-specific data-path copy.
+
+Factory implementation 78fcee21c07760b2696fac3bb929734309f3aaf3 passed Check
+39329979854 and landed normally. The organization consumer adopted that pin in
+c569f215998a84d77165cda830d0cc402a3fb4e6 after local backend-free validation and
+Check 39330886727. Both primary local main checkouts were synchronized. This
+source rollout ran no production Plan/Apply and changed no Terraform module
+contents, backend or provider lock.
