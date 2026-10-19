@@ -6,6 +6,7 @@
 /.editorconfig
 /.shellcheckrc
 /.tflint.hcl
+/taplo.toml
 /biome.json
 /.github/actionlint.yaml
 gha-creds-*.json

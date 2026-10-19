@@ -12,6 +12,7 @@ in
   packages = [
     config.quantile.opentofu.package
     config.quantile.tflint.package
+    config.quantile.taplo.package
     config.quantile.gcloud.package
     config.quantile.gh.package
     config.quantile.actionlint.package
@@ -36,6 +37,7 @@ in
     ".editorconfig".source = config.quantile.editorconfig.configFile;
     ".shellcheckrc".source = config.quantile.shellcheck.configFile;
     ".tflint.hcl".source = config.quantile.tflint.configFile;
+    "taplo.toml".source = config.quantile.taplo.configFile;
     "biome.json".source = config.quantile.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
     ".github/dependabot.yml" = {
@@ -65,6 +67,8 @@ in
         ${lib.getExe config.quantile.actionlint.check.package}
         ${lib.getExe config.quantile.semgrep.test.package}
         ${lib.getExe config.quantile.semgrep.check.package}
+        ${lib.getExe config.quantile.taplo.check.package}
+        ${lib.getExe config.quantile.taplo.format.package}
         git ls-files -z -- ${lib.escapeShellArg terraformSourceDir} |
           while IFS= read -r -d "" file; do
             case "$file" in *.tf|*.tofu) printf '%s\0' "$file" ;; esac
@@ -87,6 +91,7 @@ in
       after = [ "devenv:files" ];
       exec = ''
         TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.fix.package}
+        ${lib.getExe config.quantile.taplo.fix.package}
         ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.pnpm.package} run fix
       '';

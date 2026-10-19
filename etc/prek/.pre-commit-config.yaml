@@ -72,6 +72,27 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: taplo
+        name: Validate TOML source
+        entry: check-taplo
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: taplo-format
+        name: Check TOML formatting
+        entry: check-taplo-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: taplo-fix
+        name: Format tracked TOML source explicitly
+        entry: fix-taplo
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: opentofu-nonempty
         name: Check nonempty Terraform source
         entry: check-terraform-nonempty
