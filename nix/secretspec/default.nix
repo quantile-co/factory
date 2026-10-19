@@ -8,7 +8,7 @@ in
   options.quantile.secretspec = {
     package = lib.mkOption {
       type = lib.types.package;
-      # Use the CLI bundled with our pinned Devenv, without exposing its other commands.
+      # Expose only SecretSpec from the pinned Devenv CLI.
       default = pkgs.runCommand "secretspec" { meta.mainProgram = "secretspec"; } ''
         mkdir -p "$out/bin"
         ln -s ${lib.getExe' cli "secretspec"} "$out/bin/secretspec"

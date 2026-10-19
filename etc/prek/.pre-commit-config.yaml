@@ -1,9 +1,7 @@
-# This is a reusable template, not an installed Git hook. Optional checks start
-# at the manual stage; consumers can use quantile.prek.withPrePush to
-# generate a copy with selected checks enabled. Install pre-push separately.
-# Fix hooks remain manual. Kubeconform needs local schemas; OPA hooks need
-# consumer policy/namespace args (Conftest also needs workload pathspecs).
-# Prettier needs a selected CLI and consumer-owned file pathspecs.
+# Prek template; copying it does not install hooks.
+# quantile.prek.withPrePush enables selected manual checks at pre-push; fixes stay manual.
+# Kubeconform needs local schemas, OPA/Conftest need policy arguments,
+# and Prettier needs a selected CLI and pathspecs.
 default_stages: [pre-push]
 repos:
   - repo: local

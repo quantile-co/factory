@@ -67,17 +67,17 @@ in
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.prettier;
-      description = "Optional Nix Prettier CLI for non-JS consumers; JS/TS projects can use their pinned project dependency instead.";
+      description = "Optional Prettier CLI; a project-pinned executable also works.";
     };
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/prettier/.prettierrc.json;
-      description = "Optional native Prettier style template; the consumer selects its location or config discovery.";
+      description = "Prettier style template.";
     };
     ignoreFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/prettier/.prettierignore;
-      description = "Optional checkout-relative native ignore template; consumers may edit or replace it.";
+      description = "Prettier ignore template, relative to the checkout.";
     };
     check.package = lib.mkOption {
       type = lib.types.package;

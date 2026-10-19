@@ -32,7 +32,7 @@
             --error --strict --scan-unknown-extensions --quiet .
         '';
       };
-      description = "Semgrep check.";
+      description = "Test local rules and scan the working tree with metrics disabled.";
     };
   };
 }

@@ -11,10 +11,9 @@ else
       tasks."files:prepare-directory-links" = lib.mkIf (links != { }) {
         after = [ "devenv:files:cleanup" ];
         before = [ "devenv:files" ];
-        # Upstream ln -sf follows old directory links into the read-only store:
+        # Devenv's ln -sf follows existing directory links into the read-only store:
         # https://github.com/cachix/devenv/blob/a86a087d250cbae59adb95627bc4aa3069a87e6c/src/modules/files.nix#L110-L126
         # Report: https://github.com/higherorderfunctor/nix-agentic-tools/issues/2229
-        # Precedent: https://github.com/higherorderfunctor/nix-agentic-tools/pull/2223
         exec = ''
           set -euo pipefail
           export PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.jq ]}:$PATH"

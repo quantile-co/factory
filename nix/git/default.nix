@@ -30,13 +30,13 @@ in
           cat > "$work/refs"
           check-git-hooks < "$work/refs"
           if [ -n "''${GIT_PRE_PUSH_LEGACY:-}" ]; then
-            test -x "$GIT_PRE_PUSH_LEGACY" || { echo 'Legacy hook is not executable.' >&2; exit 1; }
+            test -x "$GIT_PRE_PUSH_LEGACY" || { echo 'Additional pre-push hook is not executable.' >&2; exit 1; }
             "$GIT_PRE_PUSH_LEGACY" "$@" < "$work/refs"
           fi
           git-lfs pre-push "$@" < "$work/refs"
         '';
       };
-      description = "Opt-in pre-push: run Prek checks, optional legacy hook, then upload LFS objects.";
+      description = "Run Prek checks and an optional hook before uploading LFS objects.";
     };
   };
 }

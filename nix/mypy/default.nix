@@ -36,7 +36,7 @@ in
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/mypy/mypy.ini;
-      description = "Optional native mypy policy template; consumers choose its placement.";
+      description = "mypy configuration template.";
     };
     check.package = lib.mkOption {
       type = lib.types.package;

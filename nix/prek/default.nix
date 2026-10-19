@@ -27,12 +27,12 @@ in
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.prek;
-      description = "Prek hook runner; importing does not install hooks.";
+      description = "Prek hook runner.";
     };
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/prek/.pre-commit-config.yaml;
-      description = "Native optional Prek hook template; the consumer chooses its placement.";
+      description = "Prek hook configuration template.";
     };
     withPrePush = lib.mkOption {
       type = lib.types.functionTo lib.types.path;
@@ -71,7 +71,7 @@ in
             fi
           '') selected}
         '';
-      description = "Build a native Prek config with selected manual checks enabled for pre-push; fixes remain manual.";
+      description = "Enable selected manual checks at pre-push; fixes stay manual.";
     };
     tools.package = lib.mkOption {
       type = lib.types.package;
@@ -93,7 +93,7 @@ in
           prek --config "$config" run --all-files --hook-stage pre-push
         '';
       };
-      description = "Read-only native pre-push checks; no LFS upload.";
+      description = "Run Prek pre-push checks without uploading LFS objects.";
     };
     checkJson.package = lib.mkOption {
       type = lib.types.package;

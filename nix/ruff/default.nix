@@ -44,7 +44,7 @@ in
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/ruff/ruff.toml;
-      description = "Optional native Ruff policy template; consumers choose its placement.";
+      description = "Ruff configuration template.";
     };
     check.package = lib.mkOption {
       type = lib.types.package;

@@ -59,12 +59,9 @@ and `tofu -chdir=tf/infrastructure validate`. `nix flake check .` checks the fla
 source files must be added to Git before Git-aware evaluation can see them.
 
 Biome's native template is `etc/biome/default.json`, exposed as
-`quantile.ts.biome.configFile` and linked to `biome.json` by Devenv. Consumers own
-placement and scripts. Both project scripts use the same file selection and
-exclude READMEs and unrelated native fixtures; fixing never enables `--unsafe`.
-The root task checks source policies, types and formatting; colocated Vitest tests
-exercise backend-free consumers. Provider/CLI versions remain in source and locks,
-not copied into this guide.
+`quantile.biome.configFile` and linked to Factory's `biome.json`.
+Factory's explicit check/fix scripts exclude unrelated fixtures and never enable
+`--unsafe`; colocated Vitest tests exercise backend-free consumers.
 
 ## Workflow and production boundaries
 
@@ -115,7 +112,7 @@ it does not automatically land changes. Its Nix updater does not update
 Review and synchronize both locks. The CLI/module revision guard and
 `check-devenv-locks --git-index` in CI prevent an automatic working-copy repair
 from hiding committed lock drift. Keep CODEOWNERS and a regular committed
-Dependabot file. Factory's `etc/github/dependabot.yml` is authoritative;
+Dependabot file. Factory's `etc/dependabot/dependabot.yml` is authoritative;
 Devenv `copyMode = "copy"` refreshes `.github/dependabot.yml` on shell entry.
 Commit both files together. `check:all` compares the Git-indexed root file to
 the native template, so a working-copy repair cannot conceal missing commits.
@@ -230,7 +227,7 @@ Use Biome for the current lint/format implementation; retain tsc for TypeScript 
 Saved-plan source and deployment skills landed on main at ffad1eae4cd6c77fed6c19aba33eb47b69c97340 (2026-10-18); branch Check, main Test and the first Plan succeeded. The approved Factory saved-plan Apply 39111226816 succeeded using artifact 12130102012 on 6ffb6f3; Q0's approved no-op Apply 39109793857 also succeeded. Plan stores sensitive contents in private GCS and publishes a one-day GitHub receipt. Apply selects its artifact ID, validates the original successful producer attempt, repository, current main SHA, 24-hour age, backend and digests, then applies without replanning using the receipt's GCS generation. Lifecycle cleanup is asynchronous, separate from validity. Retain manual protected-main, actor/triggering-actor maintainer gates, prod, WIF, backend locks and shared non-cancelling concurrency. A merge or green Check authorizes neither production workflow. Operators need an authorized private plan-read route after bootstrap Owner removal; never silently broaden IAM.
 
 #preference [[factory-saved-plans]] [[factory-config-layout]]
-Keep saved-plan implementation in one nix/tf/default.nix, with shared internal GitHub/GCS functions. No Python, separate saved-plan helper files, dedicated test file or new test framework for this change. Keep authorization, stock artifact-upload and post-upload always-cleanup in CI. Use simple Plan/Apply step names and parallel option descriptions; avoid repeated "reviewed" labels. Explain implementation/storage choices beside Nix logic rather than in workflow comments. Avoid overengineering, overtesting and redundant validation.
+Keep saved-plan implementation in `nix/opentofu/default.nix`, with shared internal GitHub/GCS functions. No Python, separate saved-plan helper files, dedicated test file or new test framework for this change. Keep authorization, stock artifact-upload and post-upload always-cleanup in CI. Use simple Plan/Apply step names and parallel option descriptions; avoid repeated "reviewed" labels. Explain implementation/storage choices beside Nix logic rather than in workflow comments. Avoid overengineering, overtesting and redundant validation.
 
 #decision [[factory-deploy-skills]]
 Operational instructions live in .pi/skills/day-zero-deploy and deploy, replacing tf/README.md. Preserve bootstrap operations and removal of only the bootstrap human's direct Owner grant after CI handoff, verifying private plan-read and recovery access first. Keep standing projectCreator/billing.user and CI/WIF grants. Never reseed an existing installation. Each dispatch, mutation, migration and retry needs separate approval.
@@ -259,7 +256,7 @@ AGENTS.md must remain a lightweight navigational resource: point to source, task
 Reviewed old `devenv/c/` implementation and tests, then selectively ported it to opt-in `nix/c/default.nix` and native templates `etc/clang/{.clang-format,.clang-tidy}`. Keep LLVM/4-space/100-column formatting and analyzer/bugprone/performance/portability tidy checks with analyzer/bugprone errors. Reusable packages expose Clang tools plus optional Bear/CMake/Meson/Ninja/pkg-config and Linux GDB/Valgrind, read-only format and compilation-database-backed tidy checks, and explicit format fixes. They select tracked, regular non-binary C/C++ source (headers only for formatting), skip build/vendor/third_party and accept caller exclusions, selected paths, native config overrides and compilation-database directory at runtime. Missing database/selected translation unit entry fails; compilation flags and database generation remain consumer-owned. Importing the module installs no hooks, starts no tool, and adds no tasks: downstreams decide when to install/register/execute checks/fixes. Do not bake Factory's `etc/clang/` paths into reusable executables or rebuild the old generated Prek hook configuration, Nix YAML settings or root Python/Nix harness.
 
 #preference [[factory-module-layout]]
-Use `nix/<module>/default.nix` and a colocated `default.test.ts` for each reusable module. One simple, meaningful smoke/consumer test per small module is fine; avoid tautological configuration snapshots and shared helper frameworks. Root `nix/default.nix` is the flake aggregate. `nix/devenv/default.nix` exports Devenv packages and a separate opt-in `devenvModules.files` compatibility module; it is not part of the reusable tool-module aggregate. Existing flake consumer smoke test belongs under `nix/github/default.test.ts`. Moving it leaves no root `*.ts`; the Biome project check/fix selectors must not pass a nonmatching root glob.
+Use `nix/<tool>/default.nix` and a colocated `default.test.ts` for each reusable tool module. One simple, meaningful smoke/consumer test per small module is fine; avoid tautological configuration snapshots and shared helper frameworks. Root `nix/default.nix` is the flake aggregate. `nix/devenv/default.nix` exports Devenv packages and a separate opt-in `devenvModules.files` compatibility module; it is not part of the reusable tool-module aggregate. Keep the flake's consumer smoke test in `flake.test.ts`; root checks should select existing files.
 
 <!-- 2026-10-18 13:10:33 [01a14275] -->
 #decision [[factory-native-config]] [[factory-checkov]] [[factory-semgrep]]
@@ -350,3 +347,8 @@ In the proposed tool-first Factory Nix refactor, **do not invent module identiti
 <!-- 2026-10-18 19:25:40 [01a14275] -->
 #decision #implementation [[factory-tool-first]] [[factory-config-layout]] [[factory-native-config]]
 Factory's coordinated tool-first refactor replaces the old domain bundles with real-tool module roots in `nix/` and tool-owned assets in `etc/`: e.g. `jq` vs `prek.checkJson`, `go`/`gofumpt`/`golangci-lint`, `python`/`ruff`/`mypy`/`uv`, `clang-format`/`clang-tidy`, `nix`/`nixfmt`/`deadnix`/`statix`, `opa`/`conftest`, `protoc`/`buf`, `kubectl`/`kubeconform`, and `opentofu`/`trivy`. EditorConfig and editorconfig-checker stay together by user choice; Git and Git LFS retain guarded pre-push sequencing. Prek owns the shared hook template; Dependabot is a native service asset at `etc/dependabot/`, not a fictitious CLI module. No `nix/lib/` directory. The shared Rego policy-selection safety snippet is colocated at `nix/opa/policy.nix`. Cross-tool Go check/fix remains under the actual golangci-lint tool module and still uses the selected gofumpt/Go packages without source or metadata leakage. `nixModules.default` imports canonical tool paths (rather than prematurely applying imports as functions), allowing individually imported tools with dependencies to deduplicate. Factory's consuming `devenv.nix` explicitly selects renamed tools and native assets. These option names are intentionally breaking for external consumers; downstream adoption is separate from the later old Devenv review/integration audit. README unchanged; no production deployment was authorized.
+
+
+<!-- 2026-10-18 19:34:06 [01a14275] -->
+#verification #decision [[factory-tool-first]] [[factory-native-config]]
+Independent post-refactor inventory of `nix/default.nix`, tool modules and `etc/` found no remaining domain-named bundle to split. EditorConfig Checker and its EOF fixer intentionally share EditorConfig's file/exclusion contract; Git/LFS retains guarded pre-push order; Prek's tool package supplies its hook template. `GIT_PRE_PUSH_LEGACY` is still a supported optional chained-hook input, not a reason to bring back the earlier hook registry. Keep option descriptions about current behavior rather than migration rationale. The ten remaining old-module reviews and the separate consuming `devenv.nix` execution audit remain open.

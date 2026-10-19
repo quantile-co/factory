@@ -12,7 +12,7 @@ in
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/markdownlint-cli2/.markdownlint-cli2.jsonc;
-      description = "Native Markdown lint policy template; consumers choose its placement.";
+      description = "Markdownlint configuration template.";
     };
     check.package = lib.mkOption {
       type = lib.types.package;

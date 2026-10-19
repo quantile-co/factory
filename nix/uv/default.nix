@@ -3,6 +3,6 @@
   options.quantile.uv.package = lib.mkOption {
     type = lib.types.package;
     default = pkgs.uv;
-    description = "uv CLI; installing it does not sync project dependencies.";
+    description = "uv CLI.";
   };
 }

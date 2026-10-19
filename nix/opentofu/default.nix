@@ -132,7 +132,7 @@ in
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.opentofu;
-      description = "OpenTofu CLI; protected saved-plan workflows remain explicit.";
+      description = "OpenTofu CLI.";
     };
 
     check.package = lib.mkOption {
