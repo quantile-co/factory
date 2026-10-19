@@ -28,6 +28,20 @@ it.each(["plan", "apply"])(
     expect(source).toContain("group: factory-production");
     expect(source).toContain("id-token: write");
     expect(source).toContain("CACHIX_AUTH_TOKEN:");
+    expect(source).toMatch(/GH_REPO_TOKEN:\n\s+required: true/);
+    expect(source).toMatch(
+      /GITHUB_TOKEN:\s+\$\{\{ secrets\.GH_REPO_TOKEN \}\}/,
+    );
+    expect(source).toMatch(
+      /REST_API_BEARER:\s+\$\{\{ secrets\.GH_REPO_TOKEN \}\}/,
+    );
+    expect(source).toContain(
+      "Missing GH_REPO_TOKEN from the protected prod environment.",
+    );
+    expect(source).toMatch(
+      /test -z "\$\{GITHUB_TOKEN:-\}" \|\| test -z "\$\{REST_API_BEARER:-\}"/,
+    );
+    expect(source).toContain('"$cli" shell -- "$cli" tasks run');
     expect(source).not.toContain("secrets: inherit");
   },
 );
@@ -48,4 +62,6 @@ it("Test cannot publish caches from a non-manual or non-main invocation", () => 
     "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'",
   );
   expect(source).toContain("CACHIX_AUTH_TOKEN:");
+  expect(source).toMatch(/test -z "\$\{CACHIX_AUTH_TOKEN:-\}"/);
+  expect(source).toContain('"$cli" shell -- "$cli" tasks run');
 });

@@ -18,9 +18,9 @@ on:
     secrets:
       CACHIX_AUTH_TOKEN:
         required: true
-      # The protected prod environment on the called job provides this token.
+      # Callers must pass this by name; the protected prod environment supplies its value.
       GH_REPO_TOKEN:
-        required: false
+        required: true
   workflow_dispatch:
     inputs:
       plan_artifact_id:
@@ -103,7 +103,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PLAN_ARTIFACT_ID: ${{ inputs.plan_artifact_id }}
           TF_PLAN_DIR: ${{ runner.temp }}/saved-plan
-        run: nix run .#devenv-cli -- tasks run --show-output apply:infrastructure
+        run: |
+          if test -z "${GITHUB_TOKEN:-}" || test -z "${REST_API_BEARER:-}"; then
+            echo 'Missing GH_REPO_TOKEN from the protected prod environment.' >&2
+            exit 1
+          fi
+          cli="$(nix build --no-link --print-out-paths .#devenv-cli)/bin/devenv"
+          "$cli" shell -- "$cli" tasks run --show-output apply:infrastructure
 
       - name: Remove local plan files
         if: always()
