@@ -66,6 +66,8 @@ in
       copyMode = "copy";
     };
     ".pi/settings.json".source = config.quantile.pi.settingsFile;
+    ".pi/skills/deploy".source = config.quantile.pi.skillsDir + "/deploy";
+    ".pi/skills/day-zero-deploy".source = config.quantile.pi.skillsDir + "/day-zero-deploy";
     ".qmd/index.yml".source = config.quantile.qmd.configFile;
     ".semgrep".source = config.quantile.semgrep.rulesDir;
     ".semgrepignore".source = config.quantile.semgrep.ignoreFile;
@@ -110,7 +112,8 @@ in
         # Vale targets docs, not agent instructions or append-only history.
         ${lib.getExe config.quantile.vale.check.package} '*.md' \
           ':(exclude,glob)**/AGENTS.md' ':(exclude,glob)nix/**/fixtures/**' \
-          ':(exclude,glob).pi/memory/**' ':(exclude,glob).pi/skills/**'
+          ':(exclude,glob).pi/memory/**' ':(exclude,glob).pi/skills/**' \
+          ':(exclude,glob)etc/pi/skills/**'
         ${lib.getExe config.quantile.yamllint.check.package}
         ${lib.getExe config.quantile.taplo.check.package}
         ${lib.getExe config.quantile.taplo.format.package}

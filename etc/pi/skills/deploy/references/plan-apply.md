@@ -1,7 +1,8 @@
 # Plan and Apply
 
-Read the current workflows, `devenv.nix`, `nix/tf/default.nix`, `tf/infrastructure/`
-and affected `tf/modules/project/{gcp,github}/` source.
+Read the caller's current workflows, the pinned Factory reusable workflows,
+`devenv.nix`, `tf/infrastructure/`, its declared Factory Terraform module
+sources and `nix/opentofu/default.nix` from the pinned Factory revision.
 Use the pinned direnv shell. Ordinary production changes use protected workflows,
 not local Apply. Validate source without backend access:
 
@@ -11,13 +12,13 @@ devenv tasks run --show-output check:all
 
 ## Layout changes on an existing installation
 
-Factory completed this migration in run `39110692702` on 2026-10-18; do not repeat
-it. For other existing installations, the split changes `module.project` addresses
-to `module.github` for GitHub resources and `module.gcp` for Google/random resources.
-Obtain separate approval for each installation's one-time migration.
-Do not apply a plan that recreates or deletes existing resources because of the
-split. The bucket and `repository/prod` prefix are unchanged: this is not a backend
-migration or a new installation. No compatibility blocks or migration commands
+For existing installations, compare the old state addresses with this
+repository's current modules and temporary `moved` blocks. Obtain separate
+approval for any one-time address migration. Do not apply a plan that recreates
+or deletes existing resources because of a refactor. When the original bucket
+and `repository/prod` prefix are retained, this is not a backend migration or a
+new installation. Some installations also intentionally retire resources;
+review those deletions individually. No compatibility blocks or state moves
 run automatically.
 
 ## 1. Confirm context
@@ -28,7 +29,8 @@ From a clean checkout of the current protected main revision:
 set -euo pipefail
 set +x
 umask 077
-REPO=quantile-co/factory
+: "${REPO:?Set and verify the intended owner/repository before any dispatch}"
+test "$REPO" = "$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
 SHA=$(git rev-parse HEAD)
 test -z "$(git status --porcelain)"
 test "$SHA" = "$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
@@ -41,10 +43,12 @@ gh run list -R "$REPO" --limit 10 \
 Check may have run on the source branch before fast-forwarding main. Confirm its
 exact SHA, not just the branch label. Inspect current production activity; never
 cancel another operator's job. Verify main/maintainer/prod protection, WIF,
-`GCP_TF_STATE_BUCKET`, backend prefix `repository/prod` and `factory-production`
-concurrency. `GCP_MAINTAINERS` supplies `TF_VAR_gcp_maintainers`: an explicit JSON
-array of Google account emails, distinct from GitHub usernames. Terraform grants
-these users object-read access only under the bucket's `plans/` prefix.
+the effective state bucket (including caller input overrides), backend prefix
+`repository/prod` and the called workflow's `factory-production` concurrency.
+`TF_VAR_gcp_maintainers` is an explicit JSON array of Google account emails,
+distinct from GitHub usernames. Where configured, Terraform grants these users
+object-read access only under the bucket's `plans/` prefix; an empty array
+grants **no** plan-read access.
 The operator's GitHub CLI login is separate from the provider PAT;
 do not let `GITHUB_TOKEN` or `GH_TOKEN` select the wrong credential.
 
@@ -90,7 +94,9 @@ test "$ARTIFACT_NAME" = "plan-$PLAN_RUN_ID-$PLAN_ATTEMPT"
 PRIVATE_DIR=$(mktemp -d)
 gh run download "$PLAN_RUN_ID" -R "$REPO" -n "$ARTIFACT_NAME" -D "$PRIVATE_DIR"
 repository_id=$(gh api "repos/$REPO" --jq .id)
-GCP_TF_STATE_BUCKET=$(gh api "repos/$REPO/actions/variables/GCP_TF_STATE_BUCKET" --jq .value)
+# Set the exact effective bucket from the reviewed Plan caller and its variables.
+# It may come from a legacy-named variable passed as an explicit call input.
+: "${GCP_TF_STATE_BUCKET:?Set and verify the producing Plan's state bucket}"
 generation=$(jq -er .generation "$PRIVATE_DIR/plan.json")
 gcloud storage cp \
   "gs://$GCP_TF_STATE_BUCKET/plans/$repository_id/$PLAN_RUN_ID/$PLAN_ATTEMPT/plan.tfplan#$generation" \

@@ -188,3 +188,57 @@ secretspec:
     rmSync(work, { recursive: true, force: true });
   }
 }, 240_000);
+
+it("checks a consumer's nested Factory pins without accepting lock drift", () => {
+  const work = mkdtempSync(join(tmpdir(), "factory-consumer-locks-"));
+  try {
+    const factory = `git+${new URL("../../", import.meta.url).href}`;
+    const build = spawnSync(
+      "nix",
+      [
+        "build",
+        `${factory}#check-devenv-locks`,
+        "--no-link",
+        "--print-out-paths",
+      ],
+      { encoding: "utf8", timeout: 120_000 },
+    );
+    if (build.error) throw build.error;
+    expect(build.status, build.stderr).toBe(0);
+    const command = join(build.stdout.trim(), "bin/check-devenv-locks");
+    const pin = {
+      original: { type: "github", repo: "devenv" },
+      locked: { rev: "reviewed" },
+    };
+    const flake = {
+      nodes: {
+        root: { inputs: { factory: "factory" } },
+        factory: { inputs: { devenv: "devenv" } },
+        devenv: pin,
+      },
+    };
+    const devenv = {
+      nodes: {
+        root: { inputs: { factory: "factory" } },
+        factory: { inputs: { devenv: "devenv" } },
+        devenv: pin,
+      },
+    };
+    const flakePath = join(work, "flake.lock");
+    const devenvPath = join(work, "devenv.lock");
+    writeFileSync(flakePath, JSON.stringify(flake));
+    writeFileSync(devenvPath, JSON.stringify(devenv));
+    const check = () =>
+      spawnSync(
+        command,
+        ["--flake-input", "factory", flakePath, devenvPath, "factory"],
+        { encoding: "utf8", timeout: 30_000 },
+      );
+    expect(check().status).toBe(0);
+    devenv.nodes.devenv = { ...pin, locked: { rev: "other" } };
+    writeFileSync(devenvPath, JSON.stringify(devenv));
+    expect(check().status).not.toBe(0);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}, 150_000);

@@ -19,5 +19,11 @@
       default = ../../etc/pi/settings.json;
       description = "Pi settings file.";
     };
+
+    skillsDir = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/pi/skills;
+      description = "Portable deployment skills for consumer placement.";
+    };
   };
 }

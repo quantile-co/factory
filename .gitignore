@@ -20,6 +20,8 @@
 gha-creds-*.json
 .pi/npm/
 /.pi/settings.json
+/.pi/skills/deploy
+/.pi/skills/day-zero-deploy
 result
 result-*
 /.semgrep

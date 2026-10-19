@@ -88,12 +88,18 @@ else
                 ];
                 text = ''
                   index=false
-                  if [ "''${1:-}" = --git-index ]; then
-                    index=true
-                    shift
-                  fi
+                  flake_input=""
+                  while [ "$#" -gt 0 ]; do
+                    case "$1" in
+                      --git-index) index=true; shift ;;
+                      --flake-input)
+                        [ "$#" -ge 2 ] || { echo 'Missing --flake-input value' >&2; exit 2; }
+                        flake_input="$2"; shift 2 ;;
+                      *) break ;;
+                    esac
+                  done
                   if [ "$#" -ne 3 ]; then
-                    echo "Usage: check-devenv-locks [--git-index] <flake.lock> <devenv.lock> <devenv-input-name>" >&2
+                    echo "Usage: check-devenv-locks [--git-index] [--flake-input name] <flake.lock> <devenv.lock> <devenv-input-name>" >&2
                     exit 2
                   fi
                   flake_lock=$1
@@ -107,9 +113,10 @@ else
                     flake_lock="$scratch/flake.lock"
                     devenv_lock="$scratch/devenv.lock"
                   fi
-                  if ! jq -es --arg input_name "$input_name" '
+                  if ! jq -es --arg input_name "$input_name" --arg flake_input "$flake_input" '
                     .[0] as $flake | .[1] as $devenv |
-                    $flake.nodes.root.inputs as $inputs |
+                    (if $flake_input == "" then $flake.nodes.root.inputs
+                      else $flake.nodes[$flake.nodes.root.inputs[$flake_input]].inputs end) as $inputs |
                     $devenv.nodes[$devenv.nodes.root.inputs[$input_name]].inputs as $followed |
                     ($inputs | keys) == ($followed | keys) and
                     all($inputs | keys[]; . as $name |

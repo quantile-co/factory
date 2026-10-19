@@ -1,9 +1,11 @@
 # New-installation local state
 
-This replaces the former `tf/README.md` runbook. Each phase requires separate
-approval; do not paste the whole document into a shell. Inventory the repository,
-support projects, buckets, WIF and local/remote state before any mutation. If any
-installation exists, stop and adopt its state rather than bootstrap again.
+This is the shared, executable-by-phase runbook for a genuinely new repository
+using Factory's `tf/modules/project/{github,gcp}` and protected reusable
+workflows. Each phase requires separate approval; do not paste the whole document
+into a shell. Inventory the repository, support projects, buckets, WIF and
+local/remote state before any mutation. If any installation exists, stop and
+adopt its state rather than bootstrap again.
 
 ## 1. Identity and inputs
 
@@ -17,13 +19,13 @@ set -euo pipefail
 set +x
 umask 077
 
-# One-time Day Zero for quantile-co/factory. Publish the whole reviewed repo
-# on main first (use a PR if required); wait for the Check / All job to pass.
-# Plan and Apply are manual-only; do not dispatch until prod is provisioned.
+# One-time Day Zero for the explicitly selected owner/repository. Publish the
+# reviewed repo on main first (use a PR if required); confirm its actual Check
+# status. Plan and Apply are manual-only; wait until prod is provisioned.
 # Stop if this root already has local/remote state or a support project; adopt
-# that state and import/reconcile existing objects rather than creating another.
-# Run inside factory's direnv shell as a quantile.co project creator. Q0 grants
-# ordinary domain users folder projectCreator and billing.user; verify access.
+# that state instead. Run in the repo's pinned direnv shell; verify project
+# creator and billing access to the selected folder/account, not assumptions
+# about a different repository's organization or credentials.
 
 # Authenticate locally and check the operator-supplied inputs.
 gcloud auth login
@@ -43,7 +45,11 @@ export TF_VAR_gcp_maintainers="$GCP_MAINTAINERS"
 export TF_VAR_gcp_wif_pool="$GCP_WIF_POOL"
 export TF_VAR_gh_maintainers="$GH_MAINTAINERS"
 
-gh auth status # use the operator's GitHub CLI login for provisioning and run checks
+gh auth status # operator's GitHub CLI login, not the provider token
+: "${GH_REPOSITORY:?set the intended owner/repository from an approved secure context}"
+test "$GH_REPOSITORY" = "$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+REPOSITORY_NAME=$(gh repo view --json name --jq .name)
+test "$GH_REPOSITORY" = "${GH_REPOSITORY%/*}/$REPOSITORY_NAME"
 export GITHUB_TOKEN="$GH_REPO_TOKEN" # provider credential only for local Terraform
 export REST_API_BEARER="$GH_REPO_TOKEN" # REST provider uses the same runtime token
 # Verify the existing pool maps main_branch_repository_actor_id and the
@@ -66,10 +72,10 @@ printf 'terraform {\n  backend "local" {}\n}\n' > tf/infrastructure/backend_over
 tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly
 
 # The repository already exists. Import it ONLY when it has no state address.
-tofu -chdir=tf/infrastructure import module.github.github_repository.self factory
+tofu -chdir=tf/infrastructure import module.github.github_repository.self "$REPOSITORY_NAME"
 tofu -chdir=tf/infrastructure plan
 
-# Review existing repo settings, the passing All check, and all changes.
+# Review existing repo settings, the observed required Check context, and all changes.
 # Import any other existing resources before approving a fresh local plan.
 ```
 
@@ -110,17 +116,21 @@ running the following commands.
 
 ```sh
 # Provision nonsecret repository variables for CI.
-GH_REPOSITORY=quantile-co/factory
+: "${GH_REPOSITORY:?use the same verified owner/repository as the local seed}"
 gh variable set GCP_BILLING_ACCOUNT --repo "$GH_REPOSITORY" --body "$GCP_BILLING_ACCOUNT"
 gh variable set GCP_FOLDER_ID --repo "$GH_REPOSITORY" --body "$GCP_FOLDER_ID"
+# Also populate the compatibility alias used by some Factory-based callers.
+gh variable set GCP_QUANTILE_CO_FOLDER_ID --repo "$GH_REPOSITORY" --body "$GCP_FOLDER_ID"
 gh variable set GCP_MAINTAINERS --repo "$GH_REPOSITORY" --body "$GCP_MAINTAINERS"
 gh variable set GCP_WIF_POOL --repo "$GH_REPOSITORY" --body "$GCP_WIF_POOL"
 gh variable set GCP_WIF_PROVIDER --repo "$GH_REPOSITORY" --body "$GCP_WIF_PROVIDER"
 gh variable set GH_MAINTAINERS --repo "$GH_REPOSITORY" --body "$GH_MAINTAINERS"
 gh variable set GCP_PROJECT_ID --repo "$GH_REPOSITORY" --body "$GCP_PROJECT_ID"
 gh variable set GCP_TF_STATE_BUCKET --repo "$GH_REPOSITORY" --body "$GCP_TF_STATE_BUCKET"
+# Compatibility alias for callers passing the legacy bucket variable.
+gh variable set TF_STATE_BUCKET --repo "$GH_REPOSITORY" --body "$GCP_TF_STATE_BUCKET"
 
-# Verify prod (and non-prod) permit ONLY main, not tags, before adding secrets.
+# Verify prod permits ONLY main, not tags, before adding secrets.
 printf '%s' "$GH_REPO_TOKEN" | gh secret set GH_REPO_TOKEN --repo "$GH_REPOSITORY" --env prod
 
 ```
@@ -194,7 +204,7 @@ if gcloud projects get-iam-policy "$GCP_PROJECT_ID" --format=json |
   gcloud projects remove-iam-policy-binding "$GCP_PROJECT_ID" \
     --member="user:$creator" --role=roles/owner --condition=None
 fi
-# Recheck IAM and CI Plan after handoff. Q0 admins retain exceptional recovery.
+# Recheck IAM and CI Plan after handoff. Preserve approved recovery admins.
 # Never commit credentials, local state, .terraform/, or saved plans.
 ```
 
