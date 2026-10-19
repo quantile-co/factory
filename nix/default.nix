@@ -19,6 +19,7 @@ let
     pi = import ./pi { llmAgents = inputs.llm-agents; };
     postgres = import ./postgres;
     prettier = import ./prettier;
+    protobuf = import ./protobuf;
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = import ./semgrep;
