@@ -1,6 +1,7 @@
 name: Check
 
 on:
+  workflow_call:
   pull_request:
   push:
     # Dependabot branches are checked by their pull requests, not twice.

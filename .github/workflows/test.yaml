@@ -5,6 +5,10 @@ name: Test
 # On failure, automatically bisect to prepare a revert commit and/or run agents to
 # attempt a fix-forward. Request human intervention if neither approach succeeds.
 on:
+  workflow_call:
+    secrets:
+      CACHIX_AUTH_TOKEN:
+        required: true
   workflow_dispatch:
 
 permissions:
@@ -13,7 +17,7 @@ permissions:
 jobs:
   all:
     name: All
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: namespace-profile-quantile-4x8
     timeout-minutes: 20
     steps:
