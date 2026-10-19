@@ -10,6 +10,7 @@ let
     commitizen = ./commitizen;
     conftest = ./conftest;
     deadnix = ./deadnix;
+    dependabot = ./dependabot;
     duckdb = ./duckdb;
     editorconfig = ./editorconfig;
     emscripten = ./emscripten;

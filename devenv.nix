@@ -8,6 +8,12 @@
 let
   terraformSourceDir = "tf";
   terraformRoots = [ "tf/infrastructure" ];
+  dependabotFile = config.quantile.dependabot.withUpdates [
+    "github-actions"
+    "npm"
+    "opentofu"
+    "nix"
+  ];
 in
 {
   imports = [
@@ -62,7 +68,7 @@ in
     "biome.json".source = config.quantile.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
     ".github/dependabot.yml" = {
-      source = inputs.factory.outPath + "/etc/dependabot/dependabot.yml";
+      source = dependabotFile;
       copyMode = "copy";
     };
     ".pi/settings.json".source = config.quantile.pi.settingsFile;
@@ -84,11 +90,14 @@ in
       description = "Run all checks.";
       after = [ "devenv:files" ];
       exec = ''
+        # Validate the flake and its tracked, copied Dependabot configuration.
         ${lib.getExe pkgs.nix} flake check .
-        ${lib.getExe pkgs.git} show :.github/dependabot.yml | ${lib.getExe' pkgs.diffutils "cmp"} -s - etc/dependabot/dependabot.yml || {
+        ${lib.getExe pkgs.git} show :.github/dependabot.yml | ${lib.getExe' pkgs.diffutils "cmp"} -s - ${dependabotFile} || {
           echo "Commit the Dependabot config copied from etc/dependabot/dependabot.yml." >&2
           exit 1
         }
+        # Keep the CLI and Factory modules pinned together. CI also compares
+        # the committed index so unstaged lock changes cannot hide drift.
         ${
           lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
         } flake.lock devenv.lock factory
@@ -97,6 +106,7 @@ in
             lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
           } --git-index flake.lock devenv.lock factory
         fi
+        # Read-only source checks; fixes belong exclusively to fix:all.
         ${lib.getExe config.quantile.prek.check.package}
         ${lib.getExe config.quantile.nixfmt.check.package}
         ${lib.getExe config.quantile.deadnix.check.package}
@@ -105,6 +115,7 @@ in
         ${lib.getExe config.quantile.markdownlint-cli2.check.package} '*.md' \
           ':(exclude,glob).pi/memory/**'
         ${lib.getExe config.quantile.actionlint.check.package}
+        # Test the checked-in Semgrep rules before scanning the repository.
         ${lib.getExe config.quantile.semgrep.test.package}
         ${lib.getExe config.quantile.semgrep.check.package}
         ${lib.getExe config.quantile.trivy.check.package}
@@ -117,10 +128,13 @@ in
         ${lib.getExe config.quantile.yamllint.check.package}
         ${lib.getExe config.quantile.taplo.check.package}
         ${lib.getExe config.quantile.taplo.format.package}
+        # Include only tracked Terraform source, including paths with spaces.
         git ls-files -z -- ${lib.escapeShellArg terraformSourceDir} |
           while IFS= read -r -d "" file; do
             case "$file" in *.tf|*.tofu) printf '%s\0' "$file" ;; esac
           done | xargs -0 -r ${lib.getExe config.quantile.opentofu.nonempty.package}
+        # Format-check all source, then validate each root without a remote
+        # backend; TFLint follows each root's independent configuration.
         TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.format.package}
         ${lib.concatMapStringsSep "\n" (root: ''
           TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package}

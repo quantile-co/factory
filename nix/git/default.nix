@@ -56,42 +56,10 @@ in
           runtimeInputs = [
             cfg.package
             pkgs.coreutils
-            pkgs.diffutils
-            pkgs.gnugrep
           ];
           text = ''
-            git_dir=$(git rev-parse --path-format=absolute --git-dir)
             common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
             hook_dir="$common_dir/hooks"
-            hook="$hook_dir/pre-push"
-            is_managed() {
-              [ -f "$1" ] && [ ! -L "$1" ] &&
-              [ "$(wc -l < "$1")" -eq 2 ] &&
-              [ "$(head -n 1 "$1")" = '#!/bin/sh' ] &&
-              tail -n 1 "$1" | grep -Eq '^exec /nix/store/[a-z0-9]{32}-checked-git-lfs-pre-push/bin/checked-git-lfs-pre-push "\$@"$'
-            }
-            shared_override=$(git config --local --get core.hooksPath || :)
-            if [ -n "$shared_override" ] && [ "$shared_override" != "$hook_dir" ]; then
-              echo "Refusing to replace existing shared core.hooksPath: $shared_override" >&2
-              exit 1
-            fi
-            # Do not silently install an inactive hook behind a global/system override.
-            if [ -z "$shared_override" ]; then
-              for scope in global system; do
-                inherited=$(git config --"$scope" --get core.hooksPath || :)
-                if [ -n "$inherited" ] && [ "$inherited" != "$hook_dir" ]; then
-                  echo "Refusing to shadow existing $scope core.hooksPath: $inherited" >&2
-                  exit 1
-                fi
-              done
-            fi
-            worktree_override=$(git config --worktree --get core.hooksPath || :)
-            if [ -n "$worktree_override" ] && [ "$worktree_override" != "$hook_dir" ]; then
-              if [ "$worktree_override" != "$git_dir/hooks" ] || ! is_managed "$worktree_override/pre-push"; then
-                echo "Refusing to replace existing worktree core.hooksPath: $worktree_override" >&2
-                exit 1
-              fi
-            fi
             mkdir -p "$hook_dir"
             umask 077
             candidate=$(mktemp "$hook_dir/pre-push.XXXXXX")
@@ -100,23 +68,17 @@ in
             #!/bin/sh
             exec ${lib.getExe cfg.prePush.package} "$@"
             HOOK
-            if [ -e "$hook" ] || [ -L "$hook" ]; then
-              if ! cmp -s "$candidate" "$hook"; then
-                if ! is_managed "$hook"; then
-                  echo "Refusing to replace an existing shared pre-push hook: $hook" >&2
-                  exit 1
-                fi
-                chmod 700 "$candidate"
-                mv -- "$candidate" "$hook"
-              fi
-            else
-              chmod 700 "$candidate"
-              mv -- "$candidate" "$hook"
-            fi
-            # A worktree-local override would shadow the shared hook. Migrate only
-            # our own previous installer; leave its now-inert hook file untouched.
-            if [ -n "$worktree_override" ]; then
-              git config --worktree --unset core.hooksPath
+            # Installation is explicit: replace only this repository's pre-push
+            # hook, leaving all other hook types untouched.
+            chmod 700 "$candidate"
+            mv -- "$candidate" "$hook_dir/pre-push"
+            # All worktrees inherit this common hook even with a global override.
+            git config --local core.hooksPath "$hook_dir"
+            # Retarget an override in the invoking worktree instead of leaving
+            # the installed hook inactive. Other worktrees use the shared setting.
+            worktree_override=$(git config --worktree --get core.hooksPath 2>/dev/null || :)
+            if [ -n "$worktree_override" ] && [ "$worktree_override" != "$hook_dir" ]; then
+              git config --worktree core.hooksPath "$hook_dir"
             fi
           '';
         };
