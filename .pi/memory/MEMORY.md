@@ -522,4 +522,8 @@ The signed local-cache commit 1fba32e52762adc15bbb3dc5f4d5baba8f8c48c6 passed
 exact-head Check 39340693542 and was ordinarily fast-forwarded to Factory
 main. The C follow-up 16ca0eee568dc7945d436da8e502556a4fb5482e passed
 exact-head Check 39340723225 on its feature branch. The post-Check outcome
-note follows on that branch before its final separately checked fast-forward.
+note followed on that branch and passed exact-head Check 39341304861;
+Factory main was ordinarily fast-forwarded to 0b291a52a660d21344b5cb135d241097a1ab354c.
+The user-authorized manual main Test 39341977302 passed on that exact SHA,
+including checks, unit tests and Cachix processing. No production Plan or
+Apply ran. This test-outcome note is documentation-only.
