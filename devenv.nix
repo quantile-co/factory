@@ -58,6 +58,7 @@ in
           ${lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks} --git-index flake.lock devenv.lock factory
         fi
         ${lib.getExe config.quantile.actionlint.check.package}
+        ${lib.getExe config.quantile.semgrep.test.package}
         ${lib.getExe config.quantile.semgrep.check.package}
         ${lib.getExe config.quantile.opentofu.package} -chdir=${lib.escapeShellArg terraformSourceDir} fmt -check -recursive
         ${lib.concatMapStringsSep "\n" (root: ''

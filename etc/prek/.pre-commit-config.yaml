@@ -123,6 +123,20 @@ repos:
         stages: [manual]
         pass_filenames: false
         always_run: true
+      - id: semgrep-tests
+        name: Test local Semgrep rules
+        entry: test-semgrep
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: semgrep
+        name: Scan source with local Semgrep rules
+        entry: check-semgrep
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
       - id: prettier
         name: Check selected Prettier formats
         entry: check-prettier
