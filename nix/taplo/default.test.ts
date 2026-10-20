@@ -86,11 +86,11 @@ it("validates and formats consumer TOML with native policy and an explicit track
     expect(run(check).status).toBe(0);
     expect(run(format).status).toBe(0);
     writeFileSync(target, "alpha = [\n");
-    expect(run(check).status).not.toBe(0);
+    expect(run(check).status).toBe(1);
     expect(readFileSync(target, "utf8")).toBe("alpha = [\n");
     writeFileSync(target, unformatted);
     expect(run(check).status).toBe(0);
-    expect(run(format).status).not.toBe(0);
+    expect(run(format).status).toBe(1);
     expect(readFileSync(target, "utf8")).toBe(unformatted);
     expect(run(fix).status).toBe(0);
     expect(readFileSync(target, "utf8")).toBe(formatted);
@@ -109,14 +109,23 @@ it("validates and formats consumer TOML with native policy and an explicit track
     writeFileSync(target, "beta = 2\nalpha = 1\n");
     const overridden = run(format);
     expect(overridden.status, overridden.output).toBe(0);
+    const schema = join(work, "schema.json");
     writeFileSync(
       config,
-      configured +
-        `\n[schema]\nenabled = true\npath = "file://${join(work, "missing-schema.json")}"\n`,
+      configured + `\n[schema]\nenabled = true\npath = "file://${schema}"\n`,
     );
-    const missing = run(check);
-    expect(missing.status).not.toBe(0);
-    expect(missing.output).toContain("missing-schema.json");
+    // Taplo can lose asynchronous stderr on exit; assert validation, not log text.
+    expect(run(check).status).toBe(1);
+    writeFileSync(
+      schema,
+      JSON.stringify({
+        type: "object",
+        properties: { alpha: { type: "integer" } },
+      }),
+    );
+    expect(run(check).status).toBe(0);
+    writeFileSync(target, 'alpha = "not an integer"\n');
+    expect(run(check).status).toBe(1);
     rmSync(config);
     expect(run(check).output).toContain("requires consumer-native taplo.toml");
   } finally {

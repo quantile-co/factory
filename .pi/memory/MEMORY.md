@@ -76,10 +76,18 @@ arguments, `check-devenv-locks` checks the conventional `factory` input in
 `flake.lock` and `devenv.lock`, including Git-index validation in CI. Explicit
 arguments remain supported for Factory's own different lock layout.
 
-Local Check and all 112 tests passed. One full run reproduced the previously
-observed Taplo missing-schema diagnostic failure; unchanged focused and full
-reruns passed. No assertion or test was removed. README development instructions
-now start with explicit hook installation and separate Checks and Tests.
+Local Check and all 112 tests passed. README development instructions now start
+with explicit hook installation and separate Checks and Tests.
+
+#bug #verification [[taplo-diagnostic-race]]
+Pinned Taplo 0.10.0 logs through Tokio's asynchronous stderr and calls
+`process::exit` without flushing. Under parallel load, 503 of 1,000 missing-schema
+invocations lost the filename diagnostic; all exited normally with status 1.
+The consumer test now checks exact exit statuses and real local-schema acceptance
+and rejection instead of vendor diagnostic text. A separate 3,000-invocation
+stress check passed: 1,000 each for missing schema, valid data and invalid data.
+Full Check and all 112 tests passed after the change. No retries, sleeps, skipped
+tests or Taplo fork were added; upstream diagnostic loss remains a tool issue.
 
 ## Local validation
 
