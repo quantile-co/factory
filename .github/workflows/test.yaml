@@ -46,9 +46,8 @@ jobs:
       - name: Set up Cachix
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
-          name: quantile-co
+          name: ${{ github.repository_owner }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipAddingSubstituter: true
           useDaemon: false
 
       - name: Run checks, then tests
