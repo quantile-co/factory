@@ -75,6 +75,18 @@ it("checks without editing and safely fixes consumer files using the store-backe
     }
     writeFileSync(join(work, ".gitignore"), "node_modules/\nignored.ts\n");
     run("git", ["init", "--quiet", "--initial-branch=main"]);
+    mkdirSync(join(work, ".pi/skills/external"), { recursive: true });
+    writeFileSync(
+      join(work, ".pi/skills/external/example.ts"),
+      "not typescript\n",
+    );
+    run("pnpm", [
+      "exec",
+      "biome",
+      "check",
+      "--no-errors-on-unmatched",
+      ".pi/skills",
+    ]);
     const untouched = [
       "README.md",
       "tf/README.md",

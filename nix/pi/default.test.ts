@@ -9,7 +9,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
 it("exposes readable native Pi settings and shared skills to a consumer", () => {
@@ -33,6 +32,11 @@ in builtins.toJSON {
     day-zero-deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/day-zero-deploy/SKILL.md");
     marimo-pair = builtins.readFile (cfg.quantile.pi.skillsDir + "/marimo-pair/SKILL.md");
     nvim-pair = builtins.readFile (cfg.quantile.pi.skillsDir + "/nvim-pair/SKILL.md");
+    seo-audit = builtins.readFile (cfg.quantile.pi.skillsDir + "/seo-audit/SKILL.md");
+    web-design-guidelines = builtins.readFile (cfg.quantile.pi.skillsDir + "/web-design-guidelines/SKILL.md");
+    web-perf = builtins.readFile (cfg.quantile.pi.skillsDir + "/web-perf/SKILL.md");
+    web-quality-audit = builtins.readFile (cfg.quantile.pi.skillsDir + "/web-quality-audit/SKILL.md");
+    webapp-testing = builtins.readFile (cfg.quantile.pi.skillsDir + "/webapp-testing/SKILL.md");
   };
 }`,
     ],
@@ -60,14 +64,21 @@ in builtins.toJSON {
     "day-zero-deploy",
     "marimo-pair",
     "nvim-pair",
+    "seo-audit",
+    "web-design-guidelines",
+    "web-perf",
+    "web-quality-audit",
+    "webapp-testing",
   ]) {
     const skill = resolved.skills[name];
-    expect(skill).toBe(
-      readFileSync(
-        new URL(`../../etc/pi/skills/${name}/SKILL.md`, import.meta.url),
-        "utf8",
-      ),
-    );
+    if (["deploy", "day-zero-deploy", "nvim-pair"].includes(name)) {
+      expect(skill).toBe(
+        readFileSync(
+          new URL(`../../etc/pi/skills/${name}/SKILL.md`, import.meta.url),
+          "utf8",
+        ),
+      );
+    }
     expect(skill).toContain(`name: ${name}`);
     if (name === "deploy" || name === "day-zero-deploy") {
       expect(skill).toContain("existing");
@@ -76,14 +87,32 @@ in builtins.toJSON {
 });
 
 it("ships opt-in skill scripts without touching unrelated local state", () => {
-  const skills = new URL("../../etc/pi/skills/", import.meta.url);
-  const nvim = fileURLToPath(new URL("nvim-pair/scripts/nvctl", skills));
-  const marimo = fileURLToPath(
-    new URL("marimo-pair/scripts/discover-servers.sh", skills),
+  const root = new URL("../../", import.meta.url);
+  const built = spawnSync(
+    "nix",
+    [
+      "build",
+      "--no-link",
+      "--print-out-paths",
+      "--impure",
+      "--expr",
+      `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
+      pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    in (pkgs.lib.evalModules {
+      modules = [ f.nixModules.pi ]; specialArgs = { inherit pkgs; };
+    }).config.quantile.pi.skillsDir`,
+    ],
+    { encoding: "utf8", timeout: 120_000 },
   );
-  const execute = fileURLToPath(
-    new URL("marimo-pair/scripts/execute-code.sh", skills),
-  );
+  if (built.error) throw built.error;
+  expect(built.status, built.stderr).toBe(0);
+  const skills = built.stdout.trim();
+  const nvim = join(skills, "nvim-pair/scripts/nvctl");
+  const marimo = join(skills, "marimo-pair/scripts/discover-servers.sh");
+  const execute = join(skills, "marimo-pair/scripts/execute-code.sh");
+  expect(
+    readFileSync(join(skills, "performance/references/MEASUREMENT.md"), "utf8"),
+  ).toContain("measurement");
   for (const script of [nvim, marimo, execute]) {
     const syntax = spawnSync("bash", ["-n", script], { encoding: "utf8" });
     expect(syntax.status, syntax.stderr).toBe(0);

@@ -112,6 +112,7 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
       "nested/result-build",
       ".terraform",
       "nested/.terraform",
+      ".pi/skills/external",
     ]) {
       const output = join(work, generated);
       mkdirSync(output, { recursive: true });
@@ -119,6 +120,11 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
     }
     const ignoredBuildOutputs = run(check);
     expect(ignoredBuildOutputs.status, ignoredBuildOutputs.output).toBe(0);
+    const ownedSkill = join(work, "etc/pi/skills/owned");
+    mkdirSync(ownedSkill, { recursive: true });
+    writeFileSync(join(ownedSkill, "source.tf"), original);
+    expect(run(check).status).not.toBe(0);
+    rmSync(ownedSkill, { recursive: true });
     const fixtures = join(work, "selected-fixtures");
     mkdirSync(join(fixtures, "tf"), { recursive: true });
     copyFileSync(

@@ -38,7 +38,7 @@ repos:
         args:
           - >-
             github\.com/[^/[:space:]<>"'`]+/[^/[:space:]<>"'`]+/(blob|tree)/[^/[:space:]?#<>"'`()]+
-        exclude: ^\.gitignore$
+        exclude: '(^\.gitignore$|^\.pi/skills/)'
       - id: gitleaks
         name: Full-history and working-tree secret scanning
         entry: check-gitleaks
