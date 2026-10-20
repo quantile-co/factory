@@ -88,11 +88,6 @@ linters:
     rules:
       - path: '_test\.go'
         linters: [dupl, funlen, lll]
-formatters:
-  enable: [gofumpt, goimports]
-  settings:
-    gofumpt:
-      extra-rules: true
 issues:
   max-same-issues: 50
 run:

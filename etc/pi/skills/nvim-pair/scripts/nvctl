@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Control a live Neovim instance started with --listen.
+set -euo pipefail
+shopt -s nullglob
+
+die() {
+    printf 'nvctl: %s\n' "$*" >&2
+    exit 1
+}
+(($#)) || die 'usage: nvctl {status|sockets|open|goto|grep|cmd|keys|expr} ...'
+command -v nvim >/dev/null 2>&1 || die 'nvim not found on PATH'
+
+pick_socket() {
+    local explicit="${NVIM_SOCKET:-${NVIM_LISTEN:-}}" socket cwd here
+    if [[ -n $explicit ]]; then
+        nvim --server "$explicit" --remote-expr '1' >/dev/null 2>&1 || die "not a live Neovim socket: $explicit"
+        printf '%s\n' "$explicit"
+        return
+    fi
+    local live=() matching=()
+    for socket in /tmp/nvim-*.sock; do
+        if nvim --server "$socket" --remote-expr '1' >/dev/null 2>&1; then live+=("$socket"); fi
+    done
+    ((${#live[@]})) || die 'no live Neovim sockets; start nvim with --listen or set NVIM_SOCKET'
+    if ((${#live[@]} == 1)); then
+        printf '%s\n' "${live[0]}"
+        return
+    fi
+    here=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+    for socket in "${live[@]}"; do
+        cwd=$(nvim --server "$socket" --remote-expr 'getcwd()' 2>/dev/null || true)
+        if [[ -n $cwd && ($cwd == "$here" || $here == "$cwd"/* || $cwd == "$here"/*) ]]; then
+            matching+=("$socket")
+        fi
+    done
+    if ((${#matching[@]} == 1)); then
+        printf '%s\n' "${matching[0]}"
+        return
+    fi
+    printf 'nvctl: multiple Neovim sockets; set NVIM_SOCKET:\n' >&2
+    for socket in "${live[@]}"; do
+        cwd=$(nvim --server "$socket" --remote-expr 'getcwd()' 2>/dev/null || printf '?')
+        printf '  %s  cwd=%s\n' "$socket" "$cwd" >&2
+    done
+    exit 1
+}
+
+socket=$(pick_socket)
+command=$1
+case "$command" in
+    status)
+        nvim --server "$socket" --remote-expr \
+            '"cwd=" . getcwd() . "  buf=" . bufname("%") . "  ft=" . &filetype . "  mode=" . mode() . "  tab=" . tabpagenr() . "/" . tabpagenr("$")'
+        ;;
+    sockets)
+        for entry in /tmp/nvim-*.sock; do
+            cwd=$(nvim --server "$entry" --remote-expr 'getcwd()' 2>/dev/null || printf '(dead)')
+            printf '%s  cwd=%s\n' "$entry" "$cwd"
+        done
+        ;;
+    open | goto)
+        (($# >= 2)) || die "$command needs <file> [line]"
+        [[ -f $2 ]] || die "not a file: $2"
+        file=$(cd -- "$(dirname -- "$2")" && printf '%s/%s\n' "$(pwd -P)" "$(basename -- "$2")")
+        nvim --server "$socket" --remote-tab "$file"
+        if [[ $command == goto && $# -ge 3 ]]; then
+            [[ $3 =~ ^[1-9][0-9]*$ ]] || die 'goto line must be a positive integer'
+            nvim --server "$socket" --remote-send "<Cmd>$3<CR>"
+        fi
+        ;;
+    grep)
+        (($# == 2)) || die 'grep needs one search term'
+        [[ $2 != *'<'* && $2 != *'>'* && $2 != *$'\n'* && $2 != *$'\r'* ]] || die 'grep term contains control characters'
+        nvim --server "$socket" --remote-send "<Cmd>Telescope live_grep default_text=$2<CR>"
+        ;;
+    cmd | keys)
+        (($# == 2)) || die "$command needs one argument"
+        if [[ $command == cmd ]]; then
+            nvim --server "$socket" --remote-send "<Cmd>$2<CR>"
+        else
+            nvim --server "$socket" --remote-send "$2"
+        fi
+        ;;
+    expr)
+        (($# == 2)) || die 'expr needs one expression'
+        nvim --server "$socket" --remote-expr "$2"
+        ;;
+    *) die "unknown command: $command" ;;
+esac

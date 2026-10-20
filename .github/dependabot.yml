@@ -4,24 +4,32 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
   - package-ecosystem: opentofu
     directory: /tf/infrastructure
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
   - package-ecosystem: nix
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     # Best effort only: Check requires the CLI/module revisions and devenv.lock to agree.
     groups:
       devenv:

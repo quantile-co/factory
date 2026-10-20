@@ -6,7 +6,7 @@ import rego.v1
 valid_inventory if {
 	object.keys(input.resource) == {
 		"random_id", "google_project", "google_project_service", "google_storage_bucket",
-		"google_project_iam_member", "google_storage_bucket_iam_member",
+		"google_project_iam_member", "google_storage_bucket_iam_member", "google_project_iam_audit_config",
 	}
 	every resources in input.resource {
 		count(resources) == 1
@@ -41,6 +41,18 @@ valid_state if {
 	}
 }
 
+# Bucket-log delivery is not required when Cloud Audit Logs covers storage access.
+valid_audit_logging if {
+	audit := input.resource.google_project_iam_audit_config.storage[0]
+	audit.project == "${google_project.state.project_id}"
+	audit.service == "storage.googleapis.com"
+	{entry | some entry in audit.audit_log_config} == {
+		{"log_type": "ADMIN_READ"},
+		{"log_type": "DATA_READ"},
+		{"log_type": "DATA_WRITE"},
+	}
+}
+
 valid_readers if {
 	reader := input.resource.google_storage_bucket_iam_member.plan_reader[0]
 	reader.for_each == "${var.maintainers}"
@@ -61,6 +73,8 @@ valid_federation if {
 deny contains "GCP module must contain only project, storage and scoped IAM resources" if not valid_inventory
 
 deny contains "State must retain private versioned storage, deletion guards and prefix-scoped plan cleanup" if not valid_state
+
+deny contains "Storage audit logs must cover admin reads, data reads and writes without exemptions" if not valid_audit_logging
 
 deny contains "Plan readers must have read-only access limited to the plans prefix" if not valid_readers
 

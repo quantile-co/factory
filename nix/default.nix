@@ -2,6 +2,7 @@
 let
   modules = {
     actionlint = ./actionlint;
+    age = ./age;
     bear = ./bear;
     biome = ./biome;
     buf = ./buf;
@@ -11,8 +12,11 @@ let
     cmake = ./cmake;
     commitizen = ./commitizen;
     conftest = ./conftest;
+    container-structure-test = ./container-structure-test;
     deadnix = ./deadnix;
+    delve = ./delve;
     dependabot = ./dependabot;
+    docker-client = ./docker-client;
     duckdb = ./duckdb;
     editorconfig = ./editorconfig;
     emscripten = ./emscripten;
@@ -23,14 +27,22 @@ let
     gitleaks = ./gitleaks;
     go = ./go;
     gofumpt = ./gofumpt;
+    goimports = ./goimports;
     golangci-lint = ./golangci-lint;
+    gopls = ./gopls;
+    gotools = ./gotools;
+    helm = ./helm;
     jq = ./jq;
+    k9s = ./k9s;
     kubectl = ./kubectl;
     kubeconform = ./kubeconform;
     keep-sorted = ./keep-sorted;
+    kustomize = ./kustomize;
     lnav = ./lnav;
     markdownlint-cli2 = ./markdownlint-cli2;
     meson = ./meson;
+    minikube = ./minikube;
+    mockery = ./mockery;
     mypy = ./mypy;
     nix = ./nix;
     ninja = ./ninja;
@@ -50,12 +62,16 @@ let
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     ruff = ./ruff;
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
-    semgrep = ./semgrep;
+    semgrep = import ./semgrep { rulesSource = inputs.semgrep-rules; };
     shellcheck = ./shellcheck;
     shfmt = ./shfmt;
+    skopeo = ./skopeo;
+    sqlc = ./sqlc;
     statix = ./statix;
     taplo = ./taplo;
+    templ = ./templ;
     tflint = ./tflint;
+    tilt = ./tilt;
     trivy = ./trivy;
     typescript = ./typescript;
     typos = ./typos;

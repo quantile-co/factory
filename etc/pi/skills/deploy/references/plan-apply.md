@@ -12,8 +12,8 @@ devenv tasks run --show-output check:all
 
 ## Layout changes on an existing installation
 
-For existing installations, compare the old state addresses with this
-repository's current modules and temporary `moved` blocks. Obtain separate
+For existing installations, compare the resource addresses in state with this
+repository's modules and any `moved` blocks. Obtain separate
 approval for any one-time address migration. Do not apply a plan that recreates
 or deletes existing resources because of a refactor. When the original bucket
 and `repository/prod` prefix are retained, this is not a backend migration or a
@@ -95,7 +95,7 @@ PRIVATE_DIR=$(mktemp -d)
 gh run download "$PLAN_RUN_ID" -R "$REPO" -n "$ARTIFACT_NAME" -D "$PRIVATE_DIR"
 repository_id=$(gh api "repos/$REPO" --jq .id)
 # Set the exact effective bucket from the reviewed Plan caller and its variables.
-# It may come from a legacy-named variable passed as an explicit call input.
+# Caller input overrides can select a bucket independently of the default variable.
 : "${GCP_TF_STATE_BUCKET:?Set and verify the producing Plan's state bucket}"
 generation=$(jq -er .generation "$PRIVATE_DIR/plan.json")
 gcloud storage cp \

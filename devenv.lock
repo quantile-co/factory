@@ -147,7 +147,8 @@
         "llm-agents": "llm-agents",
         "mk-shell-bin": "mk-shell-bin",
         "nix2container": "nix2container",
-        "nixpkgs": "nixpkgs_5"
+        "nixpkgs": "nixpkgs_5",
+        "semgrep-rules": "semgrep-rules"
       },
       "locked": {
         "type": "git",
@@ -683,6 +684,23 @@
       "original": {
         "owner": "oxalica",
         "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "semgrep-rules": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792098295,
+        "narHash": "sha256-4wnmue3YxZ6alCelkYHbQTXgGKO/n4EWdLAXQmFXraE=",
+        "owner": "semgrep",
+        "repo": "semgrep-rules",
+        "rev": "17e31e11ebac99fb7dfe1cd288f7a32151b6f3f9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "semgrep",
+        "ref": "develop",
+        "repo": "semgrep-rules",
         "type": "github"
       }
     },

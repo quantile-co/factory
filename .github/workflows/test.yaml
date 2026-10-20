@@ -56,5 +56,5 @@ jobs:
           SECRETSPEC_PROFILE: test
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         run: |
-          cli="$(nix build --no-link --print-out-paths .#devenv-cli)/bin/devenv"
+          cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
           "$cli" shell -- "$cli" tasks run --mode before test:all

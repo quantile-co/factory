@@ -1,8 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   copyFileSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -74,3 +75,43 @@ module "${name}" {
     rmSync(work, { recursive: true, force: true });
   }
 }, 120_000);
+
+it("rejects incomplete or exempted storage audit logging", () => {
+  const moduleDir = dirname(fileURLToPath(import.meta.url));
+  const work = mkdtempSync(join(tmpdir(), "gcp-audit-policy-"));
+  try {
+    const source = readFileSync(join(moduleDir, "main.tf"), "utf8");
+    const file = join(work, "main.tf");
+    const check = (text: string) => {
+      writeFileSync(file, text);
+      const result = spawnSync(
+        "conftest",
+        [
+          "test",
+          "--policy",
+          moduleDir,
+          "--namespace",
+          "terraform.project.gcp",
+          file,
+        ],
+        { encoding: "utf8", timeout: 20_000 },
+      );
+      if (result.error) throw result.error;
+      return { status: result.status, output: result.stdout + result.stderr };
+    };
+    const valid = check(source);
+    expect(valid.status, valid.output).toBe(0);
+    for (const replacement of [
+      'log_type = "ADMIN_READ"',
+      'log_type = "DATA_READ"\n    exempted_members = ["user:operator@example.com"]',
+    ]) {
+      const invalid = check(
+        source.replace('log_type = "DATA_READ"', replacement),
+      );
+      expect(invalid.status, invalid.output).toBe(1);
+      expect(invalid.output).toContain("Storage audit logs must cover");
+    }
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});

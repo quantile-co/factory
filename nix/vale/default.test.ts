@@ -82,6 +82,12 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     expect(untracked.status).not.toBe(0);
     expect(untracked.output).toContain("Quantile.Filler");
     expect(readFileSync(draft, "utf8")).toBe(filler);
+    const plainText = join(work, "docs/notes.txt");
+    writeFileSync(plainText, "It is worth noting that the check runs.\n");
+    const textResult = run(["docs/*.txt"]);
+    expect(textResult.status).not.toBe(0);
+    expect(textResult.output).toContain("Quantile.Filler");
+    rmSync(plainText);
     const rejectedWords = join(
       work,
       "etc/vale/styles/config/vocabularies/Quantile/reject.txt",

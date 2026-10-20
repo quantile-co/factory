@@ -94,7 +94,7 @@ jobs:
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
           TF_PLAN_DIR: ${{ runner.temp }}/saved-plan
         run: |
-          cli="$(nix build --no-link --print-out-paths .#devenv-cli)/bin/devenv"
+          cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
           "$cli" shell -- "$cli" tasks run --show-output plan:infrastructure
 
       - name: Publish receipt only

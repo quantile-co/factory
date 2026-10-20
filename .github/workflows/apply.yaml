@@ -104,7 +104,7 @@ jobs:
           PLAN_ARTIFACT_ID: ${{ inputs.plan_artifact_id }}
           TF_PLAN_DIR: ${{ runner.temp }}/saved-plan
         run: |
-          cli="$(nix build --no-link --print-out-paths .#devenv-cli)/bin/devenv"
+          cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
           "$cli" shell -- "$cli" tasks run --show-output apply:infrastructure
 
       - name: Remove local plan files

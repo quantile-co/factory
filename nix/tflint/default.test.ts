@@ -87,8 +87,7 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     const accepted = run();
     expect(accepted.status, accepted.output).toBe(0);
 
-    // Use a real Git-downloaded module: a simple local root cannot detect a
-    // lost TF_DATA_DIR handoff between OpenTofu initialization and TFLint.
+    // A Git-sourced module requires isolated initialization before linting.
     const module = join(work, "module-source");
     mkdirSync(module);
     writeFileSync(join(module, "main.tf"), invalid);
@@ -136,13 +135,12 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     // Both explicit Devenv storage and the Git-owned fallback must work.
     for (const state of [join(work, "isolated-data"), ""]) {
       const env = { ...ambient, DEVENV_STATE: state };
-      const linted = run(env, tofuCheck, ["--", check]);
+      const initialized = run(env, tofuCheck);
+      expect(initialized.status, initialized.output).toBe(0);
+      const linted = run(env);
       expect(linted.status).not.toBe(0);
       expect(linted.output).toContain("terraform_documented_outputs");
-      const passed = run({ ...env, TFLINT_CONFIG_FILE: override }, tofuCheck, [
-        "--",
-        check,
-      ]);
+      const passed = run({ ...env, TFLINT_CONFIG_FILE: override });
       expect(passed.status, passed.output).toBe(0);
       expect(readFileSync(production, "utf8")).toBe(
         "production backend metadata must remain untouched\n",
@@ -151,13 +149,13 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     expect(existsSync(join(project, ".terraform/modules"))).toBe(false);
     const child = join(work, "companion-ran");
     writeFileSync(source, "invalid Terraform syntax\n");
-    expect(
-      run({ DEVENV_STATE: join(work, "isolated-data") }, tofuCheck, [
-        "--",
-        "touch",
-        child,
-      ]).status,
-    ).not.toBe(0);
+    const rejectedCommand = run(
+      { DEVENV_STATE: join(work, "isolated-data") },
+      tofuCheck,
+      ["--", "touch", child],
+    );
+    expect(rejectedCommand.status).toBe(2);
+    expect(rejectedCommand.output).toContain("Usage: check-terraform");
     expect(existsSync(child)).toBe(false);
     rmSync(config);
     expect(run().output).toContain("requires consumer-native .tflint.hcl");

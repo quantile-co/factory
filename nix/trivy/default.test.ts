@@ -60,6 +60,17 @@ it("scans source with native offline policy, skips build output, and reports a r
         "  disable-telemetry: true\n  offline: true",
       );
     writeFileSync(config, offline);
+    const ruleFixtures = join(work, "etc/semgrep/rules/k8s");
+    mkdirSync(ruleFixtures, { recursive: true });
+    copyFileSync(
+      new URL(
+        "../../etc/semgrep/rules/k8s/privileged-container.test.yaml",
+        import.meta.url,
+      ),
+      join(ruleFixtures, "privileged-container.test.yaml"),
+    );
+    const ignoredFixture = run();
+    expect(ignoredFixture.status, ignoredFixture.output).toBe(0);
     const scanRoot = "iac with spaces";
     mkdirSync(join(work, scanRoot, "build"), { recursive: true });
     const rejected = `resource "google_storage_bucket" "unsafe" {

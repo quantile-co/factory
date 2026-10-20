@@ -22,8 +22,28 @@ resource "google_project_service" "storage" {
   disable_on_destroy = false
 }
 
+resource "google_project_iam_audit_config" "storage" {
+  project = google_project.state.project_id
+  service = "storage.googleapis.com"
+
+  audit_log_config {
+    log_type = "ADMIN_READ"
+  }
+
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
+
+  audit_log_config {
+    log_type = "DATA_WRITE"
+  }
+}
+
+# Cloud Audit Logs records storage access; main.rego requires all three log types.
+# https://cloud.google.com/storage/docs/access-logs#should-you-use
+# nosemgrep: terraform.gcp.security.gcp-cloud-storage-logging.gcp-cloud-storage-logging
 resource "google_storage_bucket" "state" {
-  depends_on = [google_project_service.storage]
+  depends_on = [google_project_service.storage, google_project_iam_audit_config.storage]
 
   project                     = google_project.state.project_id
   name                        = "${google_project.state.project_id}-tf-state"

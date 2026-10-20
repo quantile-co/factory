@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
-it("checks Go modules without mutation and fixes only selected tracked sources", () => {
+it("checks Go lint without mutation and scopes fixes to tracked sources", () => {
   const root = new URL("../../", import.meta.url);
   const work = mkdtempSync(join(tmpdir(), "factory-go-"));
   const repo = join(work, "repo");
@@ -92,21 +92,20 @@ it("checks Go modules without mutation and fixes only selected tracked sources",
       expect(result.status, result.stderr).toBe(0);
       return result.stdout.trim().split("\n")[0];
     };
-    const check = join(build("check"), "bin/check-go");
-    const fix = join(build("fix"), "bin/fix-go");
+    const check = join(build("check"), "bin/check-golangci-lint");
+    const fix = join(build("fix"), "bin/fix-golangci-lint");
     const roots = ["module with spaces"];
     expect(exec(check, roots).status).toBe(0);
     writeFileSync(source, badlyFormatted);
-    const invalid = exec(check, roots);
-    expect(invalid.status).not.toBe(0);
-    expect(invalid.output).toContain("Go formatting differs");
+    const unformattedCheck = exec(check, roots);
+    expect(unformattedCheck.status, unformattedCheck.output).toBe(0);
     expect(readFileSync(source, "utf8")).toBe(badlyFormatted);
     writeFileSync(
       join(module, "untracked.go"),
       "package example\nfunc Other()int{return 4}\n",
     );
     expect(exec(fix, roots).status).toBe(0);
-    expect(readFileSync(source, "utf8")).toBe(good);
+    expect(readFileSync(source, "utf8")).toBe(badlyFormatted);
     expect(readFileSync(join(module, "nested/nested.go"), "utf8")).toBe(
       badlyFormatted,
     );
@@ -131,7 +130,7 @@ it("checks Go modules without mutation and fixes only selected tracked sources",
 
     const fakeLint =
       '{ quantile.golangci-lint.package = pkgs.writeShellScriptBin "golangci-lint" "printf changed > go.sum"; }';
-    const guardedFix = join(build("fix", fakeLint), "bin/fix-go");
+    const guardedFix = join(build("fix", fakeLint), "bin/fix-golangci-lint");
     writeFileSync(source, badlyFormatted);
     const blocked = exec(guardedFix, roots);
     expect(blocked.status).not.toBe(0);

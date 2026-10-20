@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dangerous
+spec:
+  # ruleid: kubernetes-host-namespace
+  hostNetwork: true
+  # ruleid: kubernetes-host-namespace
+  hostPID: true
+  # ruleid: kubernetes-host-namespace
+  hostIPC: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: limited
+spec:
+  # ok: kubernetes-host-namespace
+  hostNetwork: false
+  # ok: kubernetes-host-namespace
+  hostPID: false
+  # ok: kubernetes-host-namespace
+  hostIPC: false
+---
+name: unrelated
+# ok: kubernetes-host-namespace
+hostNetwork: true

@@ -1,0 +1,13 @@
+rules:
+  - id: kubernetes-docker-socket-hostpath
+    languages: [yaml]
+    severity: ERROR
+    message: Do not give Kubernetes workloads the host Docker daemon socket.
+    patterns:
+      - pattern-inside: |
+          apiVersion: ...
+          kind: ...
+          ...
+      - pattern: |
+          hostPath:
+            path: /var/run/docker.sock

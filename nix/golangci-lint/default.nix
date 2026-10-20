@@ -9,16 +9,14 @@ let
   run =
     fix:
     pkgs.writeShellApplication {
-      name = if fix then "fix-go" else "check-go";
+      name = if fix then "fix-golangci-lint" else "check-golangci-lint";
       runtimeInputs = [
         config.quantile.go.package
-        config.quantile.gofumpt.package
         cfg.package
         pkgs.coreutils
         pkgs.findutils
         pkgs.git
         pkgs.jq
-        pkgs.yq-go
       ];
       text = ''
         paths=( '*.go' ':(exclude)*.pb.go' ':(exclude)*.gen.go' ':(exclude)*_templ.go' ':(exclude)vendor/**' )
@@ -29,7 +27,7 @@ let
           shift
         done
         if (( ''${#roots[@]} == 0 )); then
-          echo 'Select at least one Go module root (e.g. check-go . or check-go "module with spaces").' >&2
+          echo 'Select at least one Go module root (e.g. check-golangci-lint .).' >&2
           exit 2
         fi
         # An ambient Go installation's GOROOT can silently mix stdlib toolchains.
@@ -40,9 +38,6 @@ let
         config="''${GO_LINT_CONFIG:-.golangci.yml}"
         test -f "$config" || { echo "Missing native golangci-lint config: $config" >&2; exit 1; }
         config=$(realpath -- "$config")
-        extra=$(yq -r '.formatters.settings.gofumpt.extra-rules // false' "$config")
-        extra_args=()
-        if [ "$extra" = true ]; then extra_args=(-extra); fi
         tmp=$(mktemp -d)
         trap 'rm -rf -- "$tmp"' EXIT
         mkdir "$tmp/tree"
@@ -118,17 +113,6 @@ let
             printf '%s\0' "$root/$file" >> "$tmp/selected"
           done < "$tmp/candidates"
           if (( ''${#selected[@]} == 0 )); then echo "No Go source selected for root: $root" >&2; exit 1; fi
-          ${
-            if fix then
-              ''
-                gofumpt "''${extra_args[@]}" -w "''${selected[@]}"
-              ''
-            else
-              ''
-                unformatted=$(gofumpt "''${extra_args[@]}" -l "''${selected[@]}")
-                if [ -n "$unformatted" ]; then printf 'Go formatting differs:\n%s\n' "$unformatted" >&2; exit 1; fi
-              ''
-          }
           golangci-lint run --config "$config" --modules-download-mode readonly --issues-exit-code 1 ${lib.optionalString fix "--fix"} ./...
           ${lib.optionalString fix ''
             # Some failed repairs are warnings in --fix mode; verify before copying back.
@@ -150,10 +134,7 @@ let
     };
 in
 {
-  imports = [
-    ../go
-    ../gofumpt
-  ];
+  imports = [ ../go ];
   options.quantile.golangci-lint = {
     package = lib.mkOption {
       type = lib.types.package;
@@ -168,12 +149,12 @@ in
     check.package = lib.mkOption {
       type = lib.types.package;
       default = run false;
-      description = "Read-only Go formatting and lint checks for explicitly selected module roots.";
+      description = "Read-only golangci-lint checks for explicitly selected Go module roots.";
     };
     fix.package = lib.mkOption {
       type = lib.types.package;
       default = run true;
-      description = "Explicit, scoped Go formatting and lint fixes.";
+      description = "Explicit golangci-lint fixes for selected tracked Go source.";
     };
   };
 }

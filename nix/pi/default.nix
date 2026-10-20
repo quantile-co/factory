@@ -23,7 +23,7 @@
     skillsDir = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/pi/skills;
-      description = "Portable deployment skills for consumer placement.";
+      description = "Factory skills for consumer placement.";
     };
   };
 }

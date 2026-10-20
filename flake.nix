@@ -13,6 +13,10 @@
     mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin/main";
     nix2container.url = "github:nlewo/nix2container/master";
     nix2container.inputs.nixpkgs.follows = "nixpkgs";
+    semgrep-rules = {
+      url = "github:semgrep/semgrep-rules/develop";
+      flake = false;
+    };
   };
 
   # Consumers can follow these inputs or import the shared Nix modules.

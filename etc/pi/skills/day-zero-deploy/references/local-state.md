@@ -120,18 +120,15 @@ gcloud alpha resource-manager liens create \
 gcloud alpha resource-manager liens list --project="$GCP_PROJECT_ID" --format=json
 ```
 
-The July backup's `gcp:lien:apply` used the same `gcloud alpha resource-manager
-liens create` operation. It optionally passed `--impersonate-service-account`
-and `--billing-project` when `GCP_LIEN_SA` was provided. Use that variant only
-with separate approval and verified token-creation, lien-modification and
-quota-project permissions; Q0 break-glass is not the default bootstrap identity.
+Using `--impersonate-service-account` and `--billing-project` requires separate
+approval and verified token-creation, lien-modification and quota-project
+permissions. A break-glass account is not the default bootstrap identity.
 Keep the returned lien name in private operator records, never Git or Terraform
 state. Do not remove the lien during normal state migration, CI handoff, or
 Terraform teardown. An exceptional removal requires separate approval for the
 **exact** lien name: inspect the project's liens again, then run
 `gcloud alpha resource-manager liens delete "$GCP_LIEN_NAME"` for only that
-verified name. Never run the backup's `gcp:lien:destroy` task: it deletes every
-lien on the project.
+verified name. Never bulk-delete the project's liens.
 
 ## 3. State migration
 
@@ -174,7 +171,7 @@ gh variable set GCP_WIF_PROVIDER --repo "$GH_REPOSITORY" --body "$GCP_WIF_PROVID
 gh variable set GH_MAINTAINERS --repo "$GH_REPOSITORY" --body "$GH_MAINTAINERS"
 gh variable set GCP_PROJECT_ID --repo "$GH_REPOSITORY" --body "$GCP_PROJECT_ID"
 gh variable set GCP_TF_STATE_BUCKET --repo "$GH_REPOSITORY" --body "$GCP_TF_STATE_BUCKET"
-# Compatibility alias for callers passing the legacy bucket variable.
+# Alias for callers that pass TF_STATE_BUCKET as the state-bucket input.
 gh variable set TF_STATE_BUCKET --repo "$GH_REPOSITORY" --body "$GCP_TF_STATE_BUCKET"
 
 # Verify prod permits ONLY main, not tags, before adding secrets.

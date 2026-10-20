@@ -38,7 +38,12 @@ in
             exit 1
           fi
           config=$(realpath "$config")
-          tflint --chdir="$tf_dir" --config="$config" --no-color
+          root=$(cd "$tf_dir" && pwd -P)
+          git_dir=$(git -C "$root" rev-parse --absolute-git-dir)
+          hash=$(printf '%s' "$root" | sha256sum | cut -d ' ' -f1)
+          state="''${DEVENV_STATE:-$git_dir/factory}"
+          export TF_DATA_DIR="$state/tofu-check/$hash"
+          tflint --chdir="$root" --config="$config" --no-color
         '';
       };
       description = "Read-only TFLint check of one explicitly selected Terraform root.";

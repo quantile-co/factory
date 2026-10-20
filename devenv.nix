@@ -55,6 +55,9 @@ in
     config.quantile.secretspec.package
   ];
 
+  # Scan with all pinned registry packs and local rules, without network access.
+  quantile.semgrep.check.configs = builtins.attrValues config.quantile.semgrep.packs;
+
   # Read the manifest directly from the Nix store; no root secretspec.toml is needed.
   env.SECRETSPEC_FILE = "${config.quantile.secretspec.configFile}";
   enterShell = lib.mkBefore config.quantile.secretspec.shellHook;
@@ -97,6 +100,7 @@ in
       description = "Run all checks.";
       after = [ "devenv:files" ];
       exec = ''
+        set -euo pipefail
         # Validate the flake and its tracked, copied Dependabot configuration.
         ${lib.getExe pkgs.nix} flake check .
         ${lib.getExe config.quantile.dependabot.check.package} ${dependabotFile}
@@ -109,6 +113,8 @@ in
         ${lib.getExe config.quantile.deadnix.check.package}
         ${lib.getExe config.quantile.statix.check.package}
         ${lib.getExe config.quantile.editorconfig.check.package}
+        ${lib.getExe config.quantile.shellcheck.check.package}
+        ${lib.getExe config.quantile.shfmt.check.package}
         ${lib.getExe config.quantile.markdownlint-cli2.check.package} '*.md' \
           ':(exclude,glob).pi/memory/**'
         ${lib.getExe config.quantile.actionlint.check.package}
@@ -129,7 +135,8 @@ in
         # Format-check all source, then validate and lint each isolated root.
         TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.format.package}
         ${lib.concatMapStringsSep "\n" (root: ''
-          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package} -- ${lib.getExe config.quantile.tflint.check.package}
+          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package}
+          TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.tflint.check.package}
         '') terraformRoots}
         ${lib.getExe config.quantile.conftest.check.package} --policy tf/infrastructure --namespace terraform.infrastructure -- tf/infrastructure/main.tf
         ${lib.getExe config.quantile.conftest.check.package} --policy tf/modules/project/github --namespace terraform.project.github -- tf/modules/project/github/main.tf
@@ -143,8 +150,10 @@ in
       description = "Run all fixes.";
       after = [ "devenv:files" ];
       exec = ''
+        set -euo pipefail
         TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.fix.package}
         ${lib.getExe config.quantile.nixfmt.fix.package}
+        ${lib.getExe config.quantile.shfmt.fix.package}
         ${lib.getExe config.quantile.taplo.fix.package}
         ${lib.getExe config.quantile.editorconfig.fix.package}
         ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
@@ -156,6 +165,7 @@ in
       description = "Run all tests.";
       after = [ "check:all" ];
       exec = ''
+        set -euo pipefail
         ${lib.getExe config.quantile.pnpm.package} install --frozen-lockfile --ignore-scripts
         ${lib.getExe config.quantile.pnpm.package} test
       '';

@@ -47,7 +47,7 @@ in
             git-lfs pre-push "$@" < "$work/refs"
           '';
         };
-        description = "Run native Prek checks and an optional legacy hook before uploading LFS objects.";
+        description = "Run native Prek checks and an optional additional hook before uploading LFS objects.";
       };
       install.package = lib.mkOption {
         type = lib.types.package;

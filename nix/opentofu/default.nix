@@ -189,11 +189,8 @@ in
         ];
         text = ''
           if [ "$#" -gt 0 ]; then
-            if [ "$1" != -- ] || [ "$#" -lt 2 ]; then
-              echo 'Usage: check-terraform [-- COMMAND [ARG...]]' >&2
-              exit 2
-            fi
-            shift
+            echo 'Usage: check-terraform' >&2
+            exit 2
           fi
           tf_dir="''${TF_DIR:-tf}"
           root=$(cd "$tf_dir" && pwd -P)
@@ -207,15 +204,9 @@ in
           for name in "''${!TF_CLI_ARGS@}" "''${!TF_LOG@}"; do unset "$name"; done
           tofu -chdir="$root" init -backend=false -input=false -lockfile=readonly
           tofu -chdir="$root" validate -no-color
-          # Companion checks such as TFLint reuse the initialized module data.
-          # The consumer selects the command; OpenTofu owns the isolation layout.
-          if [ "$#" -gt 0 ]; then
-            export TF_DIR="$root"
-            exec "$@"
-          fi
         '';
       };
-      description = "Validate a backend-free root with isolated data, then optionally run -- COMMAND in that environment.";
+      description = "Validate a backend-free Terraform root with isolated module data.";
     };
 
     format.package = lib.mkOption {

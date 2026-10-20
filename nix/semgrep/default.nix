@@ -1,15 +1,64 @@
+{ rulesSource }:
 {
   config,
   lib,
   pkgs,
   ...
 }:
+let
+  # Registry packs are curated selections, not language directories. This inventory
+  # preserves their exact membership; lock updates fail if a selected rule vanishes.
+  inventory = ../../etc/semgrep/packs.json;
+  packNames = builtins.attrNames (builtins.fromJSON (builtins.readFile inventory));
+  packs =
+    pkgs.runCommand "semgrep-packs"
+      {
+        nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ ps.pyyaml ])) ];
+      }
+      ''
+        mkdir -p "$out"
+        python - ${inventory} ${rulesSource} "$out" <<'PY'
+        import json
+        import sys
+        from pathlib import Path
+        import yaml
+
+        inventory, source, output = map(Path, sys.argv[1:])
+        documents = {}
+        for pack, entries in json.loads(inventory.read_text()).items():
+            rules = []
+            for rule_id, relative_path in entries.items():
+                if relative_path not in documents:
+                    documents[relative_path] = yaml.safe_load((source / relative_path).read_text())["rules"]
+                matches = [
+                    rule for rule in documents[relative_path]
+                    if rule_id == rule["id"] or rule_id.endswith("." + rule["id"])
+                ]
+                if len(matches) != 1:
+                    raise ValueError(f"{pack}: expected exactly one {rule_id} in {relative_path}")
+                rules.append({**matches[0], "id": rule_id})
+            (output / f"{pack}.json").write_text(json.dumps({"rules": rules}) + "\n")
+        PY
+      '';
+in
 {
   options.quantile.semgrep = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.semgrep;
       description = "Semgrep CLI.";
+    };
+
+    packs = lib.mkOption {
+      type = lib.types.attrsOf lib.types.path;
+      default = lib.genAttrs packNames (name: "${packs}/${name}.json");
+      description = "Pinned local rule configurations, keyed by registry pack name.";
+    };
+
+    check.configs = lib.mkOption {
+      type = lib.types.listOf lib.types.path;
+      default = [ ];
+      description = "Additional local rule configurations; select packs here explicitly.";
     };
 
     rulesDir = lib.mkOption {
@@ -61,7 +110,13 @@
           rules="''${SEMGREP_RULES_DIR:-.semgrep}"
           test -e "$rules" || { echo 'Semgrep rules not found.' >&2; exit 1; }
           if [ "$#" -eq 0 ]; then set -- .; fi
-          semgrep scan --config "$rules" --metrics off \
+          semgrep scan --config "$rules" \
+            ${
+              lib.concatMapStringsSep " " (
+                path: "--config ${lib.escapeShellArg (toString path)}"
+              ) config.quantile.semgrep.check.configs
+            } \
+            --metrics off --no-rewrite-rule-ids \
             --error --strict --scan-unknown-extensions --quiet -- "$@"
         '';
       };
