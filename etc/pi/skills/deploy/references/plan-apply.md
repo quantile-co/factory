@@ -16,8 +16,8 @@ For existing installations, compare the resource addresses in state with this
 repository's modules and any `moved` blocks. Obtain separate
 approval for any one-time address migration. Do not apply a plan that recreates
 or deletes existing resources because of a refactor. When the original bucket
-and `repository/prod` prefix are retained, this is not a backend migration or a
-new installation. Some installations also intentionally retire resources;
+and existing prefix are retained, this is not a backend migration or a new
+installation. Some installations also intentionally retire resources;
 review those deletions individually. No compatibility blocks or state moves
 run automatically.
 
@@ -43,8 +43,10 @@ gh run list -R "$REPO" --limit 10 \
 Check may have run on the source branch before fast-forwarding main. Confirm its
 exact SHA, not just the branch label. Inspect current production activity; never
 cancel another operator's job. Verify main/maintainer/prod protection, WIF,
-the effective state bucket (including caller input overrides), backend prefix
-`repository/prod` and the called workflow's `factory-production` concurrency.
+the effective state bucket and backend prefix, including caller inputs and task
+environment overrides. Factory defaults to `repository/prod`; consumers may retain
+another existing prefix. Check the called workflow's `factory-production`
+concurrency and any caller guard.
 `TF_VAR_gcp_maintainers` is an explicit JSON array of Google account emails,
 distinct from GitHub usernames. Where configured, Terraform grants these users
 object-read access only under the bucket's `plans/` prefix; an empty array
