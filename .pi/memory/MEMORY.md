@@ -236,7 +236,8 @@ not Factory's owner. The Cachix action configures authenticated substitution as
 well as main-only publication. Consumers may read public caches, but private
 source and derived outputs must never be uploaded to a public destination.
 Check remains credential-free and does not publish. Local Check and all eight
-workflow tests passed for this change; no credentialed workflow was dispatched.
+workflow tests passed for this change. Signed source `d37259f` passed exact-head
+Check `39509187402`; no credentialed workflow was dispatched.
 
 Cache credentials are runtime-only and must not enter Terraform state, source,
 or the Nix store. Main-only publishing conditions are not a general credential
