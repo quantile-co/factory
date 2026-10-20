@@ -99,7 +99,8 @@ The GCP project module exposes `tf_state_project_number` alongside its project I
 and state bucket. The independent consumer test uses the output from both module
 instances. Local Check and both focused GCP tests passed. A full-suite invocation
 was interrupted by the harness's 240-second timeout after Check passed; it is
-not recorded as a successful full test run. No production operation ran.
+not recorded as a successful full test run. Signed source `7d3486d` passed
+exact-head Check `39506338940`. No production operation ran.
 
 ## Local validation
 
