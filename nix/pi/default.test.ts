@@ -14,15 +14,15 @@ it("exposes readable native Pi settings and shared skills to a consumer", () => 
       "--impure",
       "--expr",
       `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
-         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-         cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.pi ]; specialArgs = { inherit pkgs; }; }).config;
-     in builtins.toJSON {
-       settings = builtins.readFile cfg.quantile.pi.settingsFile;
-       skills = {
-         deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/deploy/SKILL.md");
-         day-zero-deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/day-zero-deploy/SKILL.md");
-       };
-     }`,
+  pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+  cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.pi ]; specialArgs = { inherit pkgs; }; }).config;
+in builtins.toJSON {
+  settings = builtins.readFile cfg.quantile.pi.settingsFile;
+  skills = {
+    deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/deploy/SKILL.md");
+    day-zero-deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/day-zero-deploy/SKILL.md");
+  };
+}`,
     ],
     { encoding: "utf8", timeout: 120_000 },
   );

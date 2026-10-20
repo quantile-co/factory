@@ -1,6 +1,7 @@
 {
   "Exclude": [
     "^devenv\\.lock$",
-    "^\\.pi/memory/"
+    "^\\.pi/memory/",
+    ".*\\.sql\\.go$"
   ]
 }

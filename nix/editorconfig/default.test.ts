@@ -64,6 +64,9 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
       new URL("../../etc/editorconfig/.editorconfig", import.meta.url),
       join(work, ".editorconfig"),
     );
+    expect(readFileSync(join(work, ".editorconfig"), "utf8")).toContain(
+      "[**/node_modules/**]\nignore = true",
+    );
     const checkerConfig = JSON.parse(
       readFileSync(
         new URL(
@@ -105,6 +108,45 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
       expect(twoSpaces.status).not.toBe(0);
       expect(twoSpaces.output).toContain("example.cpp");
       writeFileSync(cpp, "int main() {\n    return 0;\n}\n");
+      expect(run(check).status).toBe(0);
+      for (const [name, wrong, right] of [
+        ["Makefile", "target:\n  echo ok\n", "target:\n\techo ok\n"],
+        [
+          "example.go",
+          "package main\n  var x = 1\n",
+          "package main\n\tvar x = 1\n",
+        ],
+        ["example.py", "def f():\n  return 1\n", "def f():\n    return 1\n"],
+        ["example.wat", "(module\n   (func)\n)\n", "(module\n  (func)\n)\n"],
+        [
+          "example.ts",
+          "function f() {\n   return 42;\n}\n",
+          "function f() {\n  return 42;\n}\n",
+        ],
+        [
+          "example.json",
+          '{\n   "enabled": true\n}\n',
+          '{\n  "enabled": true\n}\n',
+        ],
+      ]) {
+        writeFileSync(join(work, name), wrong);
+        expect(run("git", ["add", name]).status).toBe(0);
+        const rejected = run(check);
+        expect(rejected.status, `${name}: ${rejected.output}`).not.toBe(0);
+        expect(rejected.output).toContain(name);
+        writeFileSync(join(work, name), right);
+        expect(run(check).status).toBe(0);
+      }
+      const generated = join(work, "generated.sql.go");
+      writeFileSync(generated, "package main\n  invalid");
+      expect(run("git", ["add", "generated.sql.go"]).status).toBe(0);
+      expect(run(check).status).toBe(0);
+      const vendored = join(work, "nested/node_modules/generated.ts");
+      mkdirSync(join(work, "nested/node_modules"), { recursive: true });
+      writeFileSync(vendored, "function f() {\n   return 42;\n}");
+      expect(
+        run("git", ["add", "-f", "nested/node_modules/generated.ts"]).status,
+      ).toBe(0);
       expect(run(check).status).toBe(0);
       writeFileSync(source, original.subarray(0, -1));
       const failing = run(check);

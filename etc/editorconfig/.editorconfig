@@ -6,6 +6,9 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
+[Makefile]
+indent_style = tab
+
 # shfmt also applies this style to extensionless scripts with shell shebangs.
 [[shell]]
 indent_style = space
@@ -22,6 +25,24 @@ switch_case_indent = true
 [*.{c,h,cpp,hpp,cc,hh,cxx,hxx}]
 indent_style = space
 indent_size = 4
+
+[*.go]
+indent_style = tab
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.wat]
+indent_style = space
+indent_size = 2
+
+[*.{js,ts,jsx,tsx,json}]
+indent_style = space
+indent_size = 2
+
+[**/node_modules/**]
+ignore = true
 
 [*.{yaml,yml,nix}]
 indent_style = space

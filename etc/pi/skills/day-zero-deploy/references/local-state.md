@@ -86,6 +86,53 @@ before confirming it. This local bootstrap exception is not the ordinary CI path
 tofu -chdir=tf/infrastructure apply
 ```
 
+## 2a. Out-of-band project deletion lien
+
+After the new project's approved local Apply, protect the state project from
+accidental deletion **outside Terraform**. The lien is not a Terraform resource,
+import, state address, or CI task. Use the operator's authenticated `gcloud`
+identity, which must have `resourcemanager.projects.updateLiens` on the project
+(for example, `roles/resourcemanager.lienModifier`); listing also requires
+`resourcemanager.projects.get`. Google CLI authentication is separate from the
+ADC used by Terraform. Do not grant these permissions or impersonate Q0
+break-glass as an implicit part of bootstrap. Stop for separate authorization
+if the selected identity lacks access.
+
+Obtain the project ID from the applied local state, verify it is the intended
+new project, and inspect existing liens before creating anything. If an
+appropriate deletion lien already exists, stop rather than create a duplicate.
+The read, credential choice, creation, and verification are separately approved
+operations; do not run this block as one automated script.
+
+```sh
+GCP_PROJECT_ID=$(tofu -chdir=tf/infrastructure output -raw gcp_tf_state_project_id)
+: "${GCP_PROJECT_ID:?verify the new state project ID}"
+gcloud config get-value account
+# After read-only inspection is approved:
+gcloud alpha resource-manager liens list --project="$GCP_PROJECT_ID" --format=json
+# Only after separately approving creation for this exact project:
+gcloud alpha resource-manager liens create \
+  --project="$GCP_PROJECT_ID" \
+  --restrictions=resourcemanager.projects.delete \
+  --reason="Protect this project from deletion." \
+  --origin=operator
+# Verify the returned name, project, origin, reason, and restriction:
+gcloud alpha resource-manager liens list --project="$GCP_PROJECT_ID" --format=json
+```
+
+The July backup's `gcp:lien:apply` used the same `gcloud alpha resource-manager
+liens create` operation. It optionally passed `--impersonate-service-account`
+and `--billing-project` when `GCP_LIEN_SA` was provided. Use that variant only
+with separate approval and verified token-creation, lien-modification and
+quota-project permissions; Q0 break-glass is not the default bootstrap identity.
+Keep the returned lien name in private operator records, never Git or Terraform
+state. Do not remove the lien during normal state migration, CI handoff, or
+Terraform teardown. An exceptional removal requires separate approval for the
+**exact** lien name: inspect the project's liens again, then run
+`gcloud alpha resource-manager liens delete "$GCP_LIEN_NAME"` for only that
+verified name. Never run the backup's `gcp:lien:destroy` task: it deletes every
+lien on the project.
+
 ## 3. State migration
 
 Authorize migration separately. Verify the output bucket and preserve the state

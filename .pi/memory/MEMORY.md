@@ -527,3 +527,78 @@ Factory main was ordinarily fast-forwarded to 0b291a52a660d21344b5cb135d241097a1
 The user-authorized manual main Test 39341977302 passed on that exact SHA,
 including checks, unit tests and Cachix processing. No production Plan or
 Apply ran. This test-outcome note is documentation-only.
+
+#decision #preference [[factory-native-config]] [[factory-old-devenv-review]]
+Review the remaining committed July 12 `devenv/` entries against Factory from
+a single reusable review worktree branched from current, synchronized Factory
+main; keep the historical checkout read-only. The user requested this
+worktree in place of reviewing from the primary checkout or creating a new
+worktree per module. Historical review alone does not call for a commit, push
+or merge; keep new source changes in that review worktree until the user
+requests publication. The old
+DuckDB shell behavior was `packages = [ pkgs.duckdb ]`, not an `enterShell`
+hook; Factory already exposes `quantile.duckdb.package` for a consumer to add
+to `packages` explicitly. Do not turn importing the default tool module into
+implicit shell installation. EditorConfig's previously composed Makefile, Go,
+Python, WAT and JS/TS/JSON sections and nested node_modules ignore now live in
+the shared native `.editorconfig`; the old generated `.sql.go` exclusion lives
+in the native EditorConfig Checker JSON. The C/C++, Markdown, YAML and shell
+sections were already static. Shell's shared four-space default is no longer
+coupled to a Nix `shfmt.indent` override; consumers changing it must patch
+native policy too. Source check/fix remains explicitly consumer-owned, and
+fixes do not run on pre-push. Consumer fixtures check the native indentation,
+node_modules ignore and generated-Go exclusion at runtime.
+
+#decision [[factory-old-devenv-review]] [[factory-native-config]]
+Do not port the July `emacs.nix`, `jetbrains.nix`, `vim.nix`, `vscode.nix`,
+`linux.nix` or `macos.nix` modules. All six only contribute complete pinned
+`github/gitignore` Global template sections to an opt-in scaffolded `.gitignore`;
+they do not install tools, configure an editor/OS, or run checks. Four IDE
+sections defaulted on and Linux/macOS were unconditional even for other OSes.
+The user uses Linux, does not want OS- or IDE-specific Gitignore/config assets,
+and does not need IDE support. Keep Factory's Gitignore repository-specific;
+consumers can add local ignores later without a shared module.
+
+#correction #decision [[factory-gcp-liens]] [[factory-day-zero]] [[factory-old-devenv-review]]
+GCP deletion liens must be applied manually out of band during a separately
+approved Day Zero phase, never as Terraform-managed resources: their purpose
+is to protect projects from Terraform misconfiguration. The committed July
+backup's `devenv/gcp.nix` had an explicit `gcp:lien:apply` using `gcloud alpha
+resource-manager liens create` with the project-delete restriction, optional
+service-account impersonation, and a dangerous `gcp:lien:destroy` that removed
+all liens. The backup `README.md` and `CONTRIBUTING.md` runbook contained no
+lien step. Factory's shared Day Zero local-state reference now documents a
+manual create/list and separately authorized exact-name removal; do not port
+the delete-all task or give Terraform or CI lien ownership. Q0 break-glass is
+not an implicit bootstrap identity. Exclude `nixbuild.nix`, `renovate.nix`,
+`scaffold.nix`, `license.nix`, `readme.nix`, and the purely scaffolded
+`gitlab/pipelines/scaffold.nix` from remaining July module reviews, along
+with the previously excluded `assets.nix` and top-level tests. Mixed-purpose
+modules with scaffold registrations remain in scope.
+
+#verification [[factory-gcp-liens]]
+On 2026-10-19 the user separately approved out-of-band project-delete liens
+for the three previously unprotected, active projects under the quantile-co
+folder (with Factory, quantile-co and GitHub project prefixes). The
+operator's own identity lacked lien-modification permission; authorized Q0
+break-glass impersonation created exactly one per project. A final read-only
+check as the operator confirmed all six active projects in the organization
+have a project-delete lien; three were already protected. Two deletion-requested
+projects were not touched. No Terraform state/source or CI change was involved.
+Keep lien names out of Git; inspect live liens and authorize an exact-name
+removal individually if ever required.
+
+#decision [[factory-old-devenv-review]] [[factory-gitlab-adapter]]
+Reviewed the July backup's `devenv/gitlab/` except its previously excluded
+pure pipeline scaffold. It was a GitLab-specific adapter: default glab/jq and
+CODEOWNERS/insights scaffolds, opt-in Pages build, MR check/plan/LLM review and
+advisory Trivy jobs, two-root fresh Terraform Plan/Apply, an OCI CI image,
+scheduled Renovate and GitLab-specific SecretSpec profiles/tokens. Factory's
+GitHub Check/Test/guarded saved Plan/Apply, WIF, GCS, Dependabot, Trivy,
+Gitleaks and Cachix/Namespace have different explicit contracts; they do not
+make Pages, automated MR review/comments or remote-state PR plans implemented.
+Do not port GitLab tasks/profiles, ungated fresh Apply, implicit hook install,
+scaffold generators, or the baked GitLab CI image into Factory. Any future
+Pages/review/PR-plan capability needs a separate consumer and security design.
+The related top-level `oci.nix` still awaits its own review. Historical
+review changed no executable source and authorized no production action.
