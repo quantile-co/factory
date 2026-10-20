@@ -62,6 +62,12 @@ assumptions or required credential profile. Follow imports, overrides and
 referenced executables; inspect dependencies without executing task bodies.
 Consumers link it explicitly. Do not list it in the public app README.
 
+#decision [[ci-cold-closure-timeout]]
+Shared Check and Test jobs allow 15 minutes for cold or partially cached Nix
+closures. The user approved raising the former 10-minute budget after app Checks
+expired during dependency downloads, before checks started. Do not remove the
+bound or weaken checks, cache signatures or deployment guards to accommodate it.
+
 ## Local validation
 
 Use this checkout's pinned direnv shell. Source checks do not rewrite files;
