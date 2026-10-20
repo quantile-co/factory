@@ -87,6 +87,11 @@ else
                   pkgs.jq
                 ];
                 text = ''
+                  # The standard consumer names both inputs "factory". Explicit
+                  # arguments also support Factory itself and other input layouts.
+                  if [ "$#" -eq 0 ]; then
+                    set -- --ci --flake-input factory flake.lock devenv.lock factory
+                  fi
                   index=false
                   ci=false
                   flake_input=""

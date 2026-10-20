@@ -228,17 +228,19 @@ it("checks a consumer's nested Factory pins without accepting lock drift", () =>
     const devenvPath = join(work, "devenv.lock");
     writeFileSync(flakePath, JSON.stringify(flake));
     writeFileSync(devenvPath, JSON.stringify(devenv));
-    const check = (ci = "false", mode = "--ci") =>
+    const check = (ci = "false", mode = "--ci", defaults = false) =>
       spawnSync(
         command,
-        [
-          mode,
-          "--flake-input",
-          "factory",
-          "flake.lock",
-          "devenv.lock",
-          "factory",
-        ],
+        defaults
+          ? []
+          : [
+              mode,
+              "--flake-input",
+              "factory",
+              "flake.lock",
+              "devenv.lock",
+              "factory",
+            ],
         {
           cwd: work,
           env: { ...process.env, CI: ci },
@@ -247,6 +249,7 @@ it("checks a consumer's nested Factory pins without accepting lock drift", () =>
         },
       );
     expect(check().status).toBe(0);
+    expect(check("false", "--ci", true).status).toBe(0);
     devenv.nodes.devenv = { ...pin, locked: { rev: "other" } };
     writeFileSync(devenvPath, JSON.stringify(devenv));
     expect(check().status).not.toBe(0);
@@ -261,15 +264,18 @@ it("checks a consumer's nested Factory pins without accepting lock drift", () =>
     writeFileSync(devenvPath, JSON.stringify(devenv));
     expect(check().status).toBe(0);
     expect(check("true").status).not.toBe(0);
+    expect(check("true", "--ci", true).status).not.toBe(0);
     expect(check("false", "--git-index").status).not.toBe(0);
     expect(spawnSync("git", ["add", "devenv.lock"], { cwd: work }).status).toBe(
       0,
     );
     const aligned = check("true");
     expect(aligned.status, aligned.stdout + aligned.stderr).toBe(0);
+    expect(check("true", "--ci", true).status).toBe(0);
     devenv.nodes.devenv = { ...pin, locked: { rev: "unstaged-drift" } };
     writeFileSync(devenvPath, JSON.stringify(devenv));
     expect(check("true").status).not.toBe(0);
+    expect(check("true", "--ci", true).status).not.toBe(0);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }

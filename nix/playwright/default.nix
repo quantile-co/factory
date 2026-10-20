@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   # Match Playwright 1.63.0's Chromium revision 1243, not system Chromium.
   browserVersion = "153.0.8010.12";
@@ -32,6 +37,17 @@ let
   fonts = pkgs.makeFontsConf { fontDirectories = [ pkgs.dejavu_fonts ]; };
 in
 {
+  options.quantile.playwright.withVersion = lib.mkOption {
+    type = lib.types.functionTo lib.types.package;
+    default =
+      version:
+      assert lib.assertMsg (
+        config.quantile.playwright.package.playwrightVersion == version
+      ) "The npm Playwright version must match Factory's pinned browser.";
+      config.quantile.playwright.package;
+    description = "Select the configured browser after checking an exact client version.";
+  };
+
   options.quantile.playwright.package = lib.mkOption {
     type = lib.types.package;
     default =

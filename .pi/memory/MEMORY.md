@@ -68,6 +68,19 @@ closures. The user approved raising the former 10-minute budget after app Checks
 expired during dependency downloads, before checks started. Do not remove the
 bound or weaken checks, cache signatures or deployment guards to accommodate it.
 
+#implementation [[factory-consumer-check-helpers]]
+`quantile.playwright.withVersion` returns the configured browser only when its
+client version matches the consumer's exact npm version. Keep this selection in
+the consumer's package list, not a recursive module-wide assertion. With no
+arguments, `check-devenv-locks` checks the conventional `factory` input in
+`flake.lock` and `devenv.lock`, including Git-index validation in CI. Explicit
+arguments remain supported for Factory's own different lock layout.
+
+Local Check and all 112 tests passed. One full run reproduced the previously
+observed Taplo missing-schema diagnostic failure; unchanged focused and full
+reruns passed. No assertion or test was removed. README development instructions
+now start with explicit hook installation and separate Checks and Tests.
+
 ## Local validation
 
 Use this checkout's pinned direnv shell. Source checks do not rewrite files;
@@ -96,8 +109,13 @@ Factory's explicit check/fix scripts exclude unrelated fixtures and never enable
 #decision [[factory-workflow-boundary]] [[factory-check-events]]
 Keep workflows thin wrappers around Nix-backed tasks. Use Actionlint and real
 Check runs; do not add tests that merely repeat YAML literals, action pins, or
-third-party behavior. Keep only a root `AGENTS.md`. README edits require explicit
-approval.
+third-party behavior. Avoid overengineering and low-value tests; prefer focused
+behavioral regressions over simulated external-service lifecycles. Keep only a
+root `AGENTS.md`. README edits require explicit approval.
+
+Keep Factory's primary checkout and root Herdr workspace on `main`. Isolate
+ongoing feature changes in linked worktrees rather than switching the root
+checkout to a feature branch.
 
 For repository-writer changes, push a branch, wait for Check on the exact commit,
 then fast-forward main without a PR or protection bypass. Keep fork PR checks.

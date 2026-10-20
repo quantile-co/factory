@@ -9,7 +9,7 @@ it("renders with the pinned headless browser without host tools or browser cache
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.playwright ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile.playwright.package`;
+    in cfg.config.quantile.playwright.withVersion "1.63.0"`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
@@ -39,3 +39,33 @@ it("renders with the pinned headless browser without host tools or browser cache
     rmSync(home, { recursive: true, force: true });
   }
 }, 210_000);
+
+it("checks the selected browser version, including consumer overrides", () => {
+  const root = new URL("../../", import.meta.url);
+  const evaluate = (version: string) =>
+    spawnSync(
+      "nix",
+      [
+        "eval",
+        "--impure",
+        "--raw",
+        "--expr",
+        `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
+      pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+      browser = (pkgs.writeShellScriptBin "browser" "exit 0") // { playwrightVersion = "custom"; };
+      cfg = pkgs.lib.evalModules {
+        modules = [ f.nixModules.playwright { quantile.playwright.package = browser; } ];
+        specialArgs = { inherit pkgs; };
+      };
+      selected = cfg.config.quantile.playwright.withVersion ${JSON.stringify(version)};
+      in if selected.outPath == browser.outPath then "selected" else "wrong package"`,
+      ],
+      { encoding: "utf8", timeout: 60_000 },
+    );
+  const accepted = evaluate("custom");
+  expect(accepted.status, accepted.stderr).toBe(0);
+  expect(accepted.stdout).toBe("selected");
+  const rejected = evaluate("different");
+  expect(rejected.status).not.toBe(0);
+  expect(rejected.stderr).toContain("must match Factory's pinned browser");
+}, 150_000);

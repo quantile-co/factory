@@ -29,14 +29,25 @@ The devenv shell provides all other project tools.
 
 ## Development
 
+### Install
+
+```sh
+devenv tasks run --show-output install:git:hooks
+```
+
+### Checks
+
 ```sh
 # Check source without rewriting it.
 devenv tasks run --show-output check:all
 
 # Apply safe source fixes explicitly.
 devenv tasks run --show-output fix:all
+```
 
-# Run tests.
+### Tests
+
+```sh
 devenv tasks run --show-output --mode single test:all
 ```
 
