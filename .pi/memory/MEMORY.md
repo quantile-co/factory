@@ -117,6 +117,17 @@ Biome's native template is `etc/biome/default.json`, exposed as
 Factory's explicit check/fix scripts exclude unrelated fixtures and never enable
 `--unsafe`; colocated Vitest tests exercise backend-free consumers.
 
+#preference [[factory-consumer-migrations]]
+Keep consumer migrations simple and closely aligned with public quantile.co and
+upstream Factory. Reuse existing modules, workflows and conventions. Avoid
+unnecessary abstractions, low-value tests and verbose comments or descriptions.
+Order consumer `devenv.nix` constructs and tasks consistently with Factory and
+public quantile.co, retaining their shared order for the selected entries.
+
+#preference [[factory-project-descriptions]]
+Project descriptions must match the GitHub repository description and README
+byline; do not invent separate wording for flake or project metadata.
+
 ## Workflow and production boundaries
 
 #decision [[factory-workflow-boundary]] [[factory-check-events]]
@@ -222,8 +233,11 @@ recipe change. Never run Plan/Apply merely to warm caches.
 ## Fork approval and tests
 
 #decision [[factory-fork-approval]] [[factory-terraform-tests]]
-`tf/modules/project/github` unconditionally declares `all_external_contributors` workflow
-approval, including returning contributors; do not add an opt-in. GitHub's
+`tf/modules/project/github` requires `all_external_contributors` workflow
+approval for public repositories, including returning contributors; do not add an
+opt-in. GitHub rejects this endpoint for private repositories with HTTP 422, so
+non-public repositories do not declare this resource. A module-local move retains
+the existing public policy when adopting its indexed address. GitHub's
 membership exemptions still apply, and approval does not itself grant fork
 jobs repository secrets. The REST API provider was selected because the
 reviewed GitHub provider lacked this setting. Keep caller-owned runtime bearer
@@ -231,6 +245,11 @@ authentication, the reviewed registry source/lock, and non-mutating removal of
 the remote approval policy. Local validation covered drift and saved-plan repair
 without storing the bearer. Extend real-source Rego checks and behavior-focused
 Vitest tests, not parallel mock frameworks or tests of fixed literals.
+
+The existing independent-module consumer test now plans public and private
+visibility with mocked providers, verifying that only public repositories create
+the approval resource. Local Check and all 112 tests passed. No production Plan
+or Apply ran for this correction.
 
 The approval policy was reconciled by approved saved-plan Apply 39111226816 on
 2026-10-18. A subsequent API read confirmed `all_external_contributors` live.

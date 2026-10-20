@@ -68,6 +68,7 @@ valid_environments if {
 
 valid_fork_approval if {
 	approval := input.resource.restapi_object.fork_workflow_approval[0]
+	approval.count == "${var.visibility == \"public\" ? 1 : 0}"
 	approval.path == "/repos/${github_repository.self.full_name}/actions/permissions"
 	approval.object_id == "fork-pr-contributor-approval"
 	approval.create_path == "/repos/${github_repository.self.full_name}/actions/permissions/{id}"

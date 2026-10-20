@@ -33,6 +33,38 @@ module "repository" {
       resolve(moduleDir, "../../../infrastructure/.terraform.lock.hcl"),
       join(work, ".terraform.lock.hcl"),
     );
+    mkdirSync(join(work, "tests"));
+    writeFileSync(
+      join(work, "tests/visibility.tftest.hcl"),
+      `
+mock_provider "github" {}
+mock_provider "restapi" {}
+
+${["private", "public"]
+  .map(
+    (visibility) => `
+run "${visibility}_fork_approval" {
+  command = plan
+  module {
+    source = ${JSON.stringify(moduleDir)}
+  }
+  variables {
+    repository_name = "fixture"
+    visibility = "${visibility}"
+    maintainers = ["fixture-operator"]
+    required_checks = ["Caller / All"]
+    environments = ["preview", "prod"]
+  }
+  assert {
+    condition = length(restapi_object.fork_workflow_approval) == ${visibility === "public" ? 1 : 0}
+    error_message = "Fork approval must exist only for public repositories."
+  }
+}
+`,
+  )
+  .join("\n")}
+`,
+    );
     mkdirSync(join(work, "providers"));
     const env: NodeJS.ProcessEnv = {
       ...process.env,
@@ -53,6 +85,11 @@ module "repository" {
       { env, timeout: 120_000, stdio: "pipe" },
     );
     execFileSync("tofu", [`-chdir=${work}`, "validate", "-no-color"], {
+      env,
+      timeout: 120_000,
+      stdio: "pipe",
+    });
+    execFileSync("tofu", [`-chdir=${work}`, "test", "-no-color"], {
       env,
       timeout: 120_000,
       stdio: "pipe",

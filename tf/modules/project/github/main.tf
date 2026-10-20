@@ -35,9 +35,9 @@ resource "github_actions_repository_permissions" "self" {
   sha_pinning_required = true
 }
 
-# The GitHub provider does not expose this policy. Require writer approval for
-# external PR workflows, including returning contributors, through the REST API.
+# GitHub exposes this approval policy only for public repositories.
 resource "restapi_object" "fork_workflow_approval" {
+  count      = var.visibility == "public" ? 1 : 0
   depends_on = [github_actions_repository_permissions.self]
 
   path          = "/repos/${github_repository.self.full_name}/actions/permissions"
@@ -48,6 +48,11 @@ resource "restapi_object" "fork_workflow_approval" {
   # Removing this singleton from state must not weaken the remote policy.
   destroy_method = "GET"
   data           = jsonencode({ approval_policy = "all_external_contributors" })
+}
+
+moved {
+  from = restapi_object.fork_workflow_approval
+  to   = restapi_object.fork_workflow_approval[0]
 }
 
 resource "github_repository_vulnerability_alerts" "self" {
