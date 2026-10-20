@@ -89,6 +89,11 @@ stress check passed: 1,000 each for missing schema, valid data and invalid data.
 Full Check and all 112 tests passed after the change. No retries, sleeps, skipped
 tests or Taplo fork were added; upstream diagnostic loss remains a tool issue.
 
+The helper changes and Taplo test correction landed as signed `2755a1f` after
+exact-head Check `39489515407` passed. Publication used the normal protected
+fast-forward; Factory's primary checkout remains clean on `main`. No production
+workflow or provider-backed application test ran.
+
 ## Local validation
 
 Use this checkout's pinned direnv shell. Source checks do not rewrite files;
