@@ -29,6 +29,11 @@ in
   ];
 
   packages = [
+    config.quantile.bash.package
+    config.quantile.coreutils.package
+    config.quantile.diffutils.package
+    config.quantile.nix.package
+    config.quantile.git.package
     config.quantile.opentofu.package
     config.quantile.tflint.package
     config.quantile.taplo.package

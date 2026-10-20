@@ -3,6 +3,7 @@ let
   modules = {
     actionlint = ./actionlint;
     age = ./age;
+    bash = ./bash;
     bear = ./bear;
     biome = ./biome;
     buf = ./buf;
@@ -13,9 +14,11 @@ let
     commitizen = ./commitizen;
     conftest = ./conftest;
     container-structure-test = ./container-structure-test;
+    coreutils = ./coreutils;
     deadnix = ./deadnix;
     delve = ./delve;
     dependabot = ./dependabot;
+    diffutils = ./diffutils;
     docker-client = ./docker-client;
     duckdb = ./duckdb;
     editorconfig = ./editorconfig;
@@ -44,6 +47,7 @@ let
     minikube = ./minikube;
     mockery = ./mockery;
     mypy = ./mypy;
+    ngrok = ./ngrok;
     nix = ./nix;
     ninja = ./ninja;
     nixfmt = ./nixfmt;
@@ -53,6 +57,7 @@ let
     opentofu = ./opentofu;
     pi = import ./pi { llmAgents = inputs.llm-agents; };
     pkg-config = ./pkg-config;
+    playwright = ./playwright;
     pnpm = ./pnpm;
     postgresql = ./postgresql;
     prek = ./prek;
@@ -60,6 +65,7 @@ let
     protoc = ./protoc;
     python = ./python;
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
+    resend-cli = ./resend-cli;
     ruff = ./ruff;
     secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = import ./semgrep { rulesSource = inputs.semgrep-rules; };
@@ -68,6 +74,7 @@ let
     skopeo = ./skopeo;
     sqlc = ./sqlc;
     statix = ./statix;
+    stripe-cli = ./stripe-cli;
     taplo = ./taplo;
     templ = ./templ;
     tflint = ./tflint;

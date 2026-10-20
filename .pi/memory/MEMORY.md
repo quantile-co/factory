@@ -18,6 +18,20 @@ deployment is resolved.
 
 ## Configuration and tool boundaries
 
+#decision [[declared-runtime-dependencies]]
+Factory, `.github` and the public application must declare every required CLI
+and native runtime dependency through pinned Devenv/Nix inputs or locked
+language-level packages. A passing run that uses host PATH tools, global
+packages, system libraries or an undeclared browser/emulator cache is not
+proof of a complete environment. Audit development, checks, tests, builds and
+explicit deployment/provider commands; validate with restricted executable
+search paths and isolated caches. Keep Nix/direnv bootstrap prerequisites
+explicit. Do not change assertions or skip tests to hide missing dependencies.
+Expose tools as small individual Factory modules; consumers explicitly select
+them in `devenv.nix`. Do not introduce purpose-specific tool bundles such as a
+separate release shell. A custom workflow should use the consumer's existing
+pinned environment from trusted source before processing a candidate revision.
+
 #decision [[factory-config-layout]] [[factory-executable-config]]
 Factory is a shared Nix flake, not a shared devenv configuration. Keep reusable
 native-format assets under `etc/`, separate from `nix/`. Downstream repositories
