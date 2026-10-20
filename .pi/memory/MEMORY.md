@@ -248,7 +248,9 @@ Vitest tests, not parallel mock frameworks or tests of fixed literals.
 
 The existing independent-module consumer test now plans public and private
 visibility with mocked providers, verifying that only public repositories create
-the approval resource. Local Check and all 112 tests passed. No production Plan
+the approval resource. Local Check and all 112 tests passed. Signed correction
+`82675f1` passed exact-head Check `39501591433` and landed by normal protected
+fast-forward. The primary Factory checkout remains on main. No production Plan
 or Apply ran for this correction.
 
 The approval policy was reconciled by approved saved-plan Apply 39111226816 on
