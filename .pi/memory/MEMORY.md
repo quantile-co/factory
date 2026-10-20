@@ -94,6 +94,13 @@ exact-head Check `39489515407` passed. Publication used the normal protected
 fast-forward; Factory's primary checkout remains clean on `main`. No production
 workflow or provider-backed application test ran.
 
+#implementation [[factory-gcp-project-number]]
+The GCP project module exposes `tf_state_project_number` alongside its project ID
+and state bucket. The independent consumer test uses the output from both module
+instances. Local Check and both focused GCP tests passed. A full-suite invocation
+was interrupted by the harness's 240-second timeout after Check passed; it is
+not recorded as a successful full test run. No production operation ran.
+
 ## Local validation
 
 Use this checkout's pinned direnv shell. Source checks do not rewrite files;

@@ -7,3 +7,8 @@ output "tf_state_project_id" {
   description = "Dedicated GCP project ID containing the state bucket."
   value       = google_project.state.project_id
 }
+
+output "tf_state_project_number" {
+  description = "GCP project number."
+  value       = google_project.state.number
+}

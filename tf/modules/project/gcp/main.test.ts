@@ -31,6 +31,9 @@ module "${name}" {
   repository_id = "123456789"
   repository_maintainer_ids = { fixture-operator = "987654321" }
 }
+output "${name}_project_number" {
+  value = module.${name}.tf_state_project_number
+}
 `,
         )
         .join("\n"),
