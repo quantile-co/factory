@@ -54,6 +54,14 @@ the repository's direnv shell so `.envrc` supplies `PI_MEMORY_DIR`; do not add a
 global memory-routing extension. QMD's native template is under `etc/qmd/` and
 its local configuration is linked by `devenv.nix`.
 
+#decision [[devenv-task-discovery]]
+The first-party `devenv-tasks` skill discovers task descriptions and actual
+implementations from each project's configuration and CLI capabilities. Keep it
+generic across Devenv projects: no fixed task inventory, Factory deployment
+assumptions or required credential profile. Follow imports, overrides and
+referenced executables; inspect dependencies without executing task bodies.
+Consumers link it explicitly. Do not list it in the public app README.
+
 ## Local validation
 
 Use this checkout's pinned direnv shell. Source checks do not rewrite files;

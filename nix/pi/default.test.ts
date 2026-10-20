@@ -28,6 +28,7 @@ it("exposes readable native Pi settings and shared skills to a consumer", () => 
 in builtins.toJSON {
   settings = builtins.readFile cfg.quantile.pi.settingsFile;
   skills = {
+    devenv-tasks = builtins.readFile (cfg.quantile.pi.skillsDir + "/devenv-tasks/SKILL.md");
     deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/deploy/SKILL.md");
     day-zero-deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/day-zero-deploy/SKILL.md");
     marimo-pair = builtins.readFile (cfg.quantile.pi.skillsDir + "/marimo-pair/SKILL.md");
@@ -60,6 +61,7 @@ in builtins.toJSON {
     "./skills/day-zero-deploy",
   ]);
   for (const name of [
+    "devenv-tasks",
     "deploy",
     "day-zero-deploy",
     "marimo-pair",
@@ -71,7 +73,9 @@ in builtins.toJSON {
     "webapp-testing",
   ]) {
     const skill = resolved.skills[name];
-    if (["deploy", "day-zero-deploy", "nvim-pair"].includes(name)) {
+    if (
+      ["devenv-tasks", "deploy", "day-zero-deploy", "nvim-pair"].includes(name)
+    ) {
       expect(skill).toBe(
         readFileSync(
           new URL(`../../etc/pi/skills/${name}/SKILL.md`, import.meta.url),

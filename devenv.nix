@@ -87,6 +87,7 @@ in
       copyMode = "copy";
     };
     ".pi/settings.json".source = config.quantile.pi.settingsFile;
+    ".pi/skills/devenv-tasks".source = config.quantile.pi.skillsDir + "/devenv-tasks";
     ".pi/skills/deploy".source = config.quantile.pi.skillsDir + "/deploy";
     ".pi/skills/day-zero-deploy".source = config.quantile.pi.skillsDir + "/day-zero-deploy";
     ".qmd/index.yml".source = config.quantile.qmd.configFile;
