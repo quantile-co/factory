@@ -57,7 +57,7 @@ in
           }
         '';
       };
-      description = "Read-only Git-scoped Conftest check. Pass --policy DIR --namespace NAME [--policy-file REL.rego] [--data FILE] -- PATHSPEC...";
+      description = "Check Rego policy.";
     };
   };
 }

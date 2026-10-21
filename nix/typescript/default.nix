@@ -89,6 +89,6 @@
         done
       '';
     };
-    description = "Read-only project-local tsc check for selected tracked source and its native tsconfig.json.";
+    description = "Type-check source.";
   };
 }

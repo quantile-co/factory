@@ -60,7 +60,7 @@
           done < "$GIT_PRE_PUSH_REFS"
         '';
       };
-      description = "Check newly pushed commit messages using native Commitizen policy; no commit-time hook.";
+      description = "Check commit messages.";
     };
   };
 }

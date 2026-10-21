@@ -26,8 +26,9 @@ independent of Devenv and CI. Keep Terraform native under `tf/`.
 #preference [[factory-consumer-migrations]]
 Keep migrations minimal and aligned with public quantile.co. Consumers extend
 small `nix/` modules rather than adding an `etc/` directory. Order applicable tasks
-install → check → fix → test → build → plan → apply. Descriptions state intent;
-project descriptions match the GitHub description and README byline.
+install → check → fix → test → build → plan → apply. Keep descriptions brief and
+intent-focused; reserve comments for non-obvious safety rationale. Project
+descriptions match the GitHub description and README byline.
 Use existing modules and workflows as-is rather than preserving obsolete policies.
 Remove migration scaffolding after successful adoption and prove convergence.
 

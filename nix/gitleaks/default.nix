@@ -45,7 +45,7 @@ in
           gitleaks dir --no-banner --redact "$snapshot/source"
         '';
       };
-      description = "Read-only full-history and Git-selected working-file secret scan; rejects shallow checkouts.";
+      description = "Scan history and source for secrets.";
     };
   };
 }

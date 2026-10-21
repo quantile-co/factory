@@ -80,12 +80,12 @@ in
     check.package = lib.mkOption {
       type = lib.types.package;
       default = runner "check-prettier" true "--check";
-      description = "Read-only Git-selected formatting check; requires PRETTIER_BIN and explicit pathspecs.";
+      description = "Check formatting.";
     };
     fix.package = lib.mkOption {
       type = lib.types.package;
       default = runner "fix-prettier" false "--write";
-      description = "Explicit formatting of tracked regular selected files only; requires PRETTIER_BIN and pathspecs.";
+      description = "Format source.";
     };
   };
 }

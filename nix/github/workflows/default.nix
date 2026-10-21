@@ -9,23 +9,23 @@
     check.configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../../etc/github/workflows/check.yaml;
-      description = "Native GitHub Check workflow template.";
+      description = "Check workflow.";
     };
     test.configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../../etc/github/workflows/test.yaml;
-      description = "Native GitHub Test workflow template.";
+      description = "Test workflow.";
     };
     build.configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../../etc/github/workflows/build.yaml;
-      description = "Native GitHub Build workflow template.";
+      description = "Build workflow.";
     };
     plan = {
       configFile = lib.mkOption {
         type = lib.types.path;
         default = ../../../etc/github/workflows/plan.yaml;
-        description = "Native protected Plan workflow template.";
+        description = "Plan workflow.";
       };
       package = lib.mkOption {
         type = lib.types.package;
@@ -74,14 +74,14 @@
               "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$generation" >> "$GITHUB_STEP_SUMMARY"
           '';
         };
-        description = "CI-only private GCS transport around a consumer's local-file Plan task.";
+        description = "Store saved plans.";
       };
     };
     apply = {
       configFile = lib.mkOption {
         type = lib.types.path;
         default = ../../../etc/github/workflows/apply.yaml;
-        description = "Native protected Apply workflow template.";
+        description = "Apply workflow.";
       };
       package = lib.mkOption {
         type = lib.types.package;
@@ -127,7 +127,7 @@
             "$cli" tasks run --show-output "$task" >> "$private/apply.log" 2>&1
           '';
         };
-        description = "CI-only exact-generation GCS transport around a consumer's local-file Apply task.";
+        description = "Apply saved plans.";
       };
     };
   };

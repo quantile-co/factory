@@ -58,7 +58,7 @@ in
           exec kubeconform -summary -strict -kubernetes-version "$version" "''${schemas[@]}" -- "$@"
         '';
       };
-      description = "Read-only strict manifest validation with explicit local schemas and no cluster access.";
+      description = "Validate Kubernetes manifests.";
     };
   };
 }

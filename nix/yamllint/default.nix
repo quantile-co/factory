@@ -49,7 +49,7 @@ in
           yamllint --config-file "$config" -- "''${selected[@]}"
         '';
       };
-      description = "Read-only YAML syntax and style check on Git-selected source with native configuration.";
+      description = "Check YAML.";
     };
   };
 }

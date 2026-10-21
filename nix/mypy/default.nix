@@ -61,7 +61,7 @@ in
         done
         exit "$status"
       '';
-      description = "Read-only mypy check of Git-selected Python files, one at a time to avoid duplicate module names.";
+      description = "Type-check Python.";
     };
   };
 }

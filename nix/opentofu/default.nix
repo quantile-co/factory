@@ -90,7 +90,7 @@ in
           done
         '';
       };
-      description = "Reject empty tracked .tf/.tofu files selected by Git pathspecs (default TF_DIR or tf).";
+      description = "Reject empty OpenTofu source files.";
     };
 
     fix.package = lib.mkOption {
