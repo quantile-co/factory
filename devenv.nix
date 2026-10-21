@@ -38,6 +38,8 @@ in
     config.quantile.tflint.package
     config.quantile.taplo.package
     config.quantile.gcloud.package
+    config.quantile.github.workflows.plan.package
+    config.quantile.github.workflows.apply.package
     config.quantile.gh.package
     config.quantile.actionlint.package
     config.quantile.git.lfs.package
@@ -82,6 +84,22 @@ in
     ".yamllint.yaml".source = config.quantile.yamllint.configFile;
     "biome.json".source = config.quantile.biome.configFile;
     ".github/actionlint.yaml".source = config.quantile.actionlint.configFile;
+    ".github/workflows/check.yaml" = {
+      source = config.quantile.github.workflows.check.configFile;
+      copyMode = "copy";
+    };
+    ".github/workflows/test.yaml" = {
+      source = config.quantile.github.workflows.test.configFile;
+      copyMode = "copy";
+    };
+    ".github/workflows/plan.yaml" = {
+      source = config.quantile.github.workflows.plan.configFile;
+      copyMode = "copy";
+    };
+    ".github/workflows/apply.yaml" = {
+      source = config.quantile.github.workflows.apply.configFile;
+      copyMode = "copy";
+    };
     ".github/dependabot.yml" = {
       source = dependabotFile;
       copyMode = "copy";

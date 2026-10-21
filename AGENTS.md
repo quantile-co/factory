@@ -19,7 +19,9 @@ copying their contents into this file.
 - [etc/](etc/): reusable native-format configuration assets.
 - [tf/infrastructure/](tf/infrastructure/): this repository's deployment root.
 - [tf/modules/project/](tf/modules/project/): independent GitHub and GCP modules.
-- [.github/workflows/](.github/workflows/): CI and protected deployment wrappers.
+- [.github/workflows/](.github/workflows/): checked-in CI and protected deployment workflows.
+- [etc/github/workflows/](etc/github/workflows/): native workflow templates.
+- [nix/github/workflows/](nix/github/workflows/): workflow modules and CI scripts.
 - [package.json](package.json): TypeScript checks and colocated Vitest tests.
 
 ## Deployment instructions

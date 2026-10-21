@@ -116,7 +116,7 @@ in
                 path: "--config ${lib.escapeShellArg (toString path)}"
               ) config.quantile.semgrep.check.configs
             } \
-            --metrics off --no-rewrite-rule-ids \
+            --metrics off --no-rewrite-rule-ids --jobs 1 \
             --error --strict --scan-unknown-extensions --quiet -- "$@"
         '';
       };

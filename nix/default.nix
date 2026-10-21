@@ -26,6 +26,7 @@ let
     gcloud = ./gcloud;
     gdb = ./gdb;
     gh = ./gh;
+    github-workflows = ./github/workflows;
     git = ./git;
     gitleaks = ./gitleaks;
     go = ./go;
