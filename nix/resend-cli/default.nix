@@ -23,7 +23,6 @@
         pkgs.pnpmConfigHook
         pkgs.makeWrapper
       ];
-      pnpmInstallFlags = [ "--ignore-scripts" ];
       buildPhase = ''
         runHook preBuild
         pnpm run build
@@ -31,7 +30,6 @@
       '';
       installPhase = ''
         runHook preInstall
-        pnpm prune --prod --ignore-scripts --config.offline=true
         mkdir -p "$out/libexec/resend-cli" "$out/bin"
         cp -r dist node_modules package.json LICENSE "$out/libexec/resend-cli/"
         makeWrapper ${lib.getExe pkgs.nodejs} "$out/bin/resend" \
