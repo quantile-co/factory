@@ -128,8 +128,17 @@ separately authorized Plan and review, not bypassing a guard. GCS lifecycle clea
 is asynchronous and versioning/soft-delete can retain old objects longer; the
 workflow's 24-hour validity limit is independent of physical deletion.
 
-Watch the exact Apply run. Failure or timeout may follow a partial write: inspect
-state and completed operations before proposing recovery. Do not rerun Day Zero,
-force-unlock an active backend, replay an uncertain Apply or run workflows solely
-to warm caches. Remove only your own private scratch after verification; preserve
-uncertain results and backups securely until recovery is understood.
+Watch the exact Apply run. A failed Plan or Apply task keeps its full diagnostic
+private: public repositories write a create-only `plan.log` or `apply.log` under
+`gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/`;
+private repositories attach a one-day `plan-failure-RUN-ATTEMPT` or
+`apply-failure-RUN-ATTEMPT` artifact. Fetch it only as an authorized reader into
+restricted scratch outside Git and the Nix store. The public run prints a locator,
+never the log contents. Diagnostic upload can itself fail; absence is not proof
+that no infrastructure changed. GCS cleanup follows the plans-prefix lifecycle.
+
+Failure or timeout may follow a partial write: inspect state and completed
+operations before proposing recovery. Do not rerun Day Zero, force-unlock an
+active backend, replay an uncertain Apply or run workflows solely to warm caches.
+Remove only your own private scratch after verification; preserve uncertain
+results and backups securely until recovery is understood.
