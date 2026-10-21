@@ -40,6 +40,30 @@ let
   privateRepository = ''
     test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
   '';
+  reportFailure =
+    storage: phase:
+    if storage == "gcs" then
+      ''
+        # The diagnostic can contain provider payloads. Store it only in the
+        # plans-only private bucket, with create-only semantics and short retention.
+        if ( ${privateBucket} ); then
+          diagnostic="plans/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/${phase}.log"
+          if gcloud storage cp "$TF_PLAN_DIR/private/${phase}.log" \
+            "gs://$GCP_TF_STATE_BUCKET/$diagnostic" --if-generation-match=0 --quiet > /dev/null 2>&1; then
+            echo "${phase} failed; restricted diagnostic: $diagnostic" >&2
+          else
+            echo "${phase} failed; restricted diagnostic could not be stored." >&2
+          fi
+        else
+          echo "${phase} failed; the diagnostic bucket is not private." >&2
+        fi
+        exit 1
+      ''
+    else
+      ''
+        echo "${phase} failed; inspect the one-day private failure artifact before retrying." >&2
+        exit 1
+      '';
   # Plans can contain sensitive state. Private repositories can use GitHub artifacts;
   # public repositories use private GCS and publish only a hash/generation receipt.
   # Authorization stays in the workflow. These helpers handle storage and bind
@@ -55,8 +79,7 @@ let
         + ''
           # Plans and their rendering may contain sensitive state; keep them out of public logs.
           ${lib.getExe cfg.plan.package} > "$TF_PLAN_DIR/private/plan.log" 2>&1 || {
-            echo "Plan failed; no artifact was published." >&2
-            exit 1
+            ${reportFailure storage "plan"}
           }
           digest=$(sha256sum "$TF_PLAN_FILE" | cut -d ' ' -f1)
           generation=""
@@ -164,8 +187,7 @@ let
           # Do not replan: approval covers this saved plan. OpenTofu retains its
           # backend lock and rejects stale plans when remote state has changed.
           ${lib.getExe cfg.apply.package} > "$TF_PLAN_DIR/private/apply.log" 2>&1 || {
-            echo "Apply failed; inspect state before authorizing a new Plan or retry." >&2
-            exit 1
+            ${reportFailure storage "apply"}
           }
         '';
     };
