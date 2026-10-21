@@ -3,8 +3,7 @@ if inputs.devenv.rev != inputs.devenv-cli.rev then
   throw "The Devenv CLI and module inputs must use the same revision"
 else
   {
-    # Opt-in: ordinary tool-module imports must not register Devenv tasks.
-    devenvModules.files =
+    nixModules.devenv.files =
       {
         config,
         lib,

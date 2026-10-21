@@ -1,5 +1,6 @@
 { inputs }:
 let
+  devenv = import ./devenv { inherit inputs; };
   modules = {
     actionlint = ./actionlint;
     age = ./age;
@@ -94,9 +95,10 @@ in
 {
   flakeInputs = inputs;
   nixModules = modules // {
+    inherit (devenv.nixModules) devenv;
     default = { ... }: {
-      imports = builtins.attrValues modules;
+      imports = builtins.attrValues modules ++ [ devenv.nixModules.devenv.files ];
     };
   };
+  inherit (devenv) packages;
 }
-// import ./devenv { inherit inputs; }

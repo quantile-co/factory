@@ -17,8 +17,7 @@ let
 in
 {
   imports = [
-    inputs.factory.nixModules.default
-    inputs.factory.devenvModules.files
+    inputs.this.nixModules.default
   ];
 
   cachix.pull = [
@@ -129,8 +128,8 @@ in
         ${lib.getExe pkgs.nix} flake check .
         ${lib.getExe config.quantile.dependabot.check.package} ${dependabotFile}
         ${
-          lib.getExe inputs.factory.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
-        } --ci flake.lock devenv.lock factory
+          lib.getExe inputs.this.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
+        } --ci flake.lock devenv.lock this
         # Read-only source checks; fixes belong exclusively to fix:all.
         ${lib.getExe config.quantile.prek.check.package}
         ${lib.getExe config.quantile.nixfmt.check.package}

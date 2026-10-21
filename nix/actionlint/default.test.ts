@@ -52,7 +52,7 @@ it("a standalone consumer can use the public module and its own native configura
   outputs = { factory, ... }: {
     packages = builtins.mapAttrs (_: pkgs: {
       default = (pkgs.lib.evalModules {
-        modules = [ factory.nixModules.default ];
+        modules = [ factory.nixModules.actionlint ];
         specialArgs = { inherit pkgs; };
       }).config.quantile.actionlint.check.package;
     }) factory.inputs.nixpkgs.legacyPackages;

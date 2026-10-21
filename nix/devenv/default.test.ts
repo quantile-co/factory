@@ -80,7 +80,7 @@ secretspec:
     );
     const configuration = (enabled: boolean, declarations = true) => `
 { inputs, ... }: {
-  imports = ${enabled ? "[ inputs.factory.devenvModules.files ]" : "[ ]"};
+  imports = ${enabled ? "[ inputs.factory.nixModules.devenv.files ]" : "[ ]"};
   cachix.enable = false;
   ${
     declarations

@@ -17,8 +17,10 @@ Private consumer guidance belongs in the private repository, never here.
 #decision [[factory-config-layout]] [[factory-native-config]]
 Factory is a shared Nix flake, not a shared Devenv configuration. Use tool-owned
 `nix/<tool>/default.nix` modules with meaningful colocated tests and native assets
-under `etc/`. Module imports do not install tools/hooks or execute tasks.
-Consumers select packages, native configuration and task orchestration explicitly.
+under `etc/`. Named tool-module imports do not install tools/hooks or register
+tasks; `nixModules.default` includes Devenv file handling and is for Devenv
+consumers. Standalone consumers import named modules. Consumers select packages,
+native configuration and task orchestration explicitly.
 Keep configuration native rather than inventing Nix settings registries or tool
 bundles. Reusable executables read consumer configuration at runtime and remain
 independent of Devenv and CI. Keep Terraform native under `tf/`.
@@ -31,6 +33,12 @@ intent-focused; reserve comments for non-obvious safety rationale. Project
 descriptions match the GitHub description and README byline.
 Use existing modules and workflows as-is rather than preserving obsolete policies.
 Remove migration scaffolding after successful adoption and prove convergence.
+
+#decision [[devenv-local-flake-input]]
+Name each repository's explicit Devenv `git+file:.` input `this`, with follows
+from `this/*`, and import exported modules through `inputs.this.nixModules.default`.
+Devenv reserves `self` for its generated shell flake. Keep relative module
+imports inside the local flake, not in `devenv.nix`. Q0 remains independent.
 
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
