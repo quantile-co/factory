@@ -66,7 +66,10 @@ reads, and publish through the pinned Cachix action. Private derivations must
 never be uploaded to a public cache. Cache credentials never enter source, state
 or Nix outputs. Preserve signatures and repository/profile cache isolation.
 Namespace caches are best-effort; a cache-action message does not prove a hit.
-Do not dispatch production workflows just to warm caches.
+Do not dispatch production workflows just to warm caches. Keep public cache
+additions in workflow `NIX_CONFIG`: Cachix's user-level configuration otherwise
+overrides the installer's system-level additions. Preserve authenticated caller
+cache reads alongside every approved public cache.
 
 ## Infrastructure and production
 

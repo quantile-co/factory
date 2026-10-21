@@ -3,13 +3,12 @@
 Factory is the public `quantile-co/factory` shared Nix flake.
 
 Read [project memory](.pi/memory/MEMORY.md) before working here. It holds repository
-rules, decisions, preferences and operational context; [daily logs](.pi/memory/daily/)
-record history.
+rules, decisions, preferences and deployment outcomes.
 
 **Maintain this file as a lightweight navigation index.** Only add or update
 pointers to repository entry points. Do not add policies, preferences, decisions,
 runbooks, implementation details or session notes here; put durable guidance in
-`MEMORY.md` and historical outcomes in the daily logs. Link to them rather than
+`MEMORY.md`. Link to them rather than
 copying their contents into this file.
 
 ## Repository map
