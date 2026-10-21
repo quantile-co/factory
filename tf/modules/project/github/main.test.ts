@@ -59,6 +59,17 @@ run "${visibility}_fork_approval" {
     condition = length(restapi_object.fork_workflow_approval) == ${visibility === "public" ? 1 : 0}
     error_message = "Fork approval must exist only for public repositories."
   }
+  assert {
+    condition = (
+      github_actions_repository_permissions.self.sha_pinning_required &&
+      github_actions_repository_permissions.self.allowed_actions == "selected" &&
+      github_actions_repository_permissions.self.allowed_actions_config[0].github_owned_allowed &&
+      github_actions_repository_permissions.self.allowed_actions_config[0].verified_allowed &&
+      contains(github_actions_repository_permissions.self.allowed_actions_config[0].patterns_allowed,
+        "quantile-co/factory/.github/workflows/*@*")
+    )
+    error_message = "Selected actions must retain pinned Factory workflows across organizations."
+  }
 }
 `,
   )

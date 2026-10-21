@@ -44,6 +44,10 @@ valid_repository if {
 	actions.enabled == true
 	actions.allowed_actions == "selected"
 	actions.sha_pinning_required == true
+	allowed := actions.allowed_actions_config[0]
+	allowed.github_owned_allowed == true
+	allowed.verified_allowed == true
+	"quantile-co/factory/.github/workflows/*@*" in allowed.patterns_allowed
 	alerts := input.resource.github_repository_vulnerability_alerts.self[0]
 	alerts.repository == "${github_repository.self.name}"
 	alerts.enabled == true

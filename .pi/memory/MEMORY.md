@@ -104,6 +104,9 @@ separate authorization for creation or exact-name removal. Never bulk-delete lie
 
 - Public repositories require all-external-contributor workflow approval. GitHub
   rejects that endpoint for private repositories, which omit the resource.
+- Selected-action policies explicitly allow Factory's cross-organization workflow
+  calls and pinned bootstrap/cache actions. Keep SHA pinning enabled; do not rely
+  on a repository's previous allowlist when migrating from allow-all.
 - Keep pinned Semgrep pack coverage intact; a language directory is not equivalent
   to a curated pack. Cache redistribution/licensing review remains deferred.
 - QMD uses external fetch builders to avoid the known builtin-fetcher route to

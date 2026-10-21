@@ -33,6 +33,17 @@ resource "github_actions_repository_permissions" "self" {
   enabled              = true
   allowed_actions      = "selected"
   sha_pinning_required = true
+
+  allowed_actions_config {
+    github_owned_allowed = true
+    verified_allowed     = true
+    patterns_allowed = [
+      "quantile-co/factory/.github/workflows/*@*",
+      "cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24",
+      "cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866",
+      "namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9",
+    ]
+  }
 }
 
 # GitHub exposes this approval policy only for public repositories.
