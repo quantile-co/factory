@@ -81,7 +81,3 @@ jobs:
         run: |
           cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
           "$cli" shell -- github-workflow-plan "$cli" plan:infrastructure
-
-      - name: Remove local plan files
-        if: always()
-        run: rm -rf -- "$RUNNER_TEMP/saved-plan"

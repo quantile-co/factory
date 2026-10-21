@@ -121,10 +121,14 @@ else
                     devenv_lock="$scratch/devenv.lock"
                   fi
                   if ! jq -es --arg input_name "$input_name" --arg flake_input "$flake_input" '
+                    def resolve($nodes; $ref):
+                      if ($ref | type) == "string" then $ref
+                      else reduce $ref[] as $part ("root";
+                        resolve($nodes; $nodes[.].inputs[$part])) end;
                     .[0] as $flake | .[1] as $devenv |
                     (if $flake_input == "" then $flake.nodes.root.inputs
                       else $flake.nodes[$flake.nodes.root.inputs[$flake_input]].inputs end) as $inputs |
-                    $devenv.nodes[$devenv.nodes.root.inputs[$input_name]].inputs as $followed |
+                    $devenv.nodes[resolve($devenv.nodes; $devenv.nodes.root.inputs[$input_name])].inputs as $followed |
                     ($inputs | keys) == ($followed | keys) and
                     all($inputs | keys[]; . as $name |
                       ($flake.nodes[$inputs[$name]] | {original, locked}) ==

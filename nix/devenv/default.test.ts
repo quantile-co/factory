@@ -250,6 +250,17 @@ it("checks a consumer's nested Factory pins without accepting lock drift", () =>
       );
     expect(check().status).toBe(0);
     expect(check("false", "--ci", true).status).toBe(0);
+    const followed = JSON.parse(JSON.stringify(devenv));
+    followed.nodes.root.inputs = {
+      dns: "dns",
+      factory: ["dns", "factory"],
+    };
+    followed.nodes.dns = { inputs: { factory: "factory" } };
+    writeFileSync(devenvPath, JSON.stringify(followed));
+    expect(check().status).toBe(0);
+    followed.nodes.devenv.locked.rev = "unreviewed";
+    writeFileSync(devenvPath, JSON.stringify(followed));
+    expect(check().status).not.toBe(0);
     devenv.nodes.devenv = { ...pin, locked: { rev: "other" } };
     writeFileSync(devenvPath, JSON.stringify(devenv));
     expect(check().status).not.toBe(0);
