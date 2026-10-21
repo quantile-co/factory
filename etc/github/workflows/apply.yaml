@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       plan_ref:
-        description: Reviewed GCS plan key/generation
+        description: Plan ref
         required: true
         type: string
 

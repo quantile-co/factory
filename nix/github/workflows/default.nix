@@ -74,7 +74,7 @@
               "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$generation" >> "$GITHUB_STEP_SUMMARY"
           '';
         };
-        description = "Store saved plans.";
+        description = "Plan.";
       };
     };
     apply = {
@@ -127,7 +127,7 @@
             "$cli" tasks run --show-output "$task" >> "$private/apply.log" 2>&1
           '';
         };
-        description = "Apply saved plans.";
+        description = "Apply plan.";
       };
     };
   };
