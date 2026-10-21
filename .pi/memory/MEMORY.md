@@ -58,8 +58,10 @@ no commit-time hook or implicit shell-entry installation is intended.
 #decision [[factory-moving-flake-refs]]
 Keep flake and Devenv locks aligned, including committed/indexed data. Dependabot
 does not update `devenv.lock` automatically. Generated Dependabot configuration
-must be a committed native file, not an ignored link. Consumers pin reviewed
-Factory revisions consistently across tools, workflows and Terraform modules.
+must be a committed native file, not an ignored link. Consumers resolve Factory
+through the committed flake lock; Terraform module refs may lag a compatible
+flake revision. Existing checks and tests provide behavioral coverage without
+a dedicated version-alignment gate.
 
 #security [[factory-production-flake-source]] [[factory-secretspec]]
 Use Git-aware flake references, never `path:.` for a checkout containing runtime
