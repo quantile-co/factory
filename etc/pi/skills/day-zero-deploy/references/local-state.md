@@ -204,15 +204,18 @@ run_and_verify() {
 run_and_verify plan.yaml
 ```
 
-Download and inspect the saved plan using the deploy reference. Record its
-artifact ID as `PLAN_ARTIFACT_ID`, verify the producing run/attempt and obtain
-separate approval for Apply. A successful Plan is not Apply authorization.
+Download and inspect the GCS plan using the deploy reference. Record its
+`RUN_ID/ATTEMPT/GENERATION` reference from the Plan summary, verify its exact
+producing attempt and obtain separate approval for Apply. A successful Plan is
+not Apply authorization.
 
 ```sh
-: "${PLAN_ARTIFACT_ID:?select the Plan artifact ID}"
+: "${PLAN_RUN_ID:?select the Plan run ID}"
+: "${PLAN_ATTEMPT:?select the producing attempt}"
+: "${PLAN_GENERATION:?select the GCS plan generation}"
 read -r -p 'Type APPLY after reviewing the successful CI Plan: ' answer </dev/tty
 test "$answer" = APPLY
-run_and_verify apply.yaml -f "plan_artifact_id=$PLAN_ARTIFACT_ID"
+run_and_verify apply.yaml -f "plan_ref=$PLAN_RUN_ID/$PLAN_ATTEMPT/$PLAN_GENERATION"
 ```
 
 ## 6. Remove bootstrap access

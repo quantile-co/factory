@@ -67,44 +67,36 @@ gh workflow run plan.yaml -R "$REPO" --ref main
 
 Capture its run ID and attempt from the result; an ambiguous dispatch is not
 permission to dispatch again. Watch that exact run and require success, including
-post-steps. Record the artifact ID for `plan-RUN_ID-ATTEMPT` from the run's artifacts.
+post-steps. Copy `RUN_ID/ATTEMPT/GENERATION` from the Plan step summary.
 
-The GitHub artifact is only a receipt. Plan contents stay in private GCS under
-`plans/REPOSITORY_ID/RUN_ID/ATTEMPT/plan.tfplan`. An authorized reader needs access
-to those objects independently of CI's WIF identity. Manage missing read access
-through `gcp_maintainers` and a separately approved Terraform Apply, not a manual
-IAM grant, Owner access or a public artifact upload. An existing authorized reader
-must inspect the initial access-grant plan; setting the input alone grants nothing.
+No plan or diagnostic is uploaded to GitHub. The saved plan and its private
+Plan log stay in GCS under `plans/REPOSITORY_ID/RUN_ID/ATTEMPT/saved-plan/`.
+An authorized reader needs access to those objects independently of CI's WIF
+identity. Manage missing read access through `gcp_maintainers` and a separately
+approved Terraform Apply, not a manual IAM grant, Owner access or public upload.
+An existing authorized reader must inspect the initial access-grant plan; setting
+the input alone grants nothing.
 
 ## 3. Inspect the plan privately
 
-Set the IDs from the successful Plan. Confirm the receipt belongs to that run
-and attempt, matches the intended SHA, and is unexpired. Keep all downloaded files
+Set all three components from the reviewed Plan reference. Verify its
+producing run and selected source revision manually; Apply trusts the operator's
+choice and does not perform GitHub run or source checks. Keep all downloads
 outside the checkout and Nix store.
 
 ```sh
 : "${PLAN_RUN_ID:?set the Plan run ID}"
 : "${PLAN_ATTEMPT:?set the producing attempt}"
-: "${PLAN_ARTIFACT_ID:?set its artifact ID}"
+: "${PLAN_GENERATION:?set the GCS plan object generation}"
 gh run watch "$PLAN_RUN_ID" -R "$REPO" --exit-status
 gh api "repos/$REPO/actions/runs/$PLAN_RUN_ID/attempts/$PLAN_ATTEMPT" \
-  --jq '{id,run_attempt,head_sha,path,event,status,conclusion}'
-gh api "repos/$REPO/actions/artifacts/$PLAN_ARTIFACT_ID" \
-  --jq '{id,name,expired,created_at,workflow_run}'
-ARTIFACT_NAME=$(gh api "repos/$REPO/actions/artifacts/$PLAN_ARTIFACT_ID" --jq .name)
-test "$ARTIFACT_NAME" = "plan-$PLAN_RUN_ID-$PLAN_ATTEMPT"
+  --jq '{id,run_attempt,head_sha,path,event,status,conclusion,created_at}'
 PRIVATE_DIR=$(mktemp -d)
-gh run download "$PLAN_RUN_ID" -R "$REPO" -n "$ARTIFACT_NAME" -D "$PRIVATE_DIR"
 repository_id=$(gh api "repos/$REPO" --jq .id)
 # Set the exact effective bucket from the reviewed Plan caller and its variables.
-# Caller input overrides can select a bucket independently of the default variable.
 : "${GCP_TF_STATE_BUCKET:?Set and verify the producing Plan's state bucket}"
-generation=$(jq -er .generation "$PRIVATE_DIR/plan.json")
-gcloud storage cp \
-  "gs://$GCP_TF_STATE_BUCKET/plans/$repository_id/$PLAN_RUN_ID/$PLAN_ATTEMPT/plan.tfplan#$generation" \
-  "$PRIVATE_DIR/plan.tfplan"
-digest=$(jq -er .sha256 "$PRIVATE_DIR/plan.json")
-printf '%s  %s\n' "$digest" "$PRIVATE_DIR/plan.tfplan" | sha256sum --check
+base="gs://$GCP_TF_STATE_BUCKET/plans/$repository_id/$PLAN_RUN_ID/$PLAN_ATTEMPT"
+gcloud storage cp "$base/saved-plan/plan.tfplan#$PLAN_GENERATION" "$PRIVATE_DIR/plan.tfplan"
 tofu -chdir=tf/infrastructure show -no-color "$PRIVATE_DIR/plan.tfplan" > "$PRIVATE_DIR/plan.txt"
 ```
 
@@ -114,28 +106,30 @@ logs or issues. Stop on unexpected changes. Review does not authorize Apply.
 
 ## 4. Apply
 
-After separate approval for this artifact ID:
+After separate approval for this exact run/attempt/generation:
 
 ```sh
 gh workflow run apply.yaml -R "$REPO" --ref main \
-  -f "plan_artifact_id=$PLAN_ARTIFACT_ID"
+  -f "plan_ref=$PLAN_RUN_ID/$PLAN_ATTEMPT/$PLAN_GENERATION"
 ```
 
-Apply validates the successful producing attempt, repository, current main SHA,
-24-hour artifact age, backend identity and digests, then applies the saved plan
-without replanning. A changed SHA, expired artifact or stale state requires a new
-separately authorized Plan and review, not bypassing a guard. GCS lifecycle cleanup
-is asynchronous and versioning/soft-delete can retain old objects longer; the
-workflow's 24-hour validity limit is independent of physical deletion.
+Apply downloads that exact GCS plan generation into a local file, then runs
+OpenTofu Apply without replanning. The protected Apply gate and the operator's
+review of the selected reference are the authorization boundary. OpenTofu's
+backend state locking and stale-plan checks remain active. If the source has
+changed, the plan is missing, or the state has advanced, stop and review a new
+Plan rather than applying a different object. GCS lifecycle cleanup is
+asynchronous; do not assume old objects have already been deleted.
 
-Watch the exact Apply run. A failed Plan or Apply task keeps its full diagnostic
-private: public repositories write a create-only `plan.log` or `apply.log` under
-`gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/`;
-private repositories attach a one-day `plan-failure-RUN-ATTEMPT` or
-`apply-failure-RUN-ATTEMPT` artifact. Fetch it only as an authorized reader into
-restricted scratch outside Git and the Nix store. The public run prints a locator,
-never the log contents. Diagnostic upload can itself fail; absence is not proof
-that no infrastructure changed. GCS cleanup follows the plans-prefix lifecycle.
+Watch the exact Apply run. A failed Plan stores a create-only `plan.log` under
+`gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/`.
+A failed Apply stores `apply.log` under
+`gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/apply/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/`.
+Fetch diagnostics only as an authorized reader into restricted scratch outside Git
+and the Nix store. Provider output is redirected to local private logs, not
+printed in the workflow. Diagnostic upload can
+itself fail; absence is not proof that no infrastructure changed. GCS cleanup
+follows the plans-prefix lifecycle.
 
 Failure or timeout may follow a partial write: inspect state and completed
 operations before proposing recovery. Do not rerun Day Zero, force-unlock an

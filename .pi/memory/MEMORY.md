@@ -86,10 +86,12 @@ not permission to recreate an installation.
 
 Plan/Apply remain manual, protected-main operations with original and triggering
 actor checks, protected environments, WIF, backend locks and non-cancelling
-concurrency. A merge or green Check is not deployment approval. Review exact
-saved artifacts before Apply; preserve producer, source, age, backend, generation
-and digest binding. Keep main fixed during review. Never silently replan, replay
-an uncertain Apply, force-unlock an active writer or rerun Day Zero.
+concurrency. A merge or green Check is not deployment approval. Plan writes a
+local saved file and private log; workflows use `gcloud storage cp` to persist
+these in private GCS, then download the operator-selected exact plan generation
+for Apply without replanning. There are no GitHub artifacts, producer-run checks
+or metadata manifests. Keep main fixed during review. Never replay an uncertain
+Apply, force-unlock an active writer or rerun Day Zero.
 
 #decision [[factory-member-landing]]
 Repository writers may fast-forward main after exact-head required checks, without

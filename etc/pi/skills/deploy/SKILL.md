@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: Plan, privately review, apply or troubleshoot existing Factory-module infrastructure through protected reusable workflows and a saved-plan artifact ID. Not a new-installation bootstrap.
+description: Plan, privately review, apply or troubleshoot existing Factory-module infrastructure through protected reusable workflows and an exact saved-plan GCS generation. Not a new-installation bootstrap.
 ---
 
 # Deploy

@@ -94,27 +94,23 @@ jobs:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
-          TF_PLAN_DIR: ${{ runner.temp }}/saved-plan
+          TF_PLAN_FILE: ${{ runner.temp }}/saved-plan/plan.tfplan
         run: |
+          umask 077
+          mkdir -p -- "$RUNNER_TEMP/saved-plan"
           cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
-          "$cli" shell -- "$cli" tasks run --show-output plan:infrastructure
+          "$cli" shell -- "$cli" tasks run --show-output plan:infrastructure > "$RUNNER_TEMP/saved-plan/plan.log" 2>&1
+          base="gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT"
+          "$cli" shell -- gcloud storage cp --recursive "$RUNNER_TEMP/saved-plan" "$base/" --if-generation-match=0 --quiet > /dev/null
+          generation=$("$cli" shell -- gcloud storage objects describe "$base/saved-plan/plan.tfplan" --raw --format='value(generation)')
+          printf 'Plan reference: %s/%s/%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$generation" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Publish receipt only
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: plan-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/saved-plan/artifact/plan.json
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Publish private Plan failure diagnostic
-        if: failure() && github.event.repository.private
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: plan-failure-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/saved-plan/private/plan.log
-          if-no-files-found: ignore
-          retention-days: 1
+      - name: Store restricted Plan failure log
+        if: failure()
+        run: |
+          test -f "$RUNNER_TEMP/saved-plan/plan.log" || exit 0
+          cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
+          "$cli" shell -- gcloud storage cp "$RUNNER_TEMP/saved-plan/plan.log" "gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/plan.log" --if-generation-match=0 --quiet > /dev/null
 
       - name: Remove local plan files
         if: always()
