@@ -180,13 +180,13 @@ in
     "plan:infrastructure" = {
       description = "Plan infrastructure.";
       env.TF_DIR = "tf/infrastructure";
-      exec = lib.getExe config.quantile.opentofu.plan.gcs.package;
+      exec = lib.getExe config.quantile.opentofu.plan.package;
     };
 
     "apply:infrastructure" = {
       description = "Apply infrastructure.";
       env.TF_DIR = "tf/infrastructure";
-      exec = lib.getExe config.quantile.opentofu.apply.gcs.package;
+      exec = lib.getExe config.quantile.opentofu.apply.package;
     };
   };
 }

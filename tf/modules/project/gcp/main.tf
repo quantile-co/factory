@@ -65,7 +65,7 @@ resource "google_storage_bucket" "state" {
     }
   }
 
-  # Plan cleanup is prefix-scoped and asynchronous; Apply enforces the 24-hour limit.
+  # Plan cleanup is prefix-scoped and asynchronous.
   lifecycle_rule {
     action {
       type = "Delete"

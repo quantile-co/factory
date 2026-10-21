@@ -3,7 +3,7 @@ name: Apply
 on:
   workflow_call:
     inputs:
-      plan_artifact_id:
+      plan_ref:
         type: string
         required: true
       tf_state_bucket:
@@ -23,14 +23,13 @@ on:
         required: true
   workflow_dispatch:
     inputs:
-      plan_artifact_id:
-        description: Plan artifact ID (valid for 24 hours)
+      plan_ref:
+        description: Reviewed GCS plan key/generation
         required: true
         type: string
 
 permissions:
   contents: read
-  actions: read
   id-token: write
 
 concurrency:
@@ -102,21 +101,25 @@ jobs:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
-          PLAN_ARTIFACT_ID: ${{ inputs.plan_artifact_id }}
-          TF_PLAN_DIR: ${{ runner.temp }}/saved-plan
+          PLAN_REF: ${{ inputs.plan_ref }}
+          TF_PLAN_FILE: ${{ runner.temp }}/saved-plan/plan.tfplan
         run: |
-          cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
-          "$cli" shell -- "$cli" tasks run --show-output apply:infrastructure
+          umask 077
+          mkdir -p -- "$RUNNER_TEMP/saved-plan"
+          [[ "$PLAN_REF" =~ ^([1-9][0-9]*)/([1-9][0-9]*)/([1-9][0-9]*)$ ]]
+          source="gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/saved-plan/plan.tfplan#${BASH_REMATCH[3]}"
+          {
+            cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
+            "$cli" shell -- gcloud storage cp "$source" "$TF_PLAN_FILE" --quiet
+            "$cli" shell -- "$cli" tasks run --show-output apply:infrastructure
+          } > "$RUNNER_TEMP/saved-plan/apply.log" 2>&1
 
-      - name: Publish private Apply failure diagnostic
-        if: failure() && github.event.repository.private
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: apply-failure-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/saved-plan/private/apply.log
-          if-no-files-found: ignore
-          retention-days: 1
+      - name: Store restricted Apply failure log
+        if: failure()
+        run: |
+          test -f "$RUNNER_TEMP/saved-plan/apply.log" || exit 0
+          cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
+          "$cli" shell -- gcloud storage cp "$RUNNER_TEMP/saved-plan/apply.log" "gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/apply/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/apply.log" --if-generation-match=0 --quiet > /dev/null
 
       - name: Remove local plan files
         if: always()
