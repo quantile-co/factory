@@ -73,6 +73,11 @@ cache reads alongside every approved public cache.
 
 ## Infrastructure and production
 
+#decision [[workflow-timeouts]]
+Use explicit job timeouts of 15 minutes for Check/Test, 30 minutes for Build/Plan
+and 120 minutes for Apply, wherever those workflows exist. Do not add placeholder
+workflows. Keep deployment guards, locks and concurrency unchanged.
+
 #decision [[factory-terraform-layout]] [[factory-saved-plans]]
 The deployment root is `tf/infrastructure`; shared GitHub and GCP modules are
 separate under `tf/modules/project/`. Existing deployments retain their bucket,

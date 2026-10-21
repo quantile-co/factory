@@ -43,7 +43,7 @@ jobs:
       contains(fromJSON(vars.GH_MAINTAINERS), github.triggering_actor)
     runs-on: namespace-profile-quantile-4x8
     environment: prod
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       TF_IN_AUTOMATION: "true"
       GCP_TF_STATE_BUCKET: ${{ inputs.tf_state_bucket || vars.GCP_TF_STATE_BUCKET }}
