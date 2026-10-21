@@ -77,7 +77,6 @@ jobs:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
-          TF_PLAN_FILE: ${{ runner.temp }}/saved-plan/plan.tfplan
         run: |
           cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
-          "$cli" shell -- github-workflow-plan "$cli" plan:infrastructure
+          "$cli" shell -- github-workflow-plan

@@ -7,13 +7,6 @@
 let
   cfg = config.quantile.opentofu;
   tofu = cfg.package;
-  remoteInit = ''
-    : "''${GCP_TF_STATE_BUCKET:?Missing state bucket}"
-    : "''${TF_BACKEND_PREFIX:?Missing backend prefix}"
-    tofu -chdir="$tf_dir" init -input=false -lockfile=readonly \
-      -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
-      -backend-config="prefix=$TF_BACKEND_PREFIX"
-  '';
 in
 {
   options.quantile.opentofu = {
@@ -114,41 +107,5 @@ in
       description = "Explicitly format tracked regular Terraform source only; never initialize a backend.";
     };
 
-    # Save the plan for review; Apply must use that same plan without generating a new one.
-    # These base commands also work independently with a caller-provided TF_PLAN_FILE.
-    plan.package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.writeShellApplication {
-        name = "plan-terraform";
-        runtimeInputs = [ tofu ];
-        text = ''
-          tf_dir="''${TF_DIR:-tf}"
-          : "''${TF_PLAN_FILE:?Set an absolute output path for the saved plan}"
-          case "$TF_PLAN_FILE" in /*) ;; *) echo "TF_PLAN_FILE must be absolute" >&2; exit 1 ;; esac
-          test ! -e "$TF_PLAN_FILE"
-          umask 077
-          ${remoteInit}
-          tofu -chdir="$tf_dir" plan -input=false -no-color -out="$TF_PLAN_FILE"
-        '';
-      };
-      description = "Save a Terraform plan to a local file.";
-    };
-
-    apply.package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.writeShellApplication {
-        name = "apply-terraform";
-        runtimeInputs = [ tofu ];
-        text = ''
-          tf_dir="''${TF_DIR:-tf}"
-          : "''${TF_PLAN_FILE:?Set an absolute path to the saved plan}"
-          case "$TF_PLAN_FILE" in /*) ;; *) echo "TF_PLAN_FILE must be absolute" >&2; exit 1 ;; esac
-          test -s "$TF_PLAN_FILE"
-          ${remoteInit}
-          tofu -chdir="$tf_dir" apply -input=false "$TF_PLAN_FILE"
-        '';
-      };
-      description = "Apply a saved local Terraform plan without replanning.";
-    };
   };
 }

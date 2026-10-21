@@ -82,7 +82,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
           PLAN_REF: ${{ inputs.plan_ref }}
-          TF_PLAN_FILE: ${{ runner.temp }}/saved-plan/plan.tfplan
         run: |
           cli="$(nix build --no-link --print-out-paths '.#devenv-cli')/bin/devenv"
-          "$cli" shell -- github-workflow-apply "$cli" apply:infrastructure
+          "$cli" shell -- github-workflow-apply

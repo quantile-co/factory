@@ -1,11 +1,5 @@
 import { spawnSync } from "node:child_process";
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -45,7 +39,28 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       config = (pkgs.lib.evalModules {
         specialArgs = { inherit pkgs; };
-        modules = [ f.nixModules.github-workflows ({ lib, ... }: {
+        modules = [ f.nixModules.github-workflows f.nixModules.opentofu ({ lib, ... }: {
+          config.quantile.opentofu.package = pkgs.writeShellScriptBin "tofu" ''
+            set -euo pipefail
+            printf '%s\\n' "$*" >> "$FAKE_TOFU_CALLS"
+            echo provider-private-diagnostic
+            if [[ " $* " == *" init "* ]]; then
+              [[ " $* " == *" -backend-config=bucket=private-bucket "* ]]
+              [[ " $* " == *" -backend-config=prefix=repository/prod "* ]]
+            elif [[ " $* " == *" plan "* ]]; then
+              if [ "''\${FAKE_FAIL_PLAN:-0}" = 1 ]; then exit 7; fi
+              for arg in "$@"; do
+                case "$arg" in -out=*) printf 'reviewed saved bytes' > "''\${arg#-out=}" ;; esac
+              done
+            elif [[ " $* " == *" apply "* ]]; then
+              [[ " $* " != *" plan "* ]]
+              [ "$(cat "''\${@: -1}")" = 'reviewed saved bytes' ]
+              if [ "''\${FAKE_FAIL_APPLY:-0}" = 1 ]; then exit 9; fi
+              echo applied > "$FAKE_APPLIED"
+            else
+              exit 81
+            fi
+          '';
           options.quantile.gcloud.package = lib.mkOption {
             type = lib.types.package;
             default = pkgs.writeShellApplication {
@@ -84,27 +99,7 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
     if (build.error) throw build.error;
     expect(build.status, build.stderr).toBe(0);
     const bin = join(build.stdout.trim(), "bin");
-    const cli = join(root, "fake-cli");
-    writeFileSync(
-      cli,
-      `#!/usr/bin/env bash
-set -euo pipefail
-[ "$1 $2 $3" = 'tasks run --show-output' ]
-if [ "$4" = 'plan:infrastructure' ]; then
-  echo provider-private-diagnostic
-  if [ "\${FAKE_FAIL_PLAN:-0}" = 1 ]; then exit 7; fi
-  printf 'reviewed saved bytes' > "$TF_PLAN_FILE"
-elif [ "$4" = 'apply:infrastructure' ]; then
-  [ "$(cat "$TF_PLAN_FILE")" = 'reviewed saved bytes' ]
-  echo provider-private-diagnostic
-  if [ "\${FAKE_FAIL_APPLY:-0}" = 1 ]; then exit 9; fi
-  echo applied > "$FAKE_APPLIED"
-else
-  exit 81
-fi
-`,
-      { mode: 0o700 },
-    );
+    const planFile = join(root, "saved-plan", "plan.tfplan");
     const env = {
       ...process.env,
       GCP_TF_STATE_BUCKET: "private-bucket",
@@ -113,17 +108,18 @@ fi
       GITHUB_RUN_ATTEMPT: "1",
       GITHUB_STEP_SUMMARY: join(root, "summary"),
       RUNNER_TEMP: root,
-      TF_PLAN_FILE: join(root, "saved-plan", "plan.tfplan"),
+      TF_BACKEND_PREFIX: "repository/prod",
       FAKE_STORAGE: join(root, "storage"),
       FAKE_GCLOUD_CALLS: join(root, "gcloud-calls"),
+      FAKE_TOFU_CALLS: join(root, "tofu-calls"),
       FAKE_APPLIED: join(root, "applied"),
     };
     const invoke = (phase: "plan" | "apply", extra: NodeJS.ProcessEnv = {}) => {
-      const result = spawnSync(
-        join(bin, `github-workflow-${phase}`),
-        [cli, `${phase}:infrastructure`],
-        { env: { ...env, ...extra }, encoding: "utf8", timeout: 20_000 },
-      );
+      const result = spawnSync(join(bin, `github-workflow-${phase}`), [], {
+        env: { ...env, ...extra },
+        encoding: "utf8",
+        timeout: 20_000,
+      });
       if (result.error) throw result.error;
       expect(result.stdout + result.stderr).not.toContain(
         "provider-private-diagnostic",
@@ -134,7 +130,7 @@ fi
     expect(readFileSync(join(env.FAKE_STORAGE, "plan.log"), "utf8")).toContain(
       "provider-private-diagnostic",
     );
-    expect(existsSync(env.TF_PLAN_FILE)).toBe(false);
+    expect(existsSync(planFile)).toBe(false);
 
     const planned = invoke("plan");
     expect(planned.status, planned.stderr).toBe(0);
@@ -142,7 +138,7 @@ fi
     expect(
       readFileSync(join(env.FAKE_STORAGE, "saved-plan/plan.tfplan"), "utf8"),
     ).toBe("reviewed saved bytes");
-    expect(existsSync(env.TF_PLAN_FILE)).toBe(false);
+    expect(existsSync(planFile)).toBe(false);
 
     const callsBeforeInvalid = readFileSync(env.FAKE_GCLOUD_CALLS, "utf8");
     expect(invoke("apply", { PLAN_REF: "bad" }).status).not.toBe(0);
@@ -155,16 +151,19 @@ fi
     expect(readFileSync(join(env.FAKE_STORAGE, "apply.log"), "utf8")).toContain(
       "provider-private-diagnostic",
     );
-    expect(existsSync(env.TF_PLAN_FILE)).toBe(false);
+    expect(existsSync(planFile)).toBe(false);
     expect(existsSync(env.FAKE_APPLIED)).toBe(false);
 
     const applied = invoke("apply", { PLAN_REF: "456/1/42" });
     expect(applied.status, applied.stderr).toBe(0);
     expect(existsSync(env.FAKE_APPLIED)).toBe(true);
-    expect(existsSync(env.TF_PLAN_FILE)).toBe(false);
+    expect(existsSync(planFile)).toBe(false);
     expect(readFileSync(env.FAKE_GCLOUD_CALLS, "utf8")).toContain(
       "plan.tfplan#42",
     );
+    const tofuCalls = readFileSync(env.FAKE_TOFU_CALLS, "utf8");
+    expect(tofuCalls.match(/ plan /g)).toHaveLength(2);
+    expect(tofuCalls.match(/ apply /g)).toHaveLength(2);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

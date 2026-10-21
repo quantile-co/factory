@@ -2,7 +2,7 @@
 
 Read the caller's current workflows, the pinned Factory reusable workflows,
 `devenv.nix`, `tf/infrastructure/`, its declared Factory Terraform module
-sources and `nix/opentofu/default.nix` from the pinned Factory revision.
+sources and `nix/github/workflows/default.nix` from the pinned Factory revision.
 Use the pinned direnv shell. Ordinary production changes use protected workflows,
 not local Apply. Validate source without backend access:
 
@@ -20,6 +20,44 @@ and existing prefix are retained, this is not a backend migration or a new
 installation. Some installations also intentionally retire resources;
 review those deletions individually. No compatibility blocks or state moves
 run automatically.
+
+## Local OpenTofu (exceptional, separately authorized)
+
+Ordinary production Plan/Apply must use protected workflows. If an operator
+explicitly authorizes a local exception, enter the pinned shell with the
+appropriate runtime SecretSpec profile and provider inputs. Set
+`TF_PLAN_FILE` to an absolute private path outside Git and the Nix store;
+keep its bytes restricted for review. Use the existing bucket and prefix:
+
+```sh
+set -euo pipefail; set +x; umask 077
+: "${GCP_TF_STATE_BUCKET:?Set the existing bucket}"
+: "${TF_BACKEND_PREFIX:?Set the existing prefix}"
+: "${TF_PLAN_FILE:?Set an absolute private plan path}"
+case "$TF_PLAN_FILE" in /*) ;; *) exit 1 ;; esac
+tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly \
+  -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
+  -backend-config="prefix=$TF_BACKEND_PREFIX"
+test ! -e "$TF_PLAN_FILE"
+tofu -chdir=tf/infrastructure plan -input=false -no-color -out="$TF_PLAN_FILE"
+```
+
+A *separately approved* local Apply uses the exact reviewed saved bytes, with
+fresh runtime credentials and the same backend configuration. Never replan
+in place of Apply:
+
+```sh
+set -euo pipefail; set +x; umask 077
+: "${GCP_TF_STATE_BUCKET:?Set the reviewed bucket}"
+: "${TF_BACKEND_PREFIX:?Set the reviewed prefix}"
+: "${TF_PLAN_FILE:?Set the reviewed absolute private plan path}"
+case "$TF_PLAN_FILE" in /*) ;; *) exit 1 ;; esac
+test -s "$TF_PLAN_FILE"
+tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly \
+  -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
+  -backend-config="prefix=$TF_BACKEND_PREFIX"
+tofu -chdir=tf/infrastructure apply -input=false "$TF_PLAN_FILE"
+```
 
 ## 1. Confirm context
 

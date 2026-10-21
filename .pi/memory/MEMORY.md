@@ -102,8 +102,10 @@ concurrency. Workflow reuse is file-based: Factory maintains native YAML under
 `nix/github/workflows/default.nix`. Consumers other than independent Q0 materialize the
 files with Devenv `files` and own their task-specific input validation, release
 logic and post-Apply checks. Do not add downstream-application-specific logic
-to shared templates. Devenv plan/apply tasks remain useful outside GitHub. A merge or green Check is not deployment approval. Plan writes a
-local saved file and private log; workflows use `gcloud storage cp` to persist
+to shared templates. For Terraform-only infrastructure, the shared workflow
+scripts call OpenTofu directly; local exceptional commands live in deploy skills,
+not Devenv Plan/Apply tasks. A merge or green Check is not deployment approval.
+Plan writes a local saved file and private log; workflows use `gcloud storage cp` to persist
 these in private GCS, then download the operator-selected exact plan generation
 for Apply without replanning. There are no GitHub artifacts, producer-run checks
 or metadata manifests. Keep main fixed during review. Never replay an uncertain
