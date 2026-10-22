@@ -156,8 +156,8 @@ export function manageFiles(
   entries: Record<string, FileEntry>,
   action: string,
 ): void {
-  if (action !== "seed" && action !== "check")
-    throw new Error("Expected seed or check");
+  if (action !== "write" && action !== "check")
+    throw new Error("Expected write or check");
   const drift = [];
   const untracked = [];
   for (const [name, { source, mode }] of Object.entries(entries).sort(
@@ -209,7 +209,7 @@ if (
   try {
     const [action, manifest] = process.argv.slice(2);
     if (!manifest || process.argv.length !== 4)
-      throw new Error("Usage: factory-files seed|check");
+      throw new Error("Usage: factory-files write|check");
     manageFiles(
       process.cwd(),
       JSON.parse(readFileSync(manifest, "utf8")),

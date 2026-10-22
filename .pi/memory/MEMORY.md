@@ -46,7 +46,7 @@ Factory uses a locked flake shell and the same `.envrc` through direnv locally a
 in CI. Pnpm entry points live under `scripts/pnpm/`; every checked-in workflow
 has a corresponding `scripts/github/` entry point. Protected Plan/Apply remain
 workflow-only. `flake.nix` declares destination, source expression and seed/copy
-mode through `nix/files/`. Direnv runs `factory-files seed`: copy overwrites
+mode through `nix/files/`. Direnv runs `factory-files write`: copy overwrites
 like Devenv, seed keeps existing contents, and neither creates symlinks. All
 selected destinations are checked-in regular files. Check requires them in the
 Git index and compares copies with their source and index so entry cannot hide

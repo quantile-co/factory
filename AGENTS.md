@@ -17,7 +17,7 @@ copying their contents into this file.
 - [flake.nix](flake.nix) and [.envrc](.envrc): pinned shell and direnv entry.
 - [scripts/](scripts/): pnpm tasks and workflow entry points.
 - [nix/](nix/): reusable Nix modules and executables.
-- [nix/files/](nix/files/): seed/copy file commands and tests.
+- [nix/files/](nix/files/): managed-file command and tests.
 - [etc/](etc/): reusable native-format configuration assets.
 - [tf/infrastructure/](tf/infrastructure/): this repository's deployment root.
 - [tf/modules/project/](tf/modules/project/): independent GitHub and GCP modules.
