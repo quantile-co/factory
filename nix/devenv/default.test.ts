@@ -206,6 +206,28 @@ it("checks a consumer's nested Factory pins without accepting lock drift", () =>
     if (build.error) throw build.error;
     expect(build.status, build.stderr).toBe(0);
     const command = join(build.stdout.trim(), "bin/check-devenv-locks");
+    const self = join(work, "self");
+    mkdirSync(self);
+    for (const name of ["flake.lock", "devenv.lock"]) {
+      writeFileSync(
+        join(self, name),
+        readFileSync(new URL(`../../${name}`, import.meta.url)),
+      );
+    }
+    const factoryCheck = () =>
+      spawnSync(command, [], {
+        cwd: self,
+        env: { ...process.env, CI: "false" },
+        encoding: "utf8",
+      });
+    expect(factoryCheck().status).toBe(0);
+    const selfFlake = JSON.parse(
+      readFileSync(join(self, "flake.lock"), "utf8"),
+    );
+    selfFlake.nodes[selfFlake.nodes.root.inputs.nixpkgs].locked.rev =
+      "mismatch";
+    writeFileSync(join(self, "flake.lock"), JSON.stringify(selfFlake));
+    expect(factoryCheck().status).not.toBe(0);
     const pin = {
       original: { type: "github", repo: "devenv" },
       locked: { rev: "reviewed" },

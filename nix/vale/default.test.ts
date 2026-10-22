@@ -75,6 +75,10 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     expect(overridden.status, overridden.output).toBe(0);
     writeFileSync(config, baseline);
     writeFileSync(guide, accepted);
+    writeFileSync(join(work, "AGENTS.md"), heading);
+    expect(run().status).toBe(0);
+    expect(run(["*.md"]).status).not.toBe(0);
+    rmSync(join(work, "AGENTS.md"));
     const draft = join(work, "docs/draft.md");
     const filler = "# Draft\n\nIt is worth noting that the check runs.\n";
     writeFileSync(draft, filler);

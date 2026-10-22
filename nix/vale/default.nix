@@ -44,7 +44,12 @@ in
             exit 1
           fi
           # Vale resolves StylesPath relative to this path; do not dereference a linked config.
-          if [ "$#" -eq 0 ]; then set -- '*.md'; fi
+          if [ "$#" -eq 0 ]; then
+            set -- '*.md' \
+              ':(exclude,glob)**/AGENTS.md' ':(exclude,glob)nix/**/fixtures/**' \
+              ':(exclude,glob).pi/memory/**' ':(exclude,glob).pi/skills/**' \
+              ':(exclude,glob)etc/pi/skills/**'
+          fi
           files=$(mktemp)
           trap 'rm -f -- "$files"' EXIT
           git ls-files --cached --others --exclude-standard -z -- "$@" > "$files"

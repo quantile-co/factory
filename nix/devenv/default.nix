@@ -86,10 +86,16 @@ else
                   pkgs.jq
                 ];
                 text = ''
-                  # The standard consumer names both inputs "factory". Explicit
-                  # arguments also support Factory itself and other input layouts.
                   if [ "$#" -eq 0 ]; then
-                    set -- --ci --flake-input factory flake.lock devenv.lock factory
+                    if jq -e '.nodes.root.inputs | has("factory")' flake.lock > /dev/null; then
+                      set -- --ci --flake-input factory flake.lock devenv.lock factory
+                    elif jq -e '.nodes.root.inputs | has("devenv-cli")' flake.lock > /dev/null &&
+                      jq -e '.nodes.root.inputs | has("this")' devenv.lock > /dev/null; then
+                      set -- --ci flake.lock devenv.lock this
+                    else
+                      echo 'Unrecognized Factory/consumer lock layout; pass explicit input names.' >&2
+                      exit 2
+                    fi
                   fi
                   index=false
                   ci=false

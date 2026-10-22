@@ -33,7 +33,9 @@ in
           config="''${MARKDOWNLINT_CONFIG_FILE:-.markdownlint-cli2.jsonc}"
           test -f "$config" || { echo "Missing native Markdown config: $config" >&2; exit 1; }
           paths=("$@")
-          if (( ''${#paths[@]} == 0 )); then paths=( '*.md' ); fi
+          if (( ''${#paths[@]} == 0 )); then
+            paths=( '*.md' ':(exclude,glob).pi/memory/**' )
+          fi
           work=$(mktemp)
           trap 'rm -f -- "$work"' EXIT
           git ls-files --cached --others --exclude-standard -z -- "''${paths[@]}" > "$work"

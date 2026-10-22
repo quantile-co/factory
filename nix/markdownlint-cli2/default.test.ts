@@ -103,6 +103,19 @@ it("lints selected Markdown read-only with consumer-native rule overrides", () =
     expect(strict.status).not.toBe(0);
     expect(strict.output).toContain("MD013");
     expect(readFileSync(selected, "utf8")).toContain(longLine);
+    writeFileSync(
+      config,
+      readFileSync(config, "utf8").replace(
+        '"MD013": { "line_length": 40 }',
+        '"MD013": false',
+      ),
+    );
+    writeFileSync(selected, accepted);
+    writeFileSync(join(repo, "unrelated.md"), accepted);
+    mkdirSync(join(repo, ".pi/memory"), { recursive: true });
+    writeFileSync(join(repo, ".pi/memory/history.md"), duplicate);
+    expect(run(check).status).toBe(0);
+    expect(run(check, ["*.md"]).status).not.toBe(0);
     expect(existsSync(join(repo, ".git/hooks/pre-push"))).toBe(false);
   } finally {
     rmSync(work, { recursive: true, force: true });

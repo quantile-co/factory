@@ -8,6 +8,7 @@ permissions:
 
 env:
   NIX_CONFIG: |
+    require-sigs = true
     extra-substituters = https://devenv.cachix.org https://quantile-co.cachix.org https://cache.numtide.com https://cachix.cachix.org https://pre-commit-hooks.cachix.org https://go-overlay.cachix.org
     extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= quantile-co.cachix.org-1:OM+kQzUqP3Ija8QQMUxvQNs97u6PB5/s83ZJe7c9WIQ= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= cachix.cachix.org-1:eWNHQldwUO7G2VkjpnjDbWwy4KQ/HNxht7H4SSoMckM= pre-commit-hooks.cachix.org-1:Pkk3Panw5AW24TOv6kz3PvLhlH8puAsJTBbOPmBo7Rc= go-overlay.cachix.org-1:rJ155O3K6WUyUcoKE4MqcC6JcLlK2vPXnP5/76BxWD8=
 
@@ -34,8 +35,6 @@ jobs:
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
         with:
           install_options: --no-daemon
-          extra_nix_config: |
-            require-sigs = true
 
       - name: Build
         run: nix run .#devenv-cli -- tasks run --show-output build:all

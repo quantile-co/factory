@@ -124,13 +124,9 @@ in
       after = [ "devenv:files" ];
       exec = ''
         set -euo pipefail
-        # Validate the flake and its tracked, copied Dependabot configuration.
         ${lib.getExe pkgs.nix} flake check .
         ${lib.getExe config.quantile.dependabot.check.package} ${dependabotFile}
-        ${
-          lib.getExe inputs.this.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks
-        } --ci flake.lock devenv.lock this
-        # Read-only source checks; fixes belong exclusively to fix:all.
+        ${lib.getExe inputs.this.packages.${pkgs.stdenv.hostPlatform.system}.check-devenv-locks}
         ${lib.getExe config.quantile.prek.check.package}
         ${lib.getExe config.quantile.nixfmt.check.package}
         ${lib.getExe config.quantile.deadnix.check.package}
@@ -138,24 +134,17 @@ in
         ${lib.getExe config.quantile.editorconfig.check.package}
         ${lib.getExe config.quantile.shellcheck.check.package}
         ${lib.getExe config.quantile.shfmt.check.package}
-        ${lib.getExe config.quantile.markdownlint-cli2.check.package} '*.md' \
-          ':(exclude,glob).pi/memory/**'
+        ${lib.getExe config.quantile.markdownlint-cli2.check.package}
         ${lib.getExe config.quantile.actionlint.check.package}
-        # Test the checked-in Semgrep rules before scanning the repository.
         ${lib.getExe config.quantile.semgrep.test.package}
         ${lib.getExe config.quantile.semgrep.check.package}
         ${lib.getExe config.quantile.trivy.check.package}
         ${lib.getExe config.quantile.typos.check.package}
-        # Vale targets docs, not agent instructions or append-only history.
-        ${lib.getExe config.quantile.vale.check.package} '*.md' \
-          ':(exclude,glob)**/AGENTS.md' ':(exclude,glob)nix/**/fixtures/**' \
-          ':(exclude,glob).pi/memory/**' ':(exclude,glob).pi/skills/**' \
-          ':(exclude,glob)etc/pi/skills/**'
+        ${lib.getExe config.quantile.vale.check.package}
         ${lib.getExe config.quantile.yamllint.check.package}
         ${lib.getExe config.quantile.taplo.check.package}
         ${lib.getExe config.quantile.taplo.format.package}
         ${lib.getExe config.quantile.opentofu.nonempty.package} ${lib.escapeShellArg terraformSourceDir}
-        # Format-check all source, then validate and lint each isolated root.
         TF_DIR=${lib.escapeShellArg terraformSourceDir} ${lib.getExe config.quantile.opentofu.format.package}
         ${lib.concatMapStringsSep "\n" (root: ''
           TF_DIR=${lib.escapeShellArg root} ${lib.getExe config.quantile.opentofu.check.package}

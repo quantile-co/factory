@@ -16,6 +16,8 @@ it("materializes protected native workflows without callable references", () => 
     );
     expect(source).toBe(template);
     expect(source).not.toMatch(/^ {2}workflow_call:/m);
+    expect(source).toContain("  NIX_CONFIG: |\n    require-sigs = true\n");
+    expect(source).not.toContain("extra_nix_config:");
   }
   for (const name of ["plan", "apply"]) {
     const source = readFileSync(
