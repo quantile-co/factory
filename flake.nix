@@ -136,7 +136,7 @@
               "trivy.yaml" = copy factory.trivy.configFile;
               "typos.toml" = copy factory.typos.configFile;
               ".vale.ini" = copy factory.vale.configFile;
-              ".vale/styles" = copy factory.vale.stylesDirectory;
+              ".vale" = copy factory.vale.stylesDirectory;
               ".yamllint.yaml" = copy factory.yamllint.configFile;
               "biome.json" = copy factory.biome.configFile;
               "tsconfig.json" = copy (

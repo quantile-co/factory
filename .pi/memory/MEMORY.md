@@ -23,7 +23,7 @@ entry points. Leaf defaults own the implementation, normally beside `default.tes
 do not introduce `module.nix` or other forwarding-only splits for leaf implementations.
 Treat `etc/` only as template sources for Nix modules. Runtime root configuration
 and companion assets must be copied from the Nix store into their
-tool-native locations, including `.vale/styles/`; never load runtime assets
+tool-native locations, including `.vale/`; never load runtime assets
 directly from the checkout's `etc/`. Source linting and template tests still
 inspect those sources. All exported Nix options live under `config.quantile-co.factory`;
 `nixModules.default` combines named modules without installing tools or hooks.

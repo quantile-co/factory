@@ -76,7 +76,7 @@ it("checks YAML with native policy, Git selection, and read-only duplicate-key r
     expect(strict.status).toBe(0);
     expect(strict.output).toContain("document-start");
     writeFileSync(config, baseline);
-    for (const styles of [".vale/styles/Google", "etc/vale/styles/Google"]) {
+    for (const styles of [".vale/Google", "etc/vale/styles/Google"]) {
       mkdirSync(join(work, styles), { recursive: true });
       writeFileSync(join(work, styles, "invalid.yml"), invalid);
     }

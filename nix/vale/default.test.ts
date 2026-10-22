@@ -53,8 +53,7 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     const config = join(work, ".vale.ini");
     copyFileSync(join(bundle, "config"), config);
     chmodSync(config, 0o644);
-    mkdirSync(join(work, ".vale"));
-    cpSync(join(bundle, "styles"), join(work, ".vale/styles"), {
+    cpSync(join(bundle, "styles"), join(work, ".vale"), {
       recursive: true,
       dereference: true,
     });
@@ -101,7 +100,7 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     rmSync(plainText);
     const rejectedWords = join(
       work,
-      ".vale/styles/config/vocabularies/Quantile/reject.txt",
+      ".vale/config/vocabularies/Quantile/reject.txt",
     );
     chmodSync(rejectedWords, 0o644);
     writeFileSync(rejectedWords, "delightful\n");

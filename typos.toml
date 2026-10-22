@@ -13,7 +13,7 @@ extend-exclude = [
   # Agent instructions, negative-rule fixtures, and vendored rules/styles.
   "**/AGENTS.md",
   "nix/**/fixtures/**",
-  ".vale/styles/Google/**",
+  ".vale/Google/**",
   "etc/vale/styles/Google/**",
   ".semgrep/packs/**",
 ]

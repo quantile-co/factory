@@ -9,7 +9,7 @@ ignore:
   - "*.min.yml"
   # Keep upstream rule metadata and Vale styles unchanged.
   - ".semgrep/packs/**"
-  - ".vale/styles/Google/**"
+  - ".vale/Google/**"
   - "etc/vale/styles/Google/**"
 
 rules:

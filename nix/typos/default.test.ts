@@ -79,6 +79,10 @@ it("checks scoped tracked and untracked prose using native vocabulary and exclus
     mkdirSync(join(work, "ignored"));
     writeFileSync(join(work, ".gitignore"), "ignored/\n");
     writeFileSync(join(work, "ignored/not-checked.txt"), misspelled);
+    for (const styles of [".vale/Google", "etc/vale/styles/Google"]) {
+      mkdirSync(join(work, styles), { recursive: true });
+      writeFileSync(join(work, styles, "upstream.txt"), misspelled);
+    }
     expect(run().status).toBe(0);
     mkdirSync(join(work, ".hidden"));
     const hidden = join(work, ".hidden/prose.txt");
