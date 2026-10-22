@@ -95,16 +95,38 @@ it("checks without editing and safely fixes consumer files using the store-backe
     ];
     for (const file of untouched)
       writeFileSync(join(work, file), "deliberately unformatted fixture\n");
+    const selected = [
+      "nix",
+      "tf",
+      "package.json",
+      "tsconfig.json",
+      "etc/biome",
+    ];
+    const check = (success = true) =>
+      run(
+        "pnpm",
+        ["exec", "biome", "check", "--error-on-warnings", ...selected],
+        success,
+      );
+    const fix = () =>
+      run("pnpm", [
+        "exec",
+        "biome",
+        "check",
+        "--write",
+        "--error-on-warnings",
+        ...selected,
+      ]);
     const source = join(work, "nix", "probe.test.ts");
     const original = "export const answer=42\n";
     writeFileSync(source, original);
-    expect(run("pnpm", ["run", "check:code"], false)).toContain("format");
+    expect(check(false)).toContain("format");
     expect(readFileSync(source, "utf8")).toBe(original);
-    run("pnpm", ["run", "fix:code"]);
+    fix();
     const fixed = readFileSync(source, "utf8");
     expect(fixed).not.toBe(original);
-    run("pnpm", ["run", "check:code"]);
-    run("pnpm", ["run", "fix:code"]);
+    check();
+    fix();
     expect(readFileSync(source, "utf8")).toBe(fixed);
     for (const file of untouched) {
       expect(readFileSync(join(work, file), "utf8")).toBe(
@@ -113,9 +135,7 @@ it("checks without editing and safely fixes consumer files using the store-backe
     }
     // A formatted, type-correct lint violation must still fail the read-only command.
     writeFileSync(source, "export const answer: any = 42;\n");
-    expect(run("pnpm", ["run", "check:code"], false)).toContain(
-      "noExplicitAny",
-    );
+    expect(check(false)).toContain("noExplicitAny");
     expect(readFileSync(source, "utf8")).toBe(
       "export const answer: any = 42;\n",
     );

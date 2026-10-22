@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if (($# != 0)); then
+    echo 'Usage: pnpm run check' >&2
+    exit 2
+fi
 : "${FACTORY_FILES_MANIFEST:?Enter the pinned direnv shell first}"
 node scripts/files.mjs check "$FACTORY_FILES_MANIFEST"
 nix flake check .
@@ -29,4 +33,5 @@ check-opa --policy tf/infrastructure --namespace terraform.infrastructure -- tf/
 check-opa --policy tf/modules/project/github --namespace terraform.project.github -- tf/modules/project/github/main.tf
 check-opa --policy tf/modules/project/gcp --namespace terraform.project.gcp -- tf/modules/project/gcp/main.tf
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm run check:code
+pnpm exec tsc --noEmit
+pnpm exec biome check --error-on-warnings nix tf scripts package.json tsconfig.json etc/biome

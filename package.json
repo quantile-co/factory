@@ -6,13 +6,8 @@
   "scripts": {
     "prepare": "husky",
     "check": "./scripts/check.sh",
-    "check:code": "pnpm run typecheck && pnpm run lint",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check --error-on-warnings nix tf scripts package.json tsconfig.json etc/biome",
     "fix": "./scripts/fix.sh",
-    "fix:code": "biome check --write --error-on-warnings nix tf scripts package.json tsconfig.json etc/biome",
-    "test": "./scripts/test.sh",
-    "test:unit": "vitest run --maxWorkers=4"
+    "test": "./scripts/test.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

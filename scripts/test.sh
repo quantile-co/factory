@@ -2,4 +2,4 @@
 set -euo pipefail
 
 pnpm run check
-pnpm run test:unit
+pnpm exec vitest run --maxWorkers=4 "$@"

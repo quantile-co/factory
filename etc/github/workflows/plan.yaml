@@ -64,7 +64,6 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           useDaemon: false
 
-      # Git-aware inputs keep ignored credentials and Terraform files out of Nix.
       - name: Plan
         env:
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
