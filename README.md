@@ -25,10 +25,6 @@ After cloning, allow direnv to load the development environment:
 direnv allow
 ```
 
-The pinned flake shell provides the project tools. Direnv materializes native
-configuration as regular files. Checks reject copied files that differ from their
-sources, including committed copies repaired on entry.
-
 ## Development
 
 ### Install
@@ -40,10 +36,8 @@ pnpm install --frozen-lockfile
 ### Checks
 
 ```sh
-# Check source without rewriting it.
 pnpm run check
 
-# Apply safe source fixes explicitly.
 pnpm run fix
 ```
 
