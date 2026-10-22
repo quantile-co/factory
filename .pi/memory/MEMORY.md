@@ -25,6 +25,13 @@ Keep configuration native rather than inventing Nix settings registries or tool
 bundles. Reusable executables read consumer configuration at runtime and remain
 independent of Devenv and CI. Keep Terraform native under `tf/`.
 
+#decision [[shared-typescript-config]] [[release-source-provenance]]
+TypeScript and Knip defaults are native Factory assets. Consumers materialize
+project overrides through Devenv files; only runtime-independent development
+configs may be untracked. Public source archives are created from Git objects
+and built outside Devenv: their TypeScript config and Firebase deployment/rules
+files must remain tracked, self-contained and reproducible from the source SHA.
+
 #preference [[factory-consumer-migrations]]
 Keep migrations minimal and aligned with public quantile.co. Consumers extend
 small `nix/` modules rather than adding an `etc/` directory. Order applicable tasks

@@ -2,6 +2,7 @@
 .devenv.flake.nix
 .direnv/
 /node_modules/
+/tsconfig.json
 .envrc.local
 /.editorconfig
 /.editorconfig-checker.json

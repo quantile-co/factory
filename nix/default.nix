@@ -42,6 +42,7 @@ let
     kubectl = ./kubectl;
     kubeconform = ./kubeconform;
     keep-sorted = ./keep-sorted;
+    knip = ./knip;
     kustomize = ./kustomize;
     lnav = ./lnav;
     markdownlint-cli2 = ./markdownlint-cli2;

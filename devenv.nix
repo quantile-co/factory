@@ -69,6 +69,21 @@ in
   enterShell = lib.mkBefore config.quantile.secretspec.shellHook;
 
   files = {
+    "tsconfig.json" = {
+      source = config.quantile.typescript.withOverrides {
+        compilerOptions = {
+          module = "ESNext";
+          moduleResolution = "Bundler";
+          types = [ "node" ];
+        };
+        include = [
+          "*.test.ts"
+          "nix/**/*.test.ts"
+          "tf/**/*.test.ts"
+        ];
+      };
+      copyMode = "copy";
+    };
     ".editorconfig".source = config.quantile.editorconfig.configFile;
     ".editorconfig-checker.json".source = config.quantile.editorconfig.checker.configFile;
     ".markdownlint-cli2.jsonc".source = config.quantile.markdownlint-cli2.configFile;

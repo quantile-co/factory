@@ -18,8 +18,12 @@ it("checks selected nested TypeScript with a hoisted project compiler and no emi
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-      check = (pkgs.lib.evalModules { modules = [ f.nixModules.typescript ]; specialArgs = { inherit pkgs; }; }).config.quantile.typescript.check.package;
-    in [ check pkgs.typescript ]`;
+      config = (pkgs.lib.evalModules { modules = [ f.nixModules.typescript ]; specialArgs = { inherit pkgs; }; }).config;
+      rendered = config.quantile.typescript.withOverrides {
+        compilerOptions = { composite = true; incremental = true; outDir = "dist"; tsBuildInfoFile = "build info.tsbuildinfo"; };
+        include = [ "source with spaces/*.ts" ];
+      };
+    in [ config.quantile.typescript.check.package pkgs.typescript rendered ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
@@ -37,6 +41,8 @@ it("checks selected nested TypeScript with a hoisted project compiler and no emi
     );
     const typescript = paths.find((path) => /-typescript-\d/.test(path));
     if (!typescript) throw new Error("Nix did not build TypeScript");
+    const baseConfig = paths.find((path) => path.endsWith("-tsconfig.json"));
+    if (!baseConfig) throw new Error("Nix did not render TypeScript config");
     const run = (args: string[] = []) => {
       const result = spawnSync(check, args, {
         cwd: work,
@@ -55,17 +61,14 @@ it("checks selected nested TypeScript with a hoisted project compiler and no emi
       '{"private":true,"type":"module"}\n',
     );
     const config = join(project, "tsconfig.json");
-    const tsconfig = {
-      compilerOptions: {
-        composite: true,
-        incremental: true,
-        strict: true,
-        outDir: "dist",
-        tsBuildInfoFile: "build info.tsbuildinfo",
-      },
-      include: ["source with spaces/*.ts"],
-    };
-    writeFileSync(config, `${JSON.stringify(tsconfig)}\n`);
+    const tsconfig = JSON.parse(readFileSync(baseConfig, "utf8"));
+    expect(tsconfig.compilerOptions).toMatchObject({
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      incremental: true,
+    });
+    writeFileSync(config, readFileSync(baseConfig));
     const previousInfo = join(project, "build info.tsbuildinfo");
     writeFileSync(previousInfo, "preserve an existing compiler cache\n");
     const source = join(folder, "example.ts");
