@@ -4,6 +4,7 @@ variable "allowed_action_patterns" {
   default = [
     "quantile-co/factory/.github/workflows/*@*",
     "cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24",
+    "cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702",
     "cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866",
     "namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9",
   ]
