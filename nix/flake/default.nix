@@ -24,15 +24,15 @@ let
         inherit pkgs;
         factory = config.quantile-co.factory;
       };
-      files = import ../files { inherit pkgs; } repository.files;
+      files = import ../files { inherit pkgs; } repository.devShell.files;
     in
     {
       packages = pkgs.lib.filterAttrs (
         _: package:
         pkgs.lib.meta.availableOn pkgs.stdenv.hostPlatform package && !(package.meta.broken or false)
-      ) (repository.exports // { inherit files; });
+      ) (repository.packages // { inherit files; });
       devShells.default = pkgs.mkShell {
-        packages = repository.packages ++ [ files ];
+        packages = repository.devShell.packages ++ [ files ];
       };
     }
   );

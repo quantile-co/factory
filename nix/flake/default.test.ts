@@ -18,15 +18,17 @@ it("wires explicit packages and local/generated files without repository policy"
         inherit (f.inputs) nixpkgs;
         systems = [ system ];
         perSystem = { pkgs, ... }: {
-          exports = {
+          packages = {
             hello = pkgs.hello;
             unsupported = pkgs.hello.overrideAttrs { meta.platforms = []; };
             broken = pkgs.hello.overrideAttrs { meta.broken = true; };
           };
-          packages = [ pkgs.hello ];
-          files = {
-            "copy.txt" = { source = pkgs.writeText "generated" "generated\\n"; mode = "copy"; };
-            "seed.txt" = { source = builtins.toPath ${JSON.stringify(template)}; mode = "seed"; };
+          devShell = {
+            packages = [ pkgs.hello ];
+            files = {
+              "copy.txt" = { source = pkgs.writeText "generated" "generated\\n"; mode = "copy"; };
+              "seed.txt" = { source = builtins.toPath ${JSON.stringify(template)}; mode = "seed"; };
+            };
           };
         };
       };
@@ -49,7 +51,7 @@ it("wires explicit packages and local/generated files without repository policy"
     const wiring = evaluate(`{
       shell = map toString outputs.devShells.\${system}.default.nativeBuildInputs;
       selected = [ (toString pkgs.hello) (toString outputs.packages.\${system}.files) ];
-      nodePinned = f.packages.\${system}.nodejs == pkgs.nodejs_24;
+      nodePinned = f.packages.\${system}.nodejs_24 == pkgs.nodejs_24;
       bashAlias = f.packages.\${system}.bash == pkgs.bash;
     }`);
     expect(wiring.shell).toEqual(wiring.selected);

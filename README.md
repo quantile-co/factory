@@ -37,7 +37,6 @@ pnpm install --frozen-lockfile
 
 ```sh
 pnpm run check
-
 pnpm run fix
 ```
 

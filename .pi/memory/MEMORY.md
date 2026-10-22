@@ -54,13 +54,15 @@ committed drift. Q0 remains
 Factory-independent.
 
 #decision [[factory-declarative-flake]] [[factory-package-exports]]
-Keep repository-level inputs, systems, package exports, development packages and
-file selections in `flake.nix`. `lib.mkFlake` under `nix/flake/` handles only
+Keep repository-level inputs, systems, public `packages`, `devShell.packages`
+and `devShell.files` in `flake.nix`. Keep section interiors free of explanatory
+comments and blank-line groupings. `lib.mkFlake` under `nix/flake/` handles only
 module evaluation, platform iteration and output wiring; do not hide repository
 policy in a shell module. `lib.mkFiles { inherit pkgs; }` accepts destination-to-source/mode
 declarations; local paths and derivation references are retained without a caller
 `sourceRoot` or manifest variable. Package-only modules are replaced by explicit
-`packages.<system>.<name>` aliases, preserving selections such as Node 24.
+`packages.<system>.<name>` exports using upstream names, including `nodejs_24`.
+Factory-owned workflow outputs use `github-workflow-plan` and `github-workflow-apply`.
 Unsupported or broken exports are omitted for that platform. Factory enables
 unfree packages in its own Nixpkgs instance; host configuration is unchanged.
 Exports alone do not build packages or publish caches. Downstreams must replace
@@ -113,8 +115,9 @@ never be uploaded to a public cache. Cache credentials never enter source, state
 or Nix outputs. Preserve signatures and repository/profile cache isolation.
 Namespace caches are best-effort; a cache-action message does not prove a hit.
 Do not dispatch production workflows just to warm caches. Keep public cache
-additions in `.envrc`'s `NIX_CONFIG` for both CI and local use; Cachix's user-level
-configuration can override install-time additions. Keep `require-sigs = true` in
+additions in `.envrc`'s `NIX_CONFIG` for trusted stores in both CI and local use;
+untrusted daemon clients leave caches and keys to administrator configuration.
+Cachix's user-level configuration can override install-time additions. Keep `require-sigs = true` in
 the Nix install action before entering direnv. Preserve authenticated caller
 cache reads alongside every approved public cache.
 
