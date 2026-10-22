@@ -17,7 +17,11 @@ Private consumer guidance belongs in the private repository, never here.
 #decision [[factory-config-layout]] [[factory-native-config]]
 Factory is a shared Nix flake, not a shared shell-task framework. Use tool-owned
 `nix/<tool>/default.nix` modules with meaningful colocated tests and native assets
-under `etc/`. All exported Nix options live under `config.quantile-co.factory`;
+under `etc/`. Treat `etc/` only as template sources for Nix modules. Runtime root
+configuration and companion assets must be copied from the Nix store into their
+tool-native locations, including `.vale/styles/`; never load runtime assets
+directly from the checkout's `etc/`. Source linting and template tests still
+inspect those sources. All exported Nix options live under `config.quantile-co.factory`;
 `nixModules.default` combines named modules without installing tools or hooks.
 Consumers select packages, native configuration and task orchestration explicitly.
 Keep configuration native rather than inventing Nix settings registries or tool

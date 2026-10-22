@@ -1,0 +1,10 @@
+# Adapted from Syntaf/vale-llm-slop (Hedging); avoid valid technical qualifiers.
+extends: existence
+message: "AI-writing tell: replace the empty hedge '%s' with a supported claim."
+level: error
+ignorecase: true
+tokens:
+  - '\bit could be argued\b'
+  - '\bsome might say\b'
+  - '\bin many ways\b'
+  - '\bto some extent\b'

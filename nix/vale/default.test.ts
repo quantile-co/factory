@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import {
+  chmodSync,
   copyFileSync,
   cpSync,
   mkdirSync,
@@ -20,7 +21,12 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.vale ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.vale.check.package`;
+      vale = (pkgs.lib.evalModules { modules = [ f.nixModules.vale ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.vale;
+    in pkgs.linkFarm "vale-consumer-test" [
+      { name = "check"; path = vale.check.package; }
+      { name = "config"; path = vale.configFile; }
+      { name = "styles"; path = vale.stylesDirectory; }
+    ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
@@ -31,7 +37,8 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     );
     if (built.error) throw built.error;
     expect(built.status, built.stderr).toBe(0);
-    const check = join(built.stdout.trim(), "bin/check-vale");
+    const bundle = built.stdout.trim();
+    const check = join(bundle, "check/bin/check-vale");
     const run = (args: string[] = [], env = process.env) => {
       const result = spawnSync(check, args, {
         cwd: work,
@@ -44,13 +51,13 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     };
     expect(spawnSync("git", ["init", "-q"], { cwd: work }).status).toBe(0);
     const config = join(work, ".vale.ini");
-    copyFileSync(new URL("../../etc/vale/.vale.ini", import.meta.url), config);
-    mkdirSync(join(work, "etc/vale"), { recursive: true });
-    cpSync(
-      new URL("../../etc/vale/styles", import.meta.url),
-      join(work, "etc/vale/styles"),
-      { recursive: true },
-    );
+    copyFileSync(join(bundle, "config"), config);
+    chmodSync(config, 0o644);
+    mkdirSync(join(work, ".vale"));
+    cpSync(join(bundle, "styles"), join(work, ".vale/styles"), {
+      recursive: true,
+      dereference: true,
+    });
     const baseline = readFileSync(config, "utf8");
     mkdirSync(join(work, "docs"));
     const guide = join(work, "docs/guide with spaces.md");
@@ -94,8 +101,9 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     rmSync(plainText);
     const rejectedWords = join(
       work,
-      "etc/vale/styles/config/vocabularies/Quantile/reject.txt",
+      ".vale/styles/config/vocabularies/Quantile/reject.txt",
     );
+    chmodSync(rejectedWords, 0o644);
     writeFileSync(rejectedWords, "delightful\n");
     writeFileSync(draft, "# Draft\n\nA delightful workflow.\n");
     const vocabulary = run(["docs/*.md"]);

@@ -76,8 +76,10 @@ it("checks YAML with native policy, Git selection, and read-only duplicate-key r
     expect(strict.status).toBe(0);
     expect(strict.output).toContain("document-start");
     writeFileSync(config, baseline);
-    mkdirSync(join(work, "etc/vale/styles/Google"), { recursive: true });
-    writeFileSync(join(work, "etc/vale/styles/Google/invalid.yml"), invalid);
+    for (const styles of [".vale/styles/Google", "etc/vale/styles/Google"]) {
+      mkdirSync(join(work, styles), { recursive: true });
+      writeFileSync(join(work, styles, "invalid.yml"), invalid);
+    }
     writeFileSync(join(work, ".gitignore"), "files/ignored.yml\n");
     writeFileSync(join(work, "files/ignored.yml"), invalid);
     const external = join(outside, "external.yml");

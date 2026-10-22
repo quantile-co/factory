@@ -1,0 +1,11 @@
+# Adapted from Syntaf/vale-llm-slop (Transitions); only canned framing.
+extends: existence
+message: "AI-writing tell: remove the stock transition '%s'."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - '\bat its core,\s*'
+  - '\bwith that in mind,\s*'
+  - '\bin conclusion,\s*'
+  - '\bin summary,\s*'

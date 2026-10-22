@@ -1,0 +1,10 @@
+# Adapted from Syntaf/vale-llm-slop (Headers); specific clickbait titles.
+extends: existence
+message: "AI-writing tell: replace the templated heading '%s' with a specific title."
+level: error
+ignorecase: true
+scope: heading
+tokens:
+  - '^The Ultimate Guide to\b'
+  - '^Unlocking the Power of\b'
+  - '^Everything You Need to Know About\b'
