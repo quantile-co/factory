@@ -143,3 +143,50 @@ it("checks without editing and safely fixes consumer files using the store-backe
     rmSync(work, { recursive: true, force: true });
   }
 }, 150_000);
+
+it("formats a native file for consumer placement without changing its source or import base", () => {
+  const work = mkdtempSync(join(tmpdir(), "factory-biome-format-"));
+  try {
+    const source = join(work, "template.cjs");
+    const original = "module.exports=require('./value.cjs')\n";
+    writeFileSync(source, original);
+    const built = spawnSync(
+      "nix",
+      [
+        "build",
+        "--no-link",
+        "--print-out-paths",
+        "--impure",
+        "--expr",
+        `let
+        f = builtins.getFlake ${JSON.stringify(`git+${new URL("../../", import.meta.url).href}`)};
+        pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+        cfg = (pkgs.lib.evalModules {
+          modules = [ f.nixModules.biome ]; specialArgs = { inherit pkgs; };
+        }).config.quantile-co.factory.biome;
+      in cfg.formatFile "postcss.config.cjs" (builtins.path { path = ${JSON.stringify(source)}; name = "template.cjs"; })`,
+      ],
+      { encoding: "utf8", timeout: 120_000 },
+    );
+    if (built.error) throw built.error;
+    expect(built.status, built.stderr).toBe(0);
+    const formatted = built.stdout.trim();
+    expect(formatted).toMatch(/^\/nix\/store\//);
+    expect(readFileSync(source, "utf8")).toBe(original);
+    const destination = join(work, "postcss.config.cjs");
+    copyFileSync(formatted, destination);
+    writeFileSync(
+      join(work, "value.cjs"),
+      "module.exports = { answer: 42 };\n",
+    );
+    const loaded = spawnSync(
+      process.execPath,
+      ["-p", "require(process.argv[1]).answer", destination],
+      { encoding: "utf8", timeout: 10_000 },
+    );
+    expect(loaded.status, loaded.stderr).toBe(0);
+    expect(loaded.stdout.trim()).toBe("42");
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}, 150_000);

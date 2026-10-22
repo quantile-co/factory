@@ -24,6 +24,9 @@ directly from the checkout's `etc/`. Source linting and template tests still
 inspect those sources. All exported Nix options live under `config.quantile-co.factory`;
 `nixModules.default` combines named modules without installing tools or hooks.
 Consumers select packages, native configuration and task orchestration explicitly.
+Keep reusable source formatting in the owning tool module: `biome.formatFile`
+accepts a destination filename and store-backed source for native root copies.
+Consumers inline trivial JSON reading rather than adding local helper libraries.
 Keep configuration native rather than inventing Nix settings registries or tool
 bundles. Reusable executables read consumer configuration at runtime and remain
 independent of shell and CI orchestration. Keep Terraform native under `tf/`.
