@@ -30,6 +30,7 @@
       perSystem =
         { pkgs, factory }:
         let
+          herdr = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.herdr;
           copy = source: {
             inherit source;
             mode = "copy";
@@ -38,8 +39,15 @@
         {
           # Public flake packages for downstreams; this does not install them in the shell.
           packages = {
+            inherit herdr;
             inherit (pkgs) bash coreutils diffutils;
-            inherit (pkgs) direnv jq nix;
+            inherit (pkgs)
+              direnv
+              git
+              jq
+              nix
+              shfmt
+              ;
             inherit (pkgs) age gh lnav;
             inherit (pkgs) bear cmake meson;
             inherit (pkgs) ninja pkg-config;
@@ -88,6 +96,7 @@
                 vale
                 yamllint
               ])
+              ++ [ herdr ]
               ++ (with factory; [
                 pi.package
                 qmd.package
@@ -154,12 +163,14 @@
                   compilerOptions = {
                     module = "ESNext";
                     moduleResolution = "Bundler";
+                    allowImportingTsExtensions = true;
                     types = [ "node" ];
                   };
                   include = [
                     "*.test.ts"
                     "nix/**/*.test.ts"
                     "tf/**/*.test.ts"
+                    "src/**/*.ts"
                   ];
                 }
               );
@@ -177,6 +188,7 @@
                 ]
               );
               ".pi/settings.json" = copy factory.pi.settingsFile;
+              ".pi/extensions" = copy factory.pi.extensionsDir;
               ".pi/skills/deploy" = copy (factory.pi.skillsDir + "/deploy");
               ".pi/skills/day-zero-deploy" = copy (factory.pi.skillsDir + "/day-zero-deploy");
               ".qmd/index.yml" = copy factory.qmd.configFile;

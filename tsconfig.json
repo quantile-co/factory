@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
@@ -8,5 +9,5 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["*.test.ts", "nix/**/*.test.ts", "tf/**/*.test.ts"]
+  "include": ["*.test.ts", "nix/**/*.test.ts", "tf/**/*.test.ts", "src/**/*.ts"]
 }

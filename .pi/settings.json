@@ -1,4 +1,8 @@
 {
-  "packages": ["npm:pi-memory@0.4.2", "npm:pi-web-access@0.42.0"],
+  "packages": [
+    "npm:pi-memory@0.4.2",
+    "npm:pi-web-access@0.42.0",
+    "npm:@langfuse/pi-observability-plugin@0.1.2"
+  ],
   "skills": ["./skills/deploy", "./skills/day-zero-deploy"]
 }

@@ -52,6 +52,24 @@ in
       description = "Pi resources directory.";
     };
 
+    extensionsDir = lib.mkOption {
+      type = lib.types.path;
+      default = pkgs.runCommand "pi-extensions" { } ''
+        mkdir -p "$out"
+        cp -r ${
+          lib.cleanSourceWith {
+            src = ../../src/pi/extensions;
+            filter =
+              path: type: type == "directory" || lib.hasSuffix ".ts" path && !lib.hasSuffix ".test.ts" path;
+          }
+        }/. "$out/"
+        cp ${
+          llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.herdr
+        }/share/herdr/integrations/pi/herdr-agent-state.ts "$out/"
+      '';
+      description = "Factory's Pi extension and Herdr's pinned upstream integration. The checkout guard requires git and shfmt on PATH.";
+    };
+
     settingsFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/pi/settings.json;

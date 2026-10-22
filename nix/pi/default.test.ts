@@ -3,12 +3,17 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  DefaultResourceLoader,
+  SettingsManager,
+} from "@earendil-works/pi-coding-agent";
 import { expect, it } from "vitest";
 
 it("exposes readable native Pi settings and shared skills to a consumer", () => {
@@ -55,6 +60,9 @@ in builtins.toJSON {
     ),
   );
   expect(settings.packages).toContain("npm:pi-web-access@0.42.0");
+  expect(settings.packages).toContain(
+    "npm:@langfuse/pi-observability-plugin@0.1.2",
+  );
   expect(settings.skills).toEqual([
     "./skills/deploy",
     "./skills/day-zero-deploy",
@@ -85,6 +93,61 @@ in builtins.toJSON {
     }
   }
 });
+
+it("loads one Factory entry point and upstream Herdr state with Pi, without shipping tests", async () => {
+  const root = new URL("../../", import.meta.url);
+  const built = spawnSync(
+    "nix",
+    [
+      "build",
+      "--no-link",
+      "--print-out-paths",
+      "--impure",
+      "--expr",
+      `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
+    pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.pi ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.pi.extensionsDir`,
+    ],
+    { encoding: "utf8", timeout: 120_000 },
+  );
+  expect(built.status, built.stderr).toBe(0);
+  const output = built.stdout.trim();
+  expect(readdirSync(output).sort()).toEqual([
+    "factory",
+    "herdr-agent-state.ts",
+  ]);
+  expect(
+    readdirSync(join(output, "factory")).some((name) =>
+      name.includes(".test."),
+    ),
+  ).toBe(false);
+  const work = mkdtempSync(join(tmpdir(), "factory-pi-load-"));
+  try {
+    const loader = new DefaultResourceLoader({
+      cwd: work,
+      agentDir: join(work, "agent"),
+      settingsManager: SettingsManager.inMemory(),
+      noExtensions: true,
+      noSkills: true,
+      noThemes: true,
+      noPromptTemplates: true,
+      noContextFiles: true,
+      additionalExtensionPaths: [
+        join(output, "factory"),
+        join(output, "herdr-agent-state.ts"),
+      ],
+    });
+    await loader.reload();
+    const { extensions, errors } = loader.getExtensions();
+    expect(errors).toEqual([]);
+    expect(extensions).toHaveLength(2);
+    const factory = extensions.find((item) => item.tools.has("herdr_worktree"));
+    expect(factory?.tools.has("foreground_terminal")).toBe(true);
+    expect(extensions.every((item) => item.commands.size === 0)).toBe(true);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}, 120_000);
 
 it("ships opt-in skill scripts and validates nvim navigation arguments", () => {
   const root = new URL("../../", import.meta.url);

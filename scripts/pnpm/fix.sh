@@ -12,4 +12,4 @@ fix-shfmt
 fix-taplo
 fix-editorconfig-eof
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm exec biome check --write --error-on-warnings nix tf scripts package.json tsconfig.json etc/biome
+pnpm exec biome check --write --error-on-warnings nix tf src scripts package.json tsconfig.json etc/biome

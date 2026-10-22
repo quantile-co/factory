@@ -113,6 +113,68 @@ Checks are read-only; fixes and hook installation are explicit. Husky's tracked
 pre-push entry point runs direnv checks and optional legacy handling before LFS
 upload. No commit-time hook or implicit shell-entry installation is intended.
 
+## Shared Pi extensions
+
+#decision [[factory-pi-extensions]]
+Use one first-party Pi extension with a small registration entry point at
+`src/pi/extensions/factory/index.ts`. Keep its implementation flat, with
+single-word filename stems and colocated tests; no internal subdirectories.
+Only `index.ts` imports sibling implementation modules: it wires plain dependency
+objects into consumer-owned interfaces. `pi.ts` owns Pi registration, sessions and
+SDK UI integration; `git.ts` owns Git inspection and protections; `herdr.ts` owns
+Herdr workspaces, agents and reconciliation; `terminal.ts` owns foreground process
+execution and terminal restoration. Keep the latter three independent of the Pi
+SDK. No dependency-injection framework, service registry or interface per helper.
+Tests inject boundary dependencies rather than mocking sibling modules, retaining
+real Git repositories and Pi session files where their behavior matters.
+Author code there, not in `etc/` or generated `.pi/` copies.
+`factory.pi.extensionsDir` packages the Factory extension and the unmodified
+Pi agent-state integration from the pinned Herdr package. Consumers explicitly
+copy this directory to `.pi/extensions` and select Pi, Herdr, Git and shfmt in
+their development shell. Shared Pi settings select pinned upstream memory,
+web-access and Langfuse packages; Pi installs those npm packages after project
+trust, not during the Nix build. Langfuse credentials and telemetry destinations
+remain operator-managed and outside Git/Nix outputs. Factory owns the
+foreground-terminal handoff tool alongside its worktree tools; hardware-cursor
+customization remains personal. Shared integration covers Pi built-ins,
+Factory-owned tools and declared dependencies, not personal extension collections.
+Use foreground-terminal for requested interactive programs and ordinary Bash for
+captured output. Do not add a tool wrapper for every CLI or a plugin framework.
+
+`herdr_worktree` is the model-facing start/reconcile tool; there are no extension
+slash commands. Start uses native Herdr worktree and agent commands, preserves
+parent focus and session, and forks the conversation with Pi's SessionManager
+unless `context: fresh` is requested. In-flight tool batches are excluded from
+the child context. Existing occupied workspaces are not replaced or prompted.
+Failures preserve partial workspaces/sessions for inspection instead of retrying
+uncertain mutations. A Git-directory launch lock coordinates Pi processes;
+inspect an abandoned lock before removing it manually.
+
+Worktree roots resolve from `PI_HERDR_WORKTREE_ROOT`, then repository-local Git
+config `pi.herdrWorktreeRoot`, then `.worktrees` beside the primary checkout.
+Relative overrides resolve against that primary checkout. Git metadata identifies
+checkouts; filesystem names and Herdr labels are not repository identity.
+Destinations must retain the primary checkout's ancestor context guides. Keep
+machine-specific roots in local configuration, including devbox provisioning,
+not shared repository files. This does not impose a workstation directory layout.
+
+The guard operates without Herdr, uses shfmt's Bash parser, and blocks primary
+checkout file edits and Git mutations, including switch/checkout and GitHub PR
+checkout. Fast-forward-only main maintenance requires interactive approval.
+Branch drift and unresolved Git targets stop mutations; never automatically
+switch back, stash, reset or copy uncommitted files. Bash, foreground-terminal
+calls and Pi's user shell input are checked; PowerShell is unsupported. This is
+an accidental-action guard, not an OS sandbox: arbitrary scripts, other tools,
+interactive subprocess input and external processes are not fully inspected.
+Read-only tools remain available for diagnosing drift.
+
+Global-to-project cutovers are operator-local migrations, not personal extension
+paths or exclusions baked into shared settings. Remove global copies only after
+the relevant repositories have adopted validated project-local replacements;
+unrelated repositories must not lose integration silently. Herdr and Pi must be
+available in the child pane's shell; a blocked startup/trust prompt is reported,
+never automatically approved or bypassed.
+
 ## Dependencies, credentials and caches
 
 #decision [[factory-moving-flake-refs]]

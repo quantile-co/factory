@@ -16,6 +16,7 @@ copying their contents into this file.
 - [README.md](README.md): usage and development entry points.
 - [flake.nix](flake.nix) and [.envrc](.envrc): pinned shell and direnv entry.
 - [scripts/](scripts/): pnpm tasks and workflow entry points.
+- [src/pi/extensions/](src/pi/extensions/): shared Pi extensions and behavioral tests.
 - [nix/](nix/): reusable Nix modules and executables.
 - [nix/files/](nix/files/): managed-file command and tests.
 - [nix/flake/](nix/flake/): reusable flake wiring and tests.

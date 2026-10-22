@@ -33,4 +33,4 @@ check-opa --policy tf/modules/project/github --namespace terraform.project.githu
 check-opa --policy tf/modules/project/gcp --namespace terraform.project.gcp -- tf/modules/project/gcp/main.tf
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm exec tsc --noEmit
-pnpm exec biome check --error-on-warnings nix tf scripts package.json tsconfig.json etc/biome
+pnpm exec biome check --error-on-warnings nix tf src scripts package.json tsconfig.json etc/biome

@@ -55,10 +55,14 @@ it("wires explicit packages and local/generated files without repository policy"
       selected = [ (toString pkgs.hello) (toString outputs.packages.\${system}.files) ];
       nodePinned = f.packages.\${system}.nodejs_24 == pkgs.nodejs_24;
       bashAlias = f.packages.\${system}.bash == pkgs.bash;
+      herdrPinned = f.packages.\${system}.herdr == f.inputs.llm-agents.packages.\${system}.herdr;
+      herdrInShell = builtins.elem f.packages.\${system}.herdr f.devShells.\${system}.default.nativeBuildInputs;
     }`);
     expect(wiring.shell).toEqual(wiring.selected);
     expect(wiring.nodePinned).toBe(true);
     expect(wiring.bashAlias).toBe(true);
+    expect(wiring.herdrPinned).toBe(true);
+    expect(wiring.herdrInShell).toBe(true);
 
     const output = execFileSync(
       "nix",
