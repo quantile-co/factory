@@ -1,10 +1,4 @@
 {
-  "packages": [
-    "npm:pi-memory@0.4.2",
-    "npm:pi-web-access@0.42.0"
-  ],
-  "skills": [
-    "./skills/deploy",
-    "./skills/day-zero-deploy"
-  ]
+  "packages": ["npm:pi-memory@0.4.2", "npm:pi-web-access@0.42.0"],
+  "skills": ["./skills/deploy", "./skills/day-zero-deploy"]
 }

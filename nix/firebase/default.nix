@@ -27,7 +27,7 @@
           source = pkgs.writeText "firebase.json" (builtins.toJSON (lib.recursiveUpdate base overrides));
         in
         pkgs.runCommand "firebase.json" { nativeBuildInputs = [ pkgs.biome ]; } ''
-          biome format --stdin-file-path firebase.json < ${source} > "$out"
+          biome format --indent-style=space --indent-width=2 --stdin-file-path firebase.json < ${source} > "$out"
         '';
       description = "Render Firebase configuration with project overrides.";
     };
