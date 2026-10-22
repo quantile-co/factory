@@ -64,6 +64,17 @@ Git index and compares copies with their source and index so entry cannot hide
 committed drift. Q0 remains
 Factory-independent.
 
+#decision [[factory-shared-file-ownership]]
+Native templates cover Gitignore, Husky pre-push, direnv, README seeds and explicit
+license/notice selections. Keep the proprietary template named `PROPRIETARY`.
+Consumers patch sources before `copy`; there is no separate patch mode. README
+uses `seed` and remains repository-owned after creation; preserve its H1,
+Prerequisites, Development and Skills presentation. Never infer a repository's
+license or replace its third-party notices. Commit `.envrc` copies for bootstrap;
+normal direnv approval remains required. Keep domain-specific deployment guidance
+in consumer references and share only applicable entry points/procedures. Q0 stays
+independent. QMD ownership is unchanged pending a separate copy-versus-seed decision.
+
 #decision [[factory-declarative-flake]] [[factory-package-exports]]
 Keep repository-level inputs, systems, public `packages`, `devShell.packages`
 and `devShell.files` in `flake.nix`. Keep section interiors free of explanatory
@@ -194,7 +205,7 @@ separate authorization for creation or exact-name removal. Never bulk-delete lie
 - Taplo may lose asynchronous diagnostics on exit; tests assert validation
   semantics and exit status rather than unstable diagnostic text.
 - Do not replace copied Semgrep rule directories with per-fixture links.
-- Intentional nonports: terraform-docs, ESLint, Gitignore snippet assets,
+- Intentional nonports: terraform-docs, ESLint, a Gitignore snippet framework,
   scaffold/IDE/OS modules, old GitLab orchestration and the old CI cache image.
 
 ## Completed Factory infrastructure transitions

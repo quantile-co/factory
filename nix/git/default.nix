@@ -10,6 +10,11 @@ in
 {
   imports = [ ../prek ];
   options.quantile-co.factory.git = {
+    ignoreFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/git/.gitignore;
+      description = "Gitignore baseline; consumers append their own exclusions.";
+    };
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.git;

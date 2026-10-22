@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+work=$(mktemp -d)
+trap 'rm -rf -- "$work"' EXIT
+cat >"$work/refs"
+direnv exec . pnpm run check </dev/null
+if [[ -n ${GIT_PRE_PUSH_LEGACY:-} ]]; then
+    [[ -x $GIT_PRE_PUSH_LEGACY ]] || {
+        echo "Additional pre-push hook is not executable" >&2
+        exit 1
+    }
+    "$GIT_PRE_PUSH_LEGACY" "$@" <"$work/refs"
+fi
+direnv exec . git lfs pre-push "$@" <"$work/refs"

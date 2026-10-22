@@ -5,7 +5,7 @@ description: Bootstrap a genuinely new Factory-module installation, migrate loca
 
 # Day Zero
 
-Read [the full shared bootstrap procedure](references/local-state.md) before
+Read [the full bootstrap procedure](references/local-state.md) before
 acting. Work from the consuming repository root in its pinned direnv shell.
 Read `AGENTS.md`, `.pi/memory/MEMORY.md`, the current Terraform root, its
 pinned Factory module sources, the consumer's shell and task scripts, and production workflow callers

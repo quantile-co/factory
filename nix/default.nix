@@ -10,6 +10,7 @@ let
     conftest = ./conftest;
     deadnix = ./deadnix;
     dependabot = ./dependabot;
+    direnv = ./direnv;
     editorconfig = ./editorconfig;
     emscripten = ./emscripten;
     firebase = ./firebase;
@@ -19,10 +20,12 @@ let
     gofumpt = ./gofumpt;
     goimports = ./goimports;
     golangci-lint = ./golangci-lint;
+    husky = ./husky;
     kubectl = ./kubectl;
     kubeconform = ./kubeconform;
     keep-sorted = ./keep-sorted;
     knip = ./knip;
+    license = ./license;
     markdownlint-cli2 = ./markdownlint-cli2;
     mypy = ./mypy;
     nixfmt = ./nixfmt;
@@ -34,6 +37,7 @@ let
     prettier = ./prettier;
     protoc = ./protoc;
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
+    readme = ./readme;
     resend-cli = ./resend-cli;
     ruff = ./ruff;
     semgrep = import ./semgrep { rulesSource = inputs.semgrep-rules; };

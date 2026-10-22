@@ -125,6 +125,16 @@
 
             # Committed regular files; direnv refreshes copy entries on shell entry.
             files = {
+              "README.md" = {
+                source = factory.readme.withProject {
+                  name = "Quantile factory";
+                  description = "Quantile software factory";
+                };
+                mode = "seed";
+              };
+              ".gitignore" = copy factory.git.ignoreFile;
+              ".envrc" = copy factory.direnv.configFile;
+              ".husky/pre-push" = copy factory.husky.prePushFile;
               ".editorconfig" = copy factory.editorconfig.configFile;
               ".editorconfig-checker.json" = copy factory.editorconfig.checker.configFile;
               ".markdownlint-cli2.jsonc" = copy factory.markdownlint-cli2.configFile;

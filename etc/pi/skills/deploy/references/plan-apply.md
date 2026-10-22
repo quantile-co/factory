@@ -123,30 +123,10 @@ the input alone grants nothing.
 
 ## 3. Inspect the plan privately
 
-Set all three components from the reviewed Plan reference. Verify its
-producing run and selected source revision manually; Apply trusts the operator's
-choice and does not perform GitHub run or source checks. Keep all downloads
-outside the checkout and Nix store.
-
-```sh
-: "${PLAN_RUN_ID:?set the Plan run ID}"
-: "${PLAN_ATTEMPT:?set the producing attempt}"
-: "${PLAN_GENERATION:?set the GCS plan object generation}"
-gh run watch "$PLAN_RUN_ID" -R "$REPO" --exit-status
-gh api "repos/$REPO/actions/runs/$PLAN_RUN_ID/attempts/$PLAN_ATTEMPT" \
-  --jq '{id,run_attempt,head_sha,path,event,status,conclusion,created_at}'
-PRIVATE_DIR=$(mktemp -d)
-repository_id=$(gh api "repos/$REPO" --jq .id)
-# Set the exact effective bucket from the reviewed Plan caller and its variables.
-: "${GCP_TF_STATE_BUCKET:?Set and verify the producing Plan's state bucket}"
-base="gs://$GCP_TF_STATE_BUCKET/plans/$repository_id/$PLAN_RUN_ID/$PLAN_ATTEMPT"
-gcloud storage cp "$base/saved-plan/plan.tfplan#$PLAN_GENERATION" "$PRIVATE_DIR/plan.tfplan"
-tofu -chdir="$TF_DIR" show -no-color "$PRIVATE_DIR/plan.tfplan" > "$PRIVATE_DIR/plan.txt"
-```
-
-Read the complete private `plan.txt`, including replacements, deletions, IAM,
-repository policy and state protections. Do not paste its contents into public
-logs or issues. Stop on unexpected changes. Review does not authorize Apply.
+Follow [the saved-plan review procedure](saved-plan-review.md) in full. Set
+`PLAN_RUN_ID`, `PLAN_ATTEMPT` and `PLAN_GENERATION` from the selected Plan
+reference and verify its source and effective bucket. Preserve those exact
+identifiers for the separately approved Apply; review does not authorize it.
 
 ## 4. Apply
 

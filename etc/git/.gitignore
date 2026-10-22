@@ -1,0 +1,28 @@
+# Never expose legacy local state from existing worktrees.
+.devenv/
+.devenv.flake.nix
+.direnv/
+/node_modules/
+/.husky/_/
+.envrc.local
+gha-creds-*.json
+.pi/npm/
+result
+result-*
+# Keep local Terraform data, backend overrides, plans, and diagnostics out of Git.
+.terraform/
+.terraform.tfstate.lock.info
+backend_override.tf
+*.tfstate
+*.tfstate.*
+*.tfplan
+plan.json
+crash.log
+
+# Commit reviewed MEMORY.md and daily logs; only scratchpad and recovery stay local.
+/.pi/memory/SCRATCHPAD.md
+/.pi/memory/recovery/
+
+# Keep QMD's writable search index and lock worktree-local.
+/.qmd/index.sqlite*
+/.qmd/.qmd-embed.lock

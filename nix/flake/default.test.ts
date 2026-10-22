@@ -7,8 +7,6 @@ import { expect, it } from "vitest";
 it("wires explicit packages and local/generated files without repository policy", () => {
   const root = mkdtempSync(join(tmpdir(), "factory-flake-"));
   try {
-    const template = join(root, "template.txt");
-    writeFileSync(template, "seed template\n");
     const factory = `git+${new URL("../../", import.meta.url).href}`;
     const expression = `let
       f = builtins.getFlake ${JSON.stringify(factory)};
@@ -17,7 +15,8 @@ it("wires explicit packages and local/generated files without repository policy"
       outputs = f.lib.mkFlake {
         inherit (f.inputs) nixpkgs;
         systems = [ system ];
-        perSystem = { pkgs, ... }: {
+        modules = [ f.nixModules.readme ];
+        perSystem = { pkgs, factory }: {
           packages = {
             hello = pkgs.hello;
             unsupported = pkgs.hello.overrideAttrs { meta.platforms = []; };
@@ -27,7 +26,10 @@ it("wires explicit packages and local/generated files without repository policy"
             packages = [ pkgs.hello ];
             files = {
               "copy.txt" = { source = pkgs.writeText "generated" "generated\\n"; mode = "copy"; };
-              "seed.txt" = { source = builtins.toPath ${JSON.stringify(template)}; mode = "seed"; };
+              "README.md" = {
+                source = factory.readme.withProject { name = "Example"; description = "Example project"; };
+                mode = "seed";
+              };
             };
           };
         };
@@ -74,12 +76,17 @@ it("wires explicit packages and local/generated files without repository policy"
     const run = (action: string) =>
       execFileSync(join(output, "bin/factory-files"), [action], { cwd: root });
     run("write");
-    execFileSync("git", ["add", "copy.txt", "seed.txt"], { cwd: root });
-    writeFileSync(join(root, "seed.txt"), "custom seed\n");
+    expect(readFileSync(join(root, "README.md"), "utf8")).toContain(
+      "<h1>Example</h1>",
+    );
+    execFileSync("git", ["add", "copy.txt", "README.md"], { cwd: root });
+    writeFileSync(join(root, "README.md"), "# Repository-owned README\n");
     writeFileSync(join(root, "copy.txt"), "changed copy\n");
     run("write");
     run("check");
-    expect(readFileSync(join(root, "seed.txt"), "utf8")).toBe("custom seed\n");
+    expect(readFileSync(join(root, "README.md"), "utf8")).toBe(
+      "# Repository-owned README\n",
+    );
     expect(readFileSync(join(root, "copy.txt"), "utf8")).toBe("generated\n");
   } finally {
     rmSync(root, { recursive: true, force: true });
