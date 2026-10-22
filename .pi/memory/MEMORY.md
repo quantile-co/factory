@@ -26,11 +26,12 @@ bundles. Reusable executables read consumer configuration at runtime and remain
 independent of Devenv and CI. Keep Terraform native under `tf/`.
 
 #decision [[shared-typescript-config]] [[release-source-provenance]]
-TypeScript and Knip defaults are native Factory assets. Consumers materialize
-project overrides through Devenv files; only runtime-independent development
-configs may be untracked. Public source archives are created from Git objects
-and built outside Devenv: their TypeScript config and Firebase deployment/rules
-files must remain tracked, self-contained and reproducible from the source SHA.
+TypeScript, Knip and Firebase defaults are native Factory assets. Consumers
+materialize project overrides through Devenv files. Public source releases are
+created from a reviewed Git commit plus that commit's pinned Devenv-generated
+regular files in an isolated checkout; downstream builders receive a complete
+archive without Devenv. Never package mutable operator working-tree files.
+Bind the resulting archive and deny-all Rules to the immutable release digest.
 
 #preference [[factory-consumer-migrations]]
 Keep migrations minimal and aligned with public quantile.co. Consumers extend

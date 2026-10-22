@@ -24,6 +24,7 @@ let
     duckdb = ./duckdb;
     editorconfig = ./editorconfig;
     emscripten = ./emscripten;
+    firebase = ./firebase;
     gcloud = ./gcloud;
     gdb = ./gdb;
     gh = ./gh;
