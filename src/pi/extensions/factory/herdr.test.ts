@@ -7,10 +7,10 @@ import { expect, test, vi } from "vitest";
 import * as metadata from "./git.ts";
 import { createHerdr } from "./herdr.ts";
 
-function git(cwd, ...args) {
+function git(cwd: string, ...args: string[]) {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" });
 }
-function repoAt(path) {
+function repoAt(path: string) {
   mkdirSync(path);
   git(path, "init", "-q", "-b", "main");
   writeFileSync(join(path, "file"), "probe\n");
@@ -28,13 +28,32 @@ function repoAt(path) {
     "Initial",
   );
 }
-function worktree(root, path, branch) {
+function worktree(root: string, path: string, branch: string) {
   git(root, "worktree", "add", "-qb", branch, path);
 }
 
+interface Sidebar {
+  repos: Record<string, string>;
+  spaces: Record<
+    string,
+    {
+      id: string;
+      workspace: string;
+      focused?: boolean;
+      paneCount?: number;
+      agent?: boolean;
+    }
+  >;
+  openCalls: { workspace: string; path: string }[];
+  closeCalls: { workspace: string; path: string }[];
+  nextId: number;
+  listCalls: number;
+  failOpen?: boolean;
+}
+
 // Only the Herdr transport is fake. Git metadata and checkout mutations are real.
-function sidebar(state) {
-  return async (args) => {
+function sidebar(state: Sidebar) {
+  return async (args: string[]) => {
     const action = args.slice(0, 2).join(" ");
     if (action === "workspace list") {
       return {
@@ -87,7 +106,7 @@ function sidebar(state) {
         ? id
         : Object.values(state.spaces).find((space) => space.id === id)
             ?.workspace;
-      const root = state.repos[rootId];
+      const root = rootId && state.repos[rootId];
       if (!root) throw new Error("No repository");
       const records = git(root, "worktree", "list", "--porcelain", "-z")
         .split("\0\0")
@@ -238,7 +257,7 @@ test("reconciles sidebar repositories without reopening parked or closing occupi
     for (const path of [first, second, other]) repoAt(path);
     const old = join(base, "old");
     worktree(second, old, "old");
-    const state = {
+    const state: Sidebar = {
       repos: { w1: first, w2: second },
       spaces: {},
       openCalls: [],
@@ -246,14 +265,14 @@ test("reconciles sidebar repositories without reopening parked or closing occupi
       nextId: 0,
       listCalls: 0,
     };
-    const warnings = [];
-    const ctx = { warn: (message) => warnings.push(message) };
+    const warnings: string[] = [];
+    const ctx = { warn: (message: string) => warnings.push(message) };
     const herdr = createHerdr({ git: metadata, request: sidebar(state) });
     await herdr.inventory(ctx);
     const baseline = state.listCalls;
     await herdr.changed(ctx);
     assert.equal(state.listCalls, baseline);
-    assert.deepEqual(state.openCalls, []); // Parked checkout stays parked.
+    expect(state.openCalls).toEqual([]); // Parked checkout stays parked.
 
     const newSecond = join(base, "second-feature");
     worktree(second, newSecond, "new-second");
@@ -318,12 +337,12 @@ test("reconciles sidebar repositories without reopening parked or closing occupi
     git(other, "worktree", "remove", newOther);
     await herdr.changed(ctx);
     assert.equal(state.closeCalls.length, 2);
-    assert.match(warnings.at(-1), /running agent/);
+    expect(warnings.at(-1)).toMatch(/running agent/);
     state.spaces[retry].paneCount = 2;
     git(second, "worktree", "remove", retry);
     await herdr.changed(ctx);
     assert.equal(state.closeCalls.length, 2);
-    assert.match(warnings.at(-1), /multiple panes/);
+    expect(warnings.at(-1)).toMatch(/multiple panes/);
 
     vi.stubEnv("HERDR_ENV", "0");
     const outside = join(base, "outside");
@@ -370,7 +389,7 @@ test("reconciles sidebar repositories without reopening parked or closing occupi
       skipped: 2,
       failed: 0,
     });
-    assert.deepEqual(state.closeCalls.at(-1).path, outside);
+    assert.equal(state.closeCalls.at(-1)?.path, outside);
     vi.stubEnv("HERDR_ENV", "0");
     const listCalls = state.listCalls;
     await assert.rejects(reconcile(), /requires Herdr/);
