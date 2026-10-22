@@ -46,7 +46,6 @@ in
             pkgs.coreutils
           ];
           text = ''
-            test "$#" -eq 0
             : "''${GCP_TF_STATE_BUCKET:?Set the private state bucket}"
             : "''${GITHUB_REPOSITORY_ID:?Set the producing repository ID}"
             : "''${GITHUB_RUN_ID:?Set the producing run ID}"
@@ -73,9 +72,14 @@ in
             }
             trap cleanup EXIT
 
+            export TF_PLAN_FILE="$plan"
             {
-              ${remoteInit}
-              tofu -chdir="''${TF_DIR:-tf/infrastructure}" plan -input=false -no-color -out="$plan"
+              if (( $# )); then
+                "$@"
+              else
+                ${remoteInit}
+                tofu -chdir="''${TF_DIR:-tf/infrastructure}" plan -input=false -no-color -out="$plan"
+              fi
             } > "$private/plan.log" 2>&1
             test -s "$plan"
             gcloud storage cp --recursive "$private" "$base/" \
@@ -106,7 +110,6 @@ in
             pkgs.coreutils
           ];
           text = ''
-            test "$#" -eq 0
             : "''${GCP_TF_STATE_BUCKET:?Set the private state bucket}"
             : "''${GITHUB_REPOSITORY_ID:?Set the producing repository ID}"
             : "''${GITHUB_RUN_ID:?Set the Apply run ID}"
@@ -137,9 +140,14 @@ in
 
             gcloud storage cp "$source" "$plan" --quiet > "$private/apply.log" 2>&1
             test -s "$plan"
+            export TF_PLAN_FILE="$plan"
             {
-              ${remoteInit}
-              tofu -chdir="''${TF_DIR:-tf/infrastructure}" apply -input=false "$plan"
+              if (( $# )); then
+                "$@"
+              else
+                ${remoteInit}
+                tofu -chdir="''${TF_DIR:-tf/infrastructure}" apply -input=false "$plan"
+              fi
             } >> "$private/apply.log" 2>&1
           '';
         };

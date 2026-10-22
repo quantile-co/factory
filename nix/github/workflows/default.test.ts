@@ -137,12 +137,17 @@ it.each([undefined, "tf"])(
       const invoke = (
         phase: "plan" | "apply",
         extra: NodeJS.ProcessEnv = {},
+        command: string[] = [],
       ) => {
-        const result = spawnSync(join(bin, `github-workflow-${phase}`), [], {
-          env: { ...env, ...extra },
-          encoding: "utf8",
-          timeout: 20_000,
-        });
+        const result = spawnSync(
+          join(bin, `github-workflow-${phase}`),
+          command,
+          {
+            env: { ...env, ...extra },
+            encoding: "utf8",
+            timeout: 20_000,
+          },
+        );
         if (result.error) throw result.error;
         expect(result.stdout + result.stderr).not.toContain(
           "provider-private-diagnostic",
@@ -196,6 +201,39 @@ it.each([undefined, "tf"])(
           ),
         );
       }
+
+      // A caller-owned local task receives the same protected plan path. The
+      // transport does not also invoke its default OpenTofu command.
+      const custom = (phase: "plan" | "apply", fail = false) =>
+        invoke(
+          phase,
+          {
+            PLAN_REF: "456/1/42",
+            TF_BACKEND_PREFIX: undefined,
+          },
+          [
+            process.execPath,
+            "-e",
+            `
+        const fs = require("node:fs");
+        if (process.argv[1] !== "argument with spaces") process.exit(80);
+        console.log("provider-private-diagnostic");
+        if (${fail}) process.exit(11);
+        const path = process.env.TF_PLAN_FILE;
+        if (${JSON.stringify(phase)} === "plan") fs.writeFileSync(path, "reviewed saved bytes");
+        else if (fs.readFileSync(path, "utf8") !== "reviewed saved bytes") process.exit(81);
+      `,
+            "argument with spaces",
+          ],
+        );
+      expect(custom("plan", true).status).toBe(11);
+      expect(existsSync(planFile)).toBe(false);
+      expect(custom("plan").status).toBe(0);
+      expect(custom("apply", true).status).toBe(11);
+      expect(existsSync(planFile)).toBe(false);
+      expect(custom("apply").status).toBe(0);
+      expect(existsSync(planFile)).toBe(false);
+      expect(readFileSync(env.FAKE_TOFU_CALLS, "utf8")).toBe(tofuCalls);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
