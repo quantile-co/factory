@@ -41,7 +41,7 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       config = (pkgs.lib.evalModules {
         specialArgs = { inherit pkgs; };
-        modules = [ f.nixModules.github-workflows f.nixModules.opentofu ({ lib, ... }: {
+        modules = [ f.nixModules.github f.nixModules.opentofu ({ lib, ... }: {
           config.quantile.opentofu.package = pkgs.writeShellScriptBin "tofu" ''
             set -euo pipefail
             printf '%s\\n' "$*" >> "$FAKE_TOFU_CALLS"

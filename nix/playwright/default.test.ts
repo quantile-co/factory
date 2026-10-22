@@ -22,7 +22,10 @@ it("renders with the pinned headless browser without host tools or browser cache
   const home = mkdtempSync(join(tmpdir(), "factory-playwright-"));
   try {
     const html = join(home, "index.html");
-    copyFileSync(new URL("./fixtures/browser.html", import.meta.url), html);
+    copyFileSync(
+      new URL("../../etc/playwright/fixtures/browser.html", import.meta.url),
+      html,
+    );
     const result = spawnSync(
       join(built.stdout.trim(), "bin/chromium-headless-shell"),
       ["--no-sandbox", "--disable-gpu", "--dump-dom", `file://${html}`],
