@@ -47,7 +47,7 @@ valid_repository if {
 	allowed := actions.allowed_actions_config[0]
 	allowed.github_owned_allowed == true
 	allowed.verified_allowed == true
-	"quantile-co/factory/.github/workflows/*@*" in allowed.patterns_allowed
+	allowed.patterns_allowed == "${var.allowed_action_patterns}"
 	alerts := input.resource.github_repository_vulnerability_alerts.self[0]
 	alerts.repository == "${github_repository.self.name}"
 	alerts.enabled == true

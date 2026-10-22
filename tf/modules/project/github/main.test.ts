@@ -68,12 +68,34 @@ run "${visibility}_fork_approval" {
       contains(github_actions_repository_permissions.self.allowed_actions_config[0].patterns_allowed,
         "quantile-co/factory/.github/workflows/*@*")
     )
-    error_message = "Selected actions must retain pinned Factory workflows across organizations."
+    error_message = "Default selected actions must retain pinned Factory workflows."
   }
 }
 `,
   )
   .join("\n")}
+run "caller_action_patterns" {
+  command = plan
+  module {
+    source = ${JSON.stringify(moduleDir)}
+  }
+  variables {
+    repository_name = "fixture"
+    visibility = "private"
+    maintainers = ["fixture-operator"]
+    allowed_action_patterns = ["cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702"]
+  }
+  assert {
+    condition = (
+      github_actions_repository_permissions.self.allowed_actions == "selected" &&
+      github_actions_repository_permissions.self.sha_pinning_required &&
+      length(github_actions_repository_permissions.self.allowed_actions_config[0].patterns_allowed) == 1 &&
+      contains(github_actions_repository_permissions.self.allowed_actions_config[0].patterns_allowed,
+        "cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702")
+    )
+    error_message = "Caller-selected patterns must replace the defaults without disabling SHA pinning."
+  }
+}
 `,
     );
     mkdirSync(join(work, "providers"));
