@@ -9,7 +9,7 @@ it("renders with the pinned headless browser without host tools or browser cache
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.playwright ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile-co.factory.playwright.withVersion "1.63.0"`;
+    in cfg.config.quantile-co.factory.playwright.withVersion "1.64.1"`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

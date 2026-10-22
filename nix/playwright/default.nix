@@ -5,22 +5,22 @@
   ...
 }:
 let
-  # Match Playwright 1.63.0's Chromium revision 1243, not system Chromium.
-  browserVersion = "153.0.8010.12";
+  # Match Playwright 1.64.1's Chromium revision 1248, not system Chromium.
+  browserVersion = "156.0.8078.4";
   releases = {
     x86_64-linux = {
       url = "https://cdn.playwright.dev/builds/cft/${browserVersion}/linux64/chrome-headless-shell-linux64.zip";
-      hash = "sha256-GLqqZOwtnJig+ZCIT8FYsIxZGSFTmRwLbqNXeSOdJXA=";
+      hash = "sha256-Qiz/wZA9AsYfqsEej5zfNxVcieu20J2m4XVFRA34Bi4=";
       executable = "chrome-headless-shell-linux64/chrome-headless-shell";
     };
     aarch64-linux = {
-      url = "https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1243/chromium-headless-shell-linux-arm64.zip";
-      hash = "sha256-FiK+GGxiDHjwj/JeOh4FZPYYclogjAxfEDcpJ4Fjoqc=";
-      executable = "chrome-linux/headless_shell";
+      url = "https://cdn.playwright.dev/builds/cft/${browserVersion}/linux-arm64/chrome-headless-shell-linux-arm64.zip";
+      hash = "sha256-I7gSc1J6+KJbRiANE997p34vAQj62bF3CQn0LZFTsqA=";
+      executable = "chrome-headless-shell-linux-arm64/chrome-headless-shell";
     };
     aarch64-darwin = {
       url = "https://cdn.playwright.dev/builds/cft/${browserVersion}/mac-arm64/chrome-headless-shell-mac-arm64.zip";
-      hash = "sha256-Elbpy5UDVndRzWRi8Nb391AhAAYl55PJ/3Fxz/RI/4I=";
+      hash = "sha256-47hkERfQBDHWjD6VFwQNVCAXK1a+5uWKmNwialEESso=";
       executable = "chrome-headless-shell-mac-arm64/chrome-headless-shell";
     };
   };
@@ -55,7 +55,7 @@ in
         {
           nativeBuildInputs = [ pkgs.makeWrapper ];
           passthru = {
-            playwrightVersion = "1.63.0";
+            playwrightVersion = "1.64.1";
             inherit browserVersion;
           };
           meta = {
