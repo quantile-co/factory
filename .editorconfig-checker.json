@@ -1,0 +1,6 @@
+{
+  "Exclude": [
+    "^\\.pi/memory/",
+    ".*\\.sql\\.go$"
+  ]
+}

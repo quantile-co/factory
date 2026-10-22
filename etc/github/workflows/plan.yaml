@@ -71,4 +71,4 @@ jobs:
         run: |
           direnv="$(nix build --no-link --print-out-paths .#direnv)/bin/direnv"
           "$direnv" allow .
-          "$direnv" exec . scripts/github/plan.sh
+          "$direnv" exec . ./scripts/github/plan.sh

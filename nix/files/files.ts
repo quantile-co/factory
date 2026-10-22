@@ -25,11 +25,16 @@ import {
 } from "node:path";
 import { pathToFileURL } from "node:url";
 
-function exists(path) {
+export interface FileEntry {
+  source: string;
+  mode: "seed" | "copy";
+}
+
+function exists(path: string) {
   return lstatSync(path, { throwIfNoEntry: false });
 }
 
-function matches(source, target) {
+function matches(source: string, target: string): boolean {
   const actual = exists(target);
   if (!actual || actual.isSymbolicLink()) return false;
   const expected = statSync(source);
@@ -53,9 +58,9 @@ function matches(source, target) {
   );
 }
 
-function writableCopy(source, target) {
+function writableCopy(source: string, target: string): void {
   cpSync(source, target, { recursive: true, dereference: true });
-  const makeWritable = (from, to) => {
+  const makeWritable = (from: string, to: string): void => {
     const info = statSync(from);
     chmodSync(to, (info.mode & 0o777) | 0o200);
     if (info.isDirectory()) {
@@ -66,7 +71,7 @@ function writableCopy(source, target) {
   makeWritable(source, target);
 }
 
-function ensureParents(root, path) {
+function ensureParents(root: string, path: string): void {
   let directory = root;
   for (const part of relative(root, dirname(path)).split(sep).filter(Boolean)) {
     directory = join(directory, part);
@@ -77,7 +82,7 @@ function ensureParents(root, path) {
   }
 }
 
-function copy(source, target, root) {
+function copy(source: string, target: string, root: string): void {
   ensureParents(root, target);
   const old = exists(target);
   if (
@@ -109,28 +114,52 @@ function copy(source, target, root) {
   }
 }
 
-function indexedDrift(root, name, source) {
-  const files = execFileSync("git", ["ls-files", "-z", "--", name], {
-    cwd: root,
-  })
+function trackedFiles(root: string, name: string): string[] {
+  return execFileSync("git", ["ls-files", "-z", "--", name], { cwd: root })
     .toString("utf8")
     .split("\0")
     .filter(Boolean);
+}
+
+function indexedDrift(
+  root: string,
+  name: string,
+  source: string,
+  files: string[],
+): boolean {
+  const expectedFiles: string[] = [];
+  const collect = (path: string, destination: string): void => {
+    if (statSync(path).isDirectory()) {
+      for (const child of readdirSync(path))
+        collect(join(path, child), join(destination, child));
+    } else {
+      expectedFiles.push(destination);
+    }
+  };
+  collect(source, name);
+  expectedFiles.sort();
+  if (
+    expectedFiles.length !== files.length ||
+    expectedFiles.some((file, index) => file !== files[index])
+  )
+    return true;
   return files.some((file) => {
-    const subpath = relative(name, file);
-    const expected = subpath ? join(source, subpath) : source;
-    const info = lstatSync(expected, { throwIfNoEntry: false });
-    if (!info || !statSync(expected).isFile()) return true;
+    const expected = join(source, relative(name, file));
     return !execFileSync("git", ["show", `:${file}`], { cwd: root }).equals(
       readFileSync(expected),
     );
   });
 }
 
-export function manageFiles(root, entries, action) {
-  if (action !== "materialize" && action !== "check")
-    throw new Error("Expected materialize or check");
+export function manageFiles(
+  root: string,
+  entries: Record<string, FileEntry>,
+  action: string,
+): void {
+  if (action !== "seed" && action !== "check")
+    throw new Error("Expected seed or check");
   const drift = [];
+  const untracked = [];
   for (const [name, { source, mode }] of Object.entries(entries).sort(
     ([a], [b]) => a.localeCompare(b),
   )) {
@@ -148,18 +177,25 @@ export function manageFiles(root, entries, action) {
     statSync(source);
     const target = resolve(root, name);
     if (action === "check") {
+      const tracked = trackedFiles(root, name);
+      if (tracked.length === 0) untracked.push(name);
       if (
         mode === "copy" &&
-        (!matches(source, target) || indexedDrift(root, name, source))
+        (!matches(source, target) || indexedDrift(root, name, source, tracked))
       )
         drift.push(name);
       continue;
     }
-    if (mode === "copy" || !exists(target) || exists(target).isSymbolicLink()) {
+    const old = exists(target);
+    if (mode === "copy" || !old || old.isSymbolicLink()) {
       if (mode === "copy" && matches(source, target)) continue;
       copy(source, target, root);
     }
   }
+  if (untracked.length)
+    throw new Error(
+      `Managed files are not checked in: ${untracked.join(", ")}`,
+    );
   if (drift.length)
     throw new Error(
       `Copied files differ from fresh copies: ${drift.join(", ")}`,
@@ -173,14 +209,14 @@ if (
   try {
     const [action, manifest] = process.argv.slice(2);
     if (!manifest || process.argv.length !== 4)
-      throw new Error("Usage: files.mjs materialize|check MANIFEST");
+      throw new Error("Usage: factory-files seed|check");
     manageFiles(
       process.cwd(),
       JSON.parse(readFileSync(manifest, "utf8")),
       action,
     );
   } catch (error) {
-    console.error(error.message);
+    console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   }
 }

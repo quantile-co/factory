@@ -5,9 +5,9 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "prepare": "husky",
-    "check": "./scripts/check.sh",
-    "fix": "./scripts/fix.sh",
-    "test": "./scripts/test.sh"
+    "check": "./scripts/pnpm/check.sh",
+    "fix": "./scripts/pnpm/fix.sh",
+    "test": "./scripts/pnpm/test.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

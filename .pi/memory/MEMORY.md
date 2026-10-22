@@ -43,11 +43,15 @@ Remove migration scaffolding after successful adoption and prove convergence.
 
 #decision [[factory-flake-direnv]] [[factory-managed-files]]
 Factory uses a locked flake shell and the same `.envrc` through direnv locally and
-in CI. Pnpm owns task entry points; protected Plan/Apply remain workflow-only.
-The direnv entry materializes declared files as regular copies or seeds (never
-symlinks); Check compares copied contents with their source and checks tracked
-copies in the Git index so entry cannot hide committed drift. Seeded files keep
-local edits. Q0 remains Factory-independent.
+in CI. Pnpm entry points live under `scripts/pnpm/`; every checked-in workflow
+has a corresponding `scripts/github/` entry point. Protected Plan/Apply remain
+workflow-only. `flake.nix` declares destination, source expression and seed/copy
+mode through `nix/files/`. Direnv runs `factory-files seed`: copy overwrites
+like Devenv, seed keeps existing contents, and neither creates symlinks. All
+selected destinations are checked-in regular files. Check requires them in the
+Git index and compares copies with their source and index so entry cannot hide
+committed drift. Q0 remains
+Factory-independent.
 
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration

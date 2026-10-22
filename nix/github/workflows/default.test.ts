@@ -24,8 +24,14 @@ it("keeps protected local workflows on pinned direnv without callable references
     expect(source).toContain("extra_nix_config: require-sigs = true");
     expect(source).toContain("nix build --no-link --print-out-paths .#direnv");
     expect(source).toContain('"$direnv" allow .');
-    expect(source).toContain('"$direnv" exec .');
+    expect(source).toContain(`"$direnv" exec . ./scripts/github/${name}.sh`);
   }
+  expect(
+    readFileSync(
+      new URL("../../../etc/github/workflows/build.yaml", import.meta.url),
+      "utf8",
+    ),
+  ).toContain('"$direnv" exec . ./scripts/github/build.sh');
   for (const name of ["plan", "apply"]) {
     const source = readFileSync(
       new URL(`../../../.github/workflows/${name}.yaml`, import.meta.url),

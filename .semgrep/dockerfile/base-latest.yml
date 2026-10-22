@@ -1,0 +1,10 @@
+rules:
+  - id: dockerfile-base-latest-tag
+    languages: [dockerfile]
+    severity: WARNING
+    message: Use a versioned or digest-pinned base image instead of the moving latest tag.
+    pattern-either:
+      - pattern: FROM $IMAGE:latest
+      - pattern: FROM $IMAGE:latest AS $STAGE
+      - pattern: FROM --platform=$PLATFORM $IMAGE:latest AS $STAGE
+      - pattern: FROM --platform=$PLATFORM $IMAGE:latest

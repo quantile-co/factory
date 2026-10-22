@@ -1,0 +1,19 @@
+[
+  // ruleid: terraform-sensitive-input-json-must-be-ephemeral
+  { "variable": { "missing": { "type": "string", "sensitive": true } } },
+  // ruleid: terraform-sensitive-input-json-must-be-ephemeral
+  { "variable": { "disabled": { "sensitive": true, "ephemeral": false } } },
+  // ok: terraform-sensitive-input-json-must-be-ephemeral
+  { "variable": { "protected": { "sensitive": true, "ephemeral": true } } },
+  // ok: terraform-sensitive-input-json-must-be-ephemeral
+  { "variable": { "public": { "type": "string" } } },
+  // ok: terraform-sensitive-input-json-must-be-ephemeral
+  { "output": { "metadata": { "sensitive": true, "value": "public" } } },
+  // ruleid: terraform-sensitive-input-json-must-be-ephemeral
+  {
+    "variable": {
+      "protected": { "sensitive": true, "ephemeral": true },
+      "missing": { "sensitive": true }
+    }
+  }
+]

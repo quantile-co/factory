@@ -1,0 +1,4 @@
+self-hosted-runner:
+  labels:
+    - namespace-profile-quantile-4x8
+    - namespace-profile-quantile-8x16

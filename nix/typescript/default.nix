@@ -23,7 +23,7 @@
           source = pkgs.writeText "tsconfig.json" (builtins.toJSON (lib.recursiveUpdate base overrides));
         in
         pkgs.runCommand "tsconfig.json" { nativeBuildInputs = [ pkgs.biome ]; } ''
-          biome format --stdin-file-path tsconfig.json < ${source} > "$out"
+          biome format --indent-style=space --indent-width=2 --stdin-file-path tsconfig.json < ${source} > "$out"
         '';
       description = "Render TypeScript configuration with project overrides.";
     };

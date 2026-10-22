@@ -94,6 +94,7 @@ let
 in
 {
   flakeInputs = inputs;
+  lib.mkFiles = import ./files;
   nixModules = modules // {
     default = { ... }: {
       imports = builtins.attrValues modules;

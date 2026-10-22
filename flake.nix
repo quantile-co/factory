@@ -11,7 +11,6 @@
     };
   };
 
-  # Consumers can follow these inputs or import the shared Nix modules.
   outputs =
     inputs:
     let
@@ -34,28 +33,72 @@
               })
               config
               ;
-            files = import ./nix/files { inherit config; };
-            manifestText = pkgs.writeText "factory-files.json" (
-              builtins.toJSON (
-                builtins.mapAttrs (_: entry: {
-                  inherit (entry) mode;
-                  source = toString entry.source;
-                }) files
-              )
-            );
-            manifest =
-              pkgs.runCommand "factory-files.json"
+            cfg = config.quantile-co.factory;
+            # Destinations are committed; copy refreshes them when direnv enters.
+            copy = source: {
+              inherit source;
+              mode = "copy";
+            };
+            files =
+              shared.lib.mkFiles
                 {
-                  inherit (inputs.self) outPath;
-                  sourceReferences = inputs.nixpkgs.lib.concatStringsSep " " (
-                    builtins.map (entry: toString entry.source) (builtins.attrValues files)
-                  );
+                  inherit pkgs;
+                  sourceRoot = inputs.self.outPath;
                 }
-                ''
-                  cp -- ${manifestText} "$out"
-                '';
+                {
+                  "tsconfig.json" = {
+                    source = cfg.typescript.withOverrides {
+                      compilerOptions = {
+                        module = "ESNext";
+                        moduleResolution = "Bundler";
+                        types = [ "node" ];
+                      };
+                      include = [
+                        "*.test.ts"
+                        "nix/**/*.test.ts"
+                        "tf/**/*.test.ts"
+                      ];
+                    };
+                    mode = "copy";
+                  };
+                  ".editorconfig" = copy cfg.editorconfig.configFile;
+                  ".editorconfig-checker.json" = copy cfg.editorconfig.checker.configFile;
+                  ".markdownlint-cli2.jsonc" = copy cfg.markdownlint-cli2.configFile;
+                  ".pre-commit-config.yaml" = copy cfg.prek.configFile;
+                  ".cz.toml" = copy cfg.commitizen.configFile;
+                  ".shellcheckrc" = copy cfg.shellcheck.configFile;
+                  ".tflint.hcl" = copy cfg.tflint.configFile;
+                  "taplo.toml" = copy cfg.taplo.configFile;
+                  "trivy.yaml" = copy cfg.trivy.configFile;
+                  "typos.toml" = copy cfg.typos.configFile;
+                  ".vale.ini" = copy cfg.vale.configFile;
+                  ".yamllint.yaml" = copy cfg.yamllint.configFile;
+                  "biome.json" = copy cfg.biome.configFile;
+                  ".github/actionlint.yaml" = copy cfg.actionlint.configFile;
+
+                  ".github/workflows/check.yaml" = copy cfg.github.workflows.check.configFile;
+                  ".github/workflows/test.yaml" = copy cfg.github.workflows.test.configFile;
+                  ".github/workflows/plan.yaml" = copy cfg.github.workflows.plan.configFile;
+                  ".github/workflows/apply.yaml" = copy cfg.github.workflows.apply.configFile;
+                  ".github/dependabot.yml" = {
+                    source = cfg.dependabot.withUpdates [
+                      "github-actions"
+                      "npm"
+                      "opentofu"
+                      "nix"
+                    ];
+                    mode = "copy";
+                  };
+
+                  ".pi/settings.json" = copy cfg.pi.settingsFile;
+                  ".pi/skills/deploy" = copy (cfg.pi.skillsDir + "/deploy");
+                  ".pi/skills/day-zero-deploy" = copy (cfg.pi.skillsDir + "/day-zero-deploy");
+                  ".qmd/index.yml" = copy cfg.qmd.configFile;
+                  ".semgrep" = copy cfg.semgrep.rulesDir;
+                  ".semgrepignore" = copy cfg.semgrep.ignoreFile;
+                };
           in
-          f { inherit pkgs config manifest; }
+          f { inherit pkgs cfg files; }
         );
     in
     shared
@@ -63,27 +106,29 @@
       packages = forEachSystem (
         {
           pkgs,
-          config,
-          manifest,
+          cfg,
+          files,
         }:
         {
           inherit (pkgs) direnv;
-          filesManifest = manifest;
-          githubWorkflowPlan = config.quantile-co.factory.github.workflows.plan.package;
-          githubWorkflowApply = config.quantile-co.factory.github.workflows.apply.package;
+          inherit files;
+          githubWorkflowPlan = cfg.github.workflows.plan.package;
+          githubWorkflowApply = cfg.github.workflows.apply.package;
         }
       );
       devShells = forEachSystem (
         {
           pkgs,
-          config,
-          manifest,
+          cfg,
+          files,
         }:
         {
           default = pkgs.mkShell {
-            FACTORY_FILES_MANIFEST = "${manifest}";
-            packages = with config.quantile-co.factory; [
+            packages = [
+              files
               pkgs.direnv
+            ]
+            ++ (with cfg; [
               bash.package
               coreutils.package
               diffutils.package
@@ -139,7 +184,7 @@
               shfmt.fix.package
               taplo.fix.package
               editorconfig.fix.package
-            ];
+            ]);
           };
         }
       );

@@ -1,0 +1,334 @@
+# Prek template; copying it does not install hooks.
+# quantile.prek.withPrePush enables selected manual checks at pre-push; fixes stay manual.
+# Kubeconform needs local schemas, OPA/Conftest need policy arguments,
+# and Prettier needs a selected CLI and pathspecs.
+default_stages: [pre-push]
+repos:
+  - repo: local
+    hooks:
+      - id: check-added-large-files
+        name: Check large source files
+        entry: check-added-large-files
+        language: system
+        types: [file]
+        args: [--maxkb=1200, --enforce-all]
+      - id: check-case-conflicts
+        name: Check case-conflicting paths
+        entry: check-case-conflict
+        language: system
+      - id: check-merge-conflicts
+        name: Check merge conflict markers
+        entry: check-merge-conflict
+        language: system
+        args: [--assume-in-merge]
+      - id: check-symlinks
+        name: Check broken symlinks
+        entry: check-symlinks
+        language: system
+        types: [symlink]
+      - id: destroyed-symlinks
+        name: Check destroyed symlinks
+        entry: destroyed-symlinks
+        language: system
+        types: [file]
+      - id: check-vcs-permalinks
+        name: Check GitHub permalinks
+        entry: check-github-permalinks
+        language: system
+        args:
+          - >-
+            github\.com/[^/[:space:]<>"'`]+/[^/[:space:]<>"'`]+/(blob|tree)/[^/[:space:]?#<>"'`()]+
+        exclude: '(^\.gitignore$|^\.pi/skills/)'
+      - id: gitleaks
+        name: Full-history and working-tree secret scanning
+        entry: check-gitleaks
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: clang-format
+        name: Check C/C++ formatting
+        entry: check-clang-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: clang-tidy
+        name: Analyze C/C++ translation units
+        entry: check-clang-tidy
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: check-executables-have-shebangs
+        name: Check executable shebangs
+        entry: check-executables-have-shebangs
+        language: system
+        stages: [manual]
+        types: [text, executable]
+      - id: shellcheck
+        name: Lint shell source
+        entry: check-shellcheck
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: shfmt
+        name: Check shell formatting
+        entry: check-shfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: shfmt-fix
+        name: Format tracked shell source explicitly
+        entry: fix-shfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: wabt
+        name: Validate WebAssembly text modules
+        entry: check-wabt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: wasm-tools
+        name: Validate WebAssembly binary modules
+        entry: check-wasm-tools
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: yamllint
+        name: Check YAML syntax and style
+        entry: check-yamllint
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: vale
+        name: Check prose style
+        entry: check-vale
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: typos
+        name: Check source spelling
+        entry: check-typos
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: typescript
+        name: Check selected TypeScript projects
+        entry: check-typescript
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: trivy
+        name: Scan repository source
+        entry: check-trivy
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: taplo
+        name: Validate TOML source
+        entry: check-taplo
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: taplo-format
+        name: Check TOML formatting
+        entry: check-taplo-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: taplo-fix
+        name: Format tracked TOML source explicitly
+        entry: fix-taplo
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: opentofu-nonempty
+        name: Check nonempty Terraform source
+        entry: check-terraform-nonempty
+        language: system
+        stages: [manual]
+        types: [file]
+        files: '\.(tf|tofu)$'
+      - id: opentofu-format
+        name: Check Terraform formatting
+        entry: check-terraform-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: opentofu
+        name: Backend-free OpenTofu validation
+        entry: check-terraform
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: tflint
+        name: Lint Terraform source
+        entry: check-tflint
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: opentofu-fix
+        name: Format tracked Terraform source explicitly
+        entry: fix-terraform
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: check-json
+        name: Check strict JSON
+        entry: check-json
+        language: system
+        stages: [pre-push]
+        types: [json]
+        exclude: 'tsconfig\.json$'
+      - id: kubeconform
+        name: Kubernetes manifest validation
+        entry: check-k8s
+        language: system
+        stages: [manual]
+        types: [text]
+        files: '^k8s/.*\.(ya?ml|json)$'
+        # args: [-schema-location, LOCAL_SCHEMA_TEMPLATE]
+      - id: keep-sorted
+        name: Check annotated blocks are sorted
+        entry: keep-sorted --mode lint
+        language: system
+        stages: [manual]
+        types: [text]
+        exclude: &keep-sorted-excludes '^$'
+      - id: keep-sorted-fix
+        name: Sort annotated blocks explicitly
+        entry: keep-sorted --mode fix
+        language: system
+        stages: [manual]
+        types: [text]
+        exclude: *keep-sorted-excludes
+      - id: markdown
+        name: Markdown linting
+        entry: check-markdown
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: nixfmt
+        name: Check Nix formatting
+        entry: check-nixfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: deadnix
+        name: Check unused Nix bindings
+        entry: check-deadnix
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: statix
+        name: Check Nix static analysis
+        entry: check-statix
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: nixfmt-fix
+        name: Format tracked Nix source explicitly
+        entry: fix-nixfmt
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: conftest
+        name: Check policy against selected workloads
+        entry: check-opa
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: opa-tests
+        name: Run policy unit tests
+        entry: test-opa
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: semgrep-tests
+        name: Test local Semgrep rules
+        entry: test-semgrep
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: semgrep
+        name: Scan source with local Semgrep rules
+        entry: check-semgrep
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: prettier
+        name: Check selected Prettier formats
+        entry: check-prettier
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: prettier-fix
+        name: Format selected tracked files explicitly
+        entry: fix-prettier
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: ruff
+        name: Check Python lint
+        entry: check-python-ruff
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: ruff-format
+        name: Check Python formatting
+        entry: check-python-format
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: mypy
+        name: Check Python types
+        entry: check-python-mypy
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: ruff-fix
+        name: Fix tracked Python lint and formatting explicitly
+        entry: fix-python
+        language: system
+        stages: [manual]
+        pass_filenames: false
+        always_run: true
+      - id: commitizen
+        name: Check pushed Conventional Commits
+        entry: check-commitizen-push
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

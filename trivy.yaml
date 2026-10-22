@@ -1,0 +1,43 @@
+# Source repositories only; downstreams review the Factory-specific exclusion below.
+# Offline: set scan.offline, db.skip-update, db.java-skip-update, and
+# rego.skip-check-update to true. Vulnerability scans still need a seeded DB.
+db:
+  no-progress: true
+misconfiguration:
+  scanners:
+    - azure-arm
+    - cloudformation
+    - dockerfile
+    - helm
+    - kubernetes
+    - terraform
+    - ansible
+pkg:
+  types: [library]
+rego:
+  skip-check-update: false
+scan:
+  disable-telemetry: true
+  scanners: [vuln, misconfig, secret]
+  skip-dirs:
+    - .git
+    - .devenv
+    - .direnv
+    - .semgrep
+    - .terraform
+    - "**/.terraform"
+    - "**/node_modules"
+    - "**/build"
+    - "**/dist"
+    - "**/target"
+    - "**/.next"
+    - result
+  # Semgrep rule fixtures deliberately contain insecure manifests and Terraform.
+  skip-files:
+    - etc/semgrep/rules/k8s/docker-socket-hostpath.test.yaml
+    - etc/semgrep/rules/k8s/host-namespaces.test.yaml
+    - etc/semgrep/rules/k8s/privileged-container.test.yaml
+    - etc/semgrep/rules/tf/gcs-bucket-public-access-prevention.tf
+  skip-version-check: true
+severity: [HIGH, CRITICAL]
+exit-code: 1

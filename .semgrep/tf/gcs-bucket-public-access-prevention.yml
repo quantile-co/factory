@@ -1,0 +1,18 @@
+rules:
+  - id: terraform-bucket-public-access-prevention
+    languages: [terraform]
+    paths:
+      include: ["*.tf", "*.tofu"]
+    severity: ERROR
+    message: GCS buckets must explicitly enforce public access prevention.
+    patterns:
+      - pattern: |
+          resource "google_storage_bucket" $BUCKET {
+            ...
+          }
+      - pattern-not: |
+          resource "google_storage_bucket" $BUCKET {
+            ...
+            public_access_prevention = "enforced"
+            ...
+          }

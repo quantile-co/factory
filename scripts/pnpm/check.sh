@@ -5,8 +5,7 @@ if (($# != 0)); then
     echo 'Usage: pnpm run check' >&2
     exit 2
 fi
-: "${FACTORY_FILES_MANIFEST:?Enter the pinned direnv shell first}"
-node scripts/files.mjs check "$FACTORY_FILES_MANIFEST"
+factory-files check
 nix flake check .
 check-git-hooks
 check-nixfmt

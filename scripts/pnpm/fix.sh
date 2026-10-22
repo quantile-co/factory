@@ -5,8 +5,7 @@ if (($# != 0)); then
     echo 'Usage: pnpm run fix' >&2
     exit 2
 fi
-: "${FACTORY_FILES_MANIFEST:?Enter the pinned direnv shell first}"
-node scripts/files.mjs materialize "$FACTORY_FILES_MANIFEST"
+factory-files seed
 TF_DIR=tf fix-terraform
 fix-nixfmt
 fix-shfmt

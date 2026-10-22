@@ -15,8 +15,9 @@ copying their contents into this file.
 
 - [README.md](README.md): usage and development entry points.
 - [flake.nix](flake.nix) and [.envrc](.envrc): pinned shell and direnv entry.
-- [scripts/](scripts/): file materialization, checks, fixes, tests, and deployment entry points.
+- [scripts/](scripts/): pnpm tasks and workflow entry points.
 - [nix/](nix/): reusable Nix modules and executables.
+- [nix/files/](nix/files/): seed/copy file commands and tests.
 - [etc/](etc/): reusable native-format configuration assets.
 - [tf/infrastructure/](tf/infrastructure/): this repository's deployment root.
 - [tf/modules/project/](tf/modules/project/): independent GitHub and GCP modules.

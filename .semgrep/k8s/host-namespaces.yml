@@ -1,0 +1,14 @@
+rules:
+  - id: kubernetes-host-namespace
+    languages: [yaml]
+    severity: ERROR
+    message: Kubernetes pods must not share the host's network, PID, or IPC namespace.
+    patterns:
+      - pattern-inside: |
+          apiVersion: ...
+          kind: ...
+          ...
+      - pattern-either:
+          - pattern: 'hostNetwork: true'
+          - pattern: 'hostPID: true'
+          - pattern: 'hostIPC: true'

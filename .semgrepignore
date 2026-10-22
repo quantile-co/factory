@@ -1,0 +1,20 @@
+# Installed skills are external resources; first-party sources live under etc/.
+.pi/skills/
+
+# Rule fixtures are tested, not scanned as source.
+.semgrep/
+etc/semgrep/rules/
+
+# Nix build results and transient files are outputs, not source.
+result
+result-*
+*.lock
+*.log
+*.tmp
+
+# Terraform dependency downloads, lock metadata, state and saved plans.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan

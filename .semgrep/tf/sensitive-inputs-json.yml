@@ -1,0 +1,12 @@
+rules:
+  - id: terraform-sensitive-input-json-must-be-ephemeral
+    languages: [json]
+    paths:
+      include: ["*.tf.json", "*.tofu.json", "*.jsonc"]
+    severity: ERROR
+    message: Sensitive input variables must also declare ephemeral = true.
+    patterns:
+      - pattern: |
+          { "variable": { ..., $NAME: { ..., "sensitive": true, ... }, ... }, ... }
+      - pattern-not: |
+          { "variable": { ..., $NAME: { ..., "ephemeral": true, ... }, ... }, ... }

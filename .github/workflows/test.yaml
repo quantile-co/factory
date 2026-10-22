@@ -47,4 +47,4 @@ jobs:
         run: |
           direnv="$(nix build --no-link --print-out-paths .#direnv)/bin/direnv"
           "$direnv" allow .
-          "$direnv" exec . pnpm test
+          "$direnv" exec . ./scripts/github/test.sh
