@@ -1,0 +1,2673 @@
+rules:
+  - id: terraform.aws.security.aws-cloudfront-insecure-tls.aws-insecure-cloudfront-distribution-tls-version
+    patterns:
+      - pattern: |
+          resource "aws_cloudfront_distribution" $ANYTHING {
+            ...
+            viewer_certificate {
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_cloudfront_distribution" $ANYTHING {
+            ...
+            viewer_certificate {
+              ...
+              minimum_protocol_version = "TLSv1.2_2018"
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_cloudfront_distribution" $ANYTHING {
+            ...
+            viewer_certificate {
+              ...
+              minimum_protocol_version = "TLSv1.2_2019"
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_cloudfront_distribution" $ANYTHING {
+            ...
+            viewer_certificate {
+              ...
+              minimum_protocol_version = "TLSv1.2_2021"
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_cloudfront_distribution" $ANYTHING {
+            ...
+            viewer_certificate {
+              ...
+              minimum_protocol_version = "TLSv1.2_2025"
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_cloudfront_distribution" $ANYTHING {
+            ...
+            viewer_certificate {
+              ...
+              minimum_protocol_version = "TLSv1.3_2025"
+              ...
+            }
+            ...
+          }
+    message: Detected an AWS CloudFront Distribution with an insecure TLS version. TLS versions less than 1.2 are considered insecure because they can be broken. To fix this, set your `minimum_protocol_version` to `"TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.2_2025" or "TLSv1.3_2025"`.
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.aws-cloudwatch-log-group-no-retention.aws-cloudwatch-log-group-no-retention
+    patterns:
+      - pattern: |
+          resource "aws_cloudwatch_log_group" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_cloudwatch_log_group" $ANYTHING {
+            ...
+            retention_in_days = ...
+            ...
+          }
+    message: The AWS CloudWatch Log Group has no retention. Missing retention in log groups can cause losing important event information.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      technology:
+        - aws
+        - terraform
+      category: security
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-codebuild-project-unencrypted.aws-codebuild-project-unencrypted
+    patterns:
+      - pattern: |
+          resource "aws_codebuild_project" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_codebuild_project" $ANYTHING {
+            ...
+            encryption_key = ...
+            ...
+          }
+    message: The AWS CodeBuild Project is unencrypted. The AWS KMS encryption key protects projects in the CodeBuild. To create your own, create a aws_kms_key resource or use the ARN string of a key in your account.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      technology:
+        - aws
+        - terraform
+      category: security
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-config-aggregator-not-all-regions.aws-config-aggregator-not-all-regions
+    pattern-either:
+      - pattern: |
+          resource "aws_config_configuration_aggregator" $ANYTHING {
+            ...
+            account_aggregation_source {
+              ...
+              regions = ...
+              ...
+            }
+            ...
+          }
+      - pattern: |
+          resource "aws_config_configuration_aggregator" $ANYTHING {
+            ...
+            organization_aggregation_source {
+              ...
+              regions = ...
+              ...
+            }
+            ...
+          }
+    message: The AWS configuration aggregator does not aggregate all AWS Config region. This may result in unmonitored configuration in regions that are thought to be unused. Configure the aggregator with all_regions for the source.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A09:2021 - Security Logging and Monitoring Failures
+        - A09:2025 - Security Logging & Alerting Failures
+      cwe:
+        - 'CWE-778: Insufficient Logging'
+      references:
+        - https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: HIGH
+  - id: terraform.aws.security.aws-db-instance-no-logging.aws-db-instance-no-logging
+    patterns:
+      - pattern: |
+          resource "aws_db_instance" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_db_instance" $ANYTHING {
+            ...
+            enabled_cloudwatch_logs_exports = [$SOMETHING, ...]
+            ...
+          }
+    message: Database instance has no logging. Missing logs can cause missing important event information.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A04:2021 - Insecure Design
+        - A06:2025 - Insecure Design
+      cwe:
+        - 'CWE-311: Missing Encryption of Sensitive Data'
+      technology:
+        - aws
+        - terraform
+      category: security
+      references:
+        - https://owasp.org/Top10/A04_2021-Insecure_Design
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: LOW
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-documentdb-auditing-disabled.aws-documentdb-auditing-disabled
+    patterns:
+      - pattern: |
+          resource "aws_docdb_cluster" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_docdb_cluster" $ANYTHING {
+            ...
+            enabled_cloudwatch_logs_exports = [..., "audit", ...]
+            ...
+          }
+    message: Auditing is not enabled for DocumentDB. To ensure that you are able to accurately audit the usage of your DocumentDB cluster, you should enable auditing and export logs to CloudWatch.
+    languages:
+      - hcl
+    severity: INFO
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A09:2021 - Security Logging and Monitoring Failures
+        - A09:2025 - Security Logging & Alerting Failures
+      cwe:
+        - 'CWE-778: Insufficient Logging'
+      references:
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/docdb_cluster#enabled_cloudwatch_logs_exports
+        - https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: LOW
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-dynamodb-table-unencrypted.aws-dynamodb-table-unencrypted
+    patterns:
+      - pattern: |
+          resource "aws_dynamodb_table" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_dynamodb_table" $ANYTHING {
+            ...
+            server_side_encryption {
+              enabled = true
+              kms_key_arn = ...
+            }
+            ...
+          }
+    message: By default, AWS DynamoDB Table is encrypted using AWS-managed keys. However, for added security, it's recommended to configure your own AWS KMS encryption key to protect your data in the DynamoDB table. You can either create a new aws_kms_key resource or use the ARN of an existing key in your AWS account to do so.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      technology:
+        - aws
+        - terraform
+      category: security
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-ebs-snapshot-encrypted-with-cmk.aws-ebs-snapshot-encrypted-with-cmk
+    patterns:
+      - pattern: |
+          resource "aws_ebs_snapshot_copy" $ANYTHING {
+            ...
+            encrypted = true
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_ebs_snapshot_copy" $ANYTHING {
+            ...
+            encrypted = true
+            kms_key_id = ...
+            ...
+          }
+    message: Ensure EBS Snapshot is encrypted at rest using KMS CMKs. CMKs gives you control over the encryption key in terms of access and rotation.
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.aws-ebs-unencrypted.aws-ebs-unencrypted
+    patterns:
+      - pattern: |
+          resource "aws_ebs_encryption_by_default" $ANYTHING {
+            ...
+            enabled = false
+            ...
+          }
+    message: The AWS EBS is unencrypted. The AWS EBS encryption protects data in the EBS.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      technology:
+        - aws
+        - terraform
+      category: security
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-ebs-volume-unencrypted.aws-ebs-volume-unencrypted
+    patterns:
+      - pattern: |
+          resource "aws_ebs_volume" $ANYTHING {
+            ...
+          }
+      - pattern-not: |
+          resource "aws_ebs_volume" $ANYTHING {
+            ...
+            encrypted = true
+            ...
+          }
+    message: The AWS EBS volume is unencrypted. The volume, the disk I/O and any derived snapshots could be read if compromised. Volumes should be encrypted to ensure sensitive data is stored securely.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A04:2021 - Insecure Design
+        - A06:2025 - Insecure Design
+      cwe:
+        - 'CWE-311: Missing Encryption of Sensitive Data'
+      references:
+        - https://owasp.org/Top10/A04_2021-Insecure_Design
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_volume#encrypted
+        - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html
+      subcategory:
+        - audit
+      likelihood: MEDIUM
+      impact: HIGH
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-ec2-has-public-ip.aws-ec2-has-public-ip
+    patterns:
+      - pattern-either:
+          - pattern: |
+              resource "aws_instance" $ANYTHING {
+                ...
+                associate_public_ip_address = true
+                ...
+              }
+          - pattern: |
+              resource "aws_launch_template" $ANYTHING {
+                ...
+                network_interfaces {
+                  ...
+                  associate_public_ip_address = true
+                  ...
+                }
+                ...
+              }
+    message: EC2 instances should not have a public IP address attached in order to block public access to the instances. To fix this, set your `associate_public_ip_address` to `"false"`.
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A05:2017 - Broken Access Control
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      cwe:
+        - 'CWE-1220: Insufficient Granularity of Access Control'
+      references:
+        - https://owasp.org/Top10/A01_2021-Broken_Access_Control
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.aws-ec2-launch-template-metadata-service-v1-enabled.aws-ec2-launch-template-metadata-service-v1-enabled
+    patterns:
+      - pattern: |
+          resource "aws_launch_template" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_launch_template" $ANYTHING {
+            ...
+            metadata_options {
+              ...
+              http_endpoint = "disabled"
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_launch_template" $ANYTHING {
+            ...
+            metadata_options {
+              ...
+              http_tokens = "required"
+              ...
+            }
+            ...
+          }
+    message: The EC2 launch template has Instance Metadata Service Version 1 (IMDSv1) enabled. IMDSv2 introduced session authentication tokens which improve security when talking to IMDS. You should either disable IMDS or require the use of IMDSv2.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A07:2021 - Identification and Authentication Failures
+        - A07:2025 - Authentication Failures
+      cwe:
+        - 'CWE-1390: Weak Authentication'
+      references:
+        - https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_configuration#metadata_options
+        - https://aws.amazon.com/blogs/security/defense-in-depth-open-firewalls-reverse-proxies-ssrf-vulnerabilities-ec2-instance-metadata-service
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: HIGH
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-ecr-mutable-image-tags.aws-ecr-mutable-image-tags
+    patterns:
+      - pattern: |
+          resource "aws_ecr_repository" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_ecr_repository" $ANYTHING {
+            ...
+            image_tag_mutability = "IMMUTABLE"
+            ...
+          }
+    message: The ECR repository allows tag mutability. Image tags could be overwritten with compromised images. ECR images should be set to IMMUTABLE to prevent code injection through image mutation. This can be done by setting `image_tag_mutability` to IMMUTABLE.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A08:2021 - Software and Data Integrity Failures
+        - A08:2025 - Software or Data Integrity Failures
+      cwe:
+        - 'CWE-345: Insufficient Verification of Data Authenticity'
+      references:
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_repository#image_tag_mutability
+        - https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: HIGH
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-ecr-repository-wildcard-principal.aws-ecr-repository-wildcard-principal
+    patterns:
+      - pattern-inside: |
+          resource "aws_ecr_repository_policy" $ANYTHING {
+            ...
+          }
+      - pattern-either:
+          - patterns:
+              - pattern: policy = "$JSONPOLICY"
+              - metavariable-pattern:
+                  metavariable: $JSONPOLICY
+                  language: json
+                  patterns:
+                    - pattern-not-inside: |
+                        {..., "Effect": "Deny", ...}
+                    - pattern-either:
+                        - pattern: |
+                            {..., "Principal": "*", ...}
+                        - pattern: |
+                            {..., "Principal": [..., "*", ...], ...}
+                        - pattern: |
+                            {..., "Principal": { "AWS": "*" }, ...}
+                        - pattern: |
+                            {..., "Principal": { "AWS": [..., "*", ...] }, ...}
+          - patterns:
+              - pattern-inside: policy = jsonencode(...)
+              - pattern-not-inside: |
+                  {..., Effect = "Deny", ...}
+              - pattern-either:
+                  - pattern: |
+                      {..., Principal = "*", ...}
+                  - pattern: |
+                      {..., Principal = [..., "*", ...], ...}
+                  - pattern: |
+                      {..., Principal = { AWS = "*" }, ...}
+                  - pattern: |
+                      {..., Principal = { AWS = [..., "*", ...] }, ...}
+    message: Detected wildcard access granted in your ECR repository policy principal. This grants access to all users, including anonymous users (public access). Instead, limit principals, actions and resources to what you need according to least privilege.
+    metadata:
+      category: security
+      technology:
+        - aws
+        - terraform
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      cwe:
+        - 'CWE-732: Incorrect Permission Assignment for Critical Resource'
+      references:
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_repository_policy
+        - https://docs.aws.amazon.com/lambda/latest/operatorguide/wildcard-permissions-iam.html
+        - https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/monitor-amazon-ecr-repositories-for-wildcard-permissions-using-aws-cloudformation-and-aws-config.html
+        - https://cwe.mitre.org/data/definitions/732.html
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.aws-efs-filesystem-encrypted-with-cmk.aws-efs-filesystem-encrypted-with-cmk
+    patterns:
+      - pattern: |
+          resource "aws_efs_file_system" $ANYTHING {
+            ...
+            encrypted  = true
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_efs_file_system" $ANYTHING {
+            ...
+            encrypted  = true
+            kms_key_id = ...
+            ...
+          }
+    message: Ensure EFS filesystem is encrypted at rest using KMS CMKs. CMKs gives you control over the encryption key in terms of access and rotation.
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - audit
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.aws-elasticsearch-insecure-tls-version.aws-elasticsearch-insecure-tls-version
+    pattern: |
+      resource "aws_elasticsearch_domain" $ANYTHING {
+        ...
+        domain_endpoint_options {
+          ...
+          enforce_https = true
+          tls_security_policy = "Policy-Min-TLS-1-0-2019-07"
+          ...
+        }
+        ...
+      }
+    message: Detected an AWS Elasticsearch domain using an insecure version of TLS. To fix this, set "tls_security_policy" equal to "Policy-Min-TLS-1-2-2019-07".
+    languages:
+      - terraform
+    severity: WARNING
+    metadata:
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      category: security
+      technology:
+        - aws
+        - terraform
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: HIGH
+  - id: terraform.aws.security.aws-elasticsearch-nodetonode-encryption.aws-elasticsearch-nodetonode-encryption-not-enabled
+    patterns:
+      - pattern-either:
+          - pattern: |
+              resource "aws_elasticsearch_domain" $ANYTHING {
+                ...
+                node_to_node_encryption {
+                  ...
+                  enabled = false
+                  ...
+                }
+                ...
+              }
+          - pattern: |
+              resource "aws_elasticsearch_domain" $ANYTHING {
+                ...
+                cluster_config {
+                  ...
+                  instance_count = $COUNT
+                  ...
+                }
+              }
+      - pattern-not-inside: |
+          resource "aws_elasticsearch_domain" $ANYTHING {
+            ...
+            cluster_config {
+              ...
+              instance_count = $COUNT
+              ...
+            }
+            node_to_node_encryption {
+              ...
+              enabled = true
+              ...
+            }
+          }
+      - metavariable-comparison:
+          metavariable: $COUNT
+          comparison: $COUNT > 1
+    message: "Ensure all Elasticsearch has node-to-node encryption enabled.\t"
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.aws-glacier-vault-any-principal.aws-glacier-vault-any-principal
+    patterns:
+      - pattern-inside: |
+          resource "aws_glacier_vault" $ANYTHING {
+            ...
+          }
+      - pattern: access_policy = "$STATEMENT"
+      - metavariable-pattern:
+          metavariable: $STATEMENT
+          language: json
+          patterns:
+            - pattern-inside: |
+                {..., "Effect": "Allow", ...}
+            - pattern-either:
+                - pattern: |
+                    "Principal": "*"
+                - pattern: |
+                    "Principal": {..., "AWS": "*", ...}
+                - pattern-inside: |
+                    "Principal": {..., "AWS": ..., ...}
+                - pattern-regex: |
+                    (^\"arn:aws:iam::\*:(.*)\"$)
+    message: 'Detected wildcard access granted to Glacier Vault. This means anyone within your AWS account ID can perform actions on Glacier resources. Instead, limit to a specific identity in your account, like this: `arn:aws:iam::<account_id>:<identity>`.'
+    metadata:
+      category: security
+      technology:
+        - aws
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      cwe:
+        - 'CWE-732: Incorrect Permission Assignment for Critical Resource'
+      references:
+        - https://cwe.mitre.org/data/definitions/732.html
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.aws.security.aws-iam-admin-policy-ssoadmin.aws-iam-admin-policy-ssoadmin
+    patterns:
+      - pattern-inside: |
+          resource "aws_ssoadmin_permission_set_inline_policy" $ANYTHING {
+            ...
+          }
+      - pattern: inline_policy = "$STATEMENT"
+      - metavariable-pattern:
+          metavariable: $STATEMENT
+          language: json
+          patterns:
+            - pattern-not-inside: |
+                {..., "Effect": "Deny", ...}
+            - pattern-either:
+                - pattern: |
+                    {..., "Action": [..., "*", ...], "Resource": [..., "*", ...], ...}
+                - pattern: |
+                    {..., "Action": "*", "Resource": "*", ...}
+                - pattern: |
+                    {..., "Action": "*", "Resource": [...], ...}
+                - pattern: |
+                    {..., "Action": [...], "Resource": "*", ...}
+    message: Detected admin access granted in your policy. This means anyone with this policy can perform administrative actions. Instead, limit actions and resources to what you need according to least privilege.
+    metadata:
+      category: security
+      technology:
+        - aws
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      cwe:
+        - 'CWE-732: Incorrect Permission Assignment for Critical Resource'
+      references:
+        - https://cwe.mitre.org/data/definitions/732.html
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.aws.security.aws-iam-admin-policy.aws-iam-admin-policy
+    patterns:
+      - pattern-inside: |
+          resource "aws_iam_policy" $ANYTHING {
+            ...
+          }
+      - pattern: policy = "$STATEMENT"
+      - metavariable-pattern:
+          metavariable: $STATEMENT
+          language: json
+          patterns:
+            - pattern-not-inside: |
+                {..., "Effect": "Deny", ...}
+            - pattern-either:
+                - pattern: |
+                    {..., "Action": [..., "*", ...], "Resource": [..., "*", ...], ...}
+                - pattern: |
+                    {..., "Action": "*", "Resource": "*", ...}
+                - pattern: |
+                    {..., "Action": "*", "Resource": [...], ...}
+                - pattern: |
+                    {..., "Action": [...], "Resource": "*", ...}
+    message: Detected admin access granted in your policy. This means anyone with this policy can perform administrative actions. Instead, limit actions and resources to what you need according to least privilege.
+    metadata:
+      category: security
+      technology:
+        - aws
+        - terraform
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      cwe:
+        - 'CWE-732: Incorrect Permission Assignment for Critical Resource'
+      references:
+        - https://cwe.mitre.org/data/definitions/732.html
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.aws.security.aws-insecure-api-gateway-tls-version.aws-insecure-api-gateway-tls-version
+    patterns:
+      - pattern-either:
+          - pattern: |
+              resource "aws_api_gateway_domain_name" $ANYTHING {
+                  ...
+                  security_policy = "..."
+                  ...
+              }
+          - pattern: |
+              resource "aws_apigatewayv2_domain_name" $ANYTHING {
+                  ...
+                  domain_name_configuration {...}
+                  ...
+              }
+      - pattern-not: |
+          resource "aws_api_gateway_domain_name" $ANYTHING {
+                  ...
+                  security_policy = "TLS_1_2"
+                  ...
+              }
+      - pattern-not: |
+          resource "aws_apigatewayv2_domain_name" $ANYTHING {
+                  ...
+                  domain_name_configuration {
+                      ...
+                      security_policy = "TLS_1_2"
+                      ...
+                  }
+              }
+    message: Detected AWS API Gateway to be using an insecure version of TLS. To fix this issue make sure to set "security_policy" equal to "TLS_1_2".
+    languages:
+      - terraform
+    severity: WARNING
+    metadata:
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      category: security
+      technology:
+        - aws
+        - terraform
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-insecure-redshift-ssl-configuration.aws-insecure-redshift-ssl-configuration
+    patterns:
+      - pattern: |
+          resource "aws_redshift_parameter_group" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_redshift_parameter_group" $ANYTHING {
+            ...
+            parameter {
+              name  = "require_ssl"
+              value = "true"
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_redshift_parameter_group" $ANYTHING {
+            ...
+            parameter {
+              name  = "require_ssl"
+              value = true
+            }
+            ...
+          }
+    message: Detected an AWS Redshift configuration with a SSL disabled. To fix this, set your `require_ssl` to `"true"`.
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.aws-kinesis-stream-unencrypted.aws-kinesis-stream-unencrypted
+    patterns:
+      - pattern: |
+          resource "aws_kinesis_stream" $ANYTHING {
+            ...
+          }
+      - pattern-not: |
+          resource "aws_kinesis_stream" $ANYTHING {
+            ...
+            encryption_type = "KMS"
+            ...
+          }
+    message: The AWS Kinesis stream does not encrypt data at rest. The data could be read if the Kinesis stream storage layer is compromised. Enable Kinesis stream server-side encryption.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A04:2021 - Insecure Design
+        - A06:2025 - Insecure Design
+      cwe:
+        - 'CWE-311: Missing Encryption of Sensitive Data'
+      references:
+        - https://owasp.org/Top10/A04_2021-Insecure_Design
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_stream#encryption_type
+        - https://docs.aws.amazon.com/streams/latest/dev/server-side-encryption.html
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: HIGH
+      confidence: MEDIUM
+      rule-origin-note: published from /src/aws-kinesis-stream-unencrypted.yml in None
+  - id: terraform.aws.security.aws-kms-key-wildcard-principal.aws-kms-key-wildcard-principal
+    patterns:
+      - pattern-inside: |
+          resource "aws_kms_key" $ANYTHING {
+            ...
+          }
+      - pattern: policy = "$STATEMENT"
+      - metavariable-pattern:
+          metavariable: $STATEMENT
+          language: json
+          patterns:
+            - pattern-not-inside: |
+                {..., "Effect": "Deny", ...}
+            - pattern-either:
+                - pattern: |
+                    {..., "Principal": "*", "Action": "kms:*", "Resource": "*", ...}
+                - pattern: |
+                    {..., "Principal": [..., "*", ...], "Action": "kms:*", "Resource": "*", ...}
+                - pattern: |
+                    {..., "Principal": { "AWS": "*" }, "Action": "kms:*", "Resource": "*", ...}
+                - pattern: |
+                    {..., "Principal": { "AWS": [..., "*", ...] }, "Action": "kms:*", "Resource": "*", ...}
+    message: Detected wildcard access granted in your KMS key. This means anyone with this policy can perform administrative actions over the keys. Instead, limit principals, actions and resources to what you need according to least privilege.
+    metadata:
+      category: security
+      technology:
+        - aws
+        - terraform
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      cwe:
+        - 'CWE-732: Incorrect Permission Assignment for Critical Resource'
+      references:
+        - https://cwe.mitre.org/data/definitions/732.html
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.aws.security.aws-kms-no-rotation.aws-kms-no-rotation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              resource "aws_kms_key" $ANYTHING {
+                ...
+                enable_key_rotation = false
+                ...
+              }
+          - pattern: |
+              resource "aws_kms_key" $ANYTHING {
+                ...
+                customer_master_key_spec = "SYMMETRIC_DEFAULT"
+                enable_key_rotation = false
+                ...
+              }
+          - pattern: |
+              resource "aws_kms_key" $ANYTHING {
+                ...
+              }
+      - pattern-not-inside: |
+          resource "aws_kms_key" $ANYTHING {
+            ...
+            enable_key_rotation = true
+            ...
+          }
+      - pattern-not-inside: |
+          resource "aws_kms_key" $ANYTHING {
+            ...
+            customer_master_key_spec = "RSA_2096"
+            ...
+          }
+    message: The AWS KMS has no rotation. Missing rotation can cause leaked key to be used by attackers. To fix this, set a `enable_key_rotation`.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      technology:
+        - aws
+        - terraform
+      category: security
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-lambda-environment-credentials.aws-lambda-environment-credentials
+    patterns:
+      - pattern-inside: |
+          resource "$ANYTING" $ANYTHING {
+            ...
+            environment {
+              variables = {
+                ...
+              }
+            }
+            ...
+          }
+      - pattern-either:
+          - pattern-inside: |
+              AWS_ACCESS_KEY_ID = "$Y"
+          - pattern-regex: |
+              (?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9])
+          - pattern-inside: |
+              AWS_SECRET_ACCESS_KEY = "$Y"
+          - pattern-regex: |
+              (?<![A-Za-z0-9/+=])[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])
+      - focus-metavariable: $Y
+    message: A hard-coded credential was detected. It is not recommended to store credentials in source-code, as this risks secrets being leaked and used by either an internal or external malicious adversary. It is recommended to use environment variables to securely provide credentials or retrieve credentials from a secure vault or HSM (Hardware Security Module).
+    metadata:
+      category: security
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      technology:
+        - aws
+        - terraform
+        - secrets
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: HIGH
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.aws.security.aws-lambda-permission-unrestricted-source-arn.aws-lambda-permission-unrestricted-source-arn
+    patterns:
+      - pattern: |
+          resource "aws_lambda_permission" $ANYTHING {
+            ...
+            principal = "$PRINCIPAL"
+            ...
+          }
+      - pattern-not: |
+          resource "aws_lambda_permission" $ANYTHING {
+            ...
+            source_arn = ...
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $PRINCIPAL
+          regex: .*[.]amazonaws[.]com$
+    message: The AWS Lambda permission has an AWS service principal but does not specify a source ARN. If you grant permission to a service principal without specifying the source, other accounts could potentially configure resources in their account to invoke your Lambda function. Set the source_arn value to the ARN of the AWS resource that invokes the function, eg. an S3 bucket, CloudWatch Events Rule, API Gateway, or SNS topic.
+    languages:
+      - hcl
+    severity: ERROR
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      cwe:
+        - 'CWE-732: Incorrect Permission Assignment for Critical Resource'
+      references:
+        - https://cwe.mitre.org/data/definitions/732.html
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission
+        - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: HIGH
+  - id: terraform.aws.security.aws-lambda-x-ray-tracing-not-active.aws-lambda-x-ray-tracing-not-active
+    patterns:
+      - pattern: |
+          resource "aws_lambda_function" $ANYTHING {
+            ...
+          }
+      - pattern-not: |
+          resource "aws_lambda_function" $ANYTHING {
+            ...
+            tracing_config {
+              ...
+              mode = "Active"
+              ...
+            }
+            ...
+          }
+    message: The AWS Lambda function does not have active X-Ray tracing enabled. X-Ray tracing enables end-to-end debugging and analysis of all function activity. This makes it easier to trace the flow of logs and identify bottlenecks, slow downs and timeouts.
+    languages:
+      - hcl
+    severity: INFO
+    metadata:
+      category: security
+      technology:
+        - aws
+        - terraform
+      owasp:
+        - A09:2021 Security Logging and Monitoring Failures
+      cwe:
+        - 'CWE-778: Insufficient Logging'
+      references:
+        - https://cwe.mitre.org/data/definitions/778.html
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function#mode
+        - https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: LOW
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-provider-static-credentials.aws-provider-static-credentials
+    patterns:
+      - pattern-inside: |
+          provider "aws" {
+          ...
+              secret_key = "$SECRET"
+          }
+      - focus-metavariable: $SECRET
+    message: A hard-coded credential was detected. It is not recommended to store credentials in source-code, as this risks secrets being leaked and used by either an internal or external malicious adversary. It is recommended to use environment variables to securely provide credentials or retrieve credentials from a secure vault or HSM (Hardware Security Module).
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      technology:
+        - secrets
+        - aws
+        - terraform
+      category: security
+      cwe:
+        - 'CWE-798: Use of Hard-coded Credentials'
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+      owasp:
+        - A07:2021 - Identification and Authentication Failures
+        - A07:2025 - Authentication Failures
+      cwe2022-top25: true
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - patterns:
+      - pattern-either:
+          - pattern: |
+              provisioner "remote-exec" {
+                  ...
+              }
+          - pattern: |
+              provisioner "local-exec" {
+                  ...
+              }
+      - pattern-inside: |
+          resource "aws_instance" "..." {
+              ...
+          }
+    id: terraform.aws.security.aws-provisioner-exec.aws-provisioner-exec
+    message: Provisioners are a tool of last resort and should be avoided where possible. Provisioner behavior cannot be mapped by Terraform as part of a plan, and execute arbitrary shell commands by design.
+    languages:
+      - terraform
+    severity: WARNING
+    metadata:
+      category: security
+      owasp:
+        - A03:2021 - Injection
+        - A01:2017 - Injection
+        - A05:2025 - Injection
+      cwe:
+        - 'CWE-77: Improper Neutralization of Special Elements used in a Command (''Command Injection'')'
+        - 'CWE-94: Improper Control of Generation of Code (''Code Injection'')'
+      subcategory:
+        - audit
+      confidence: HIGH
+      likelihood: HIGH
+      impact: MEDIUM
+      technology:
+        - terraform
+      references:
+        - https://developer.hashicorp.com/terraform/language/resources/provisioners/remote-exec
+        - https://developer.hashicorp.com/terraform/language/resources/provisioners/local-exec
+  - id: terraform.aws.security.aws-rds-backup-no-retention.aws-rds-backup-no-retention
+    patterns:
+      - pattern-either:
+          - pattern: |
+              resource "aws_rds_cluster" $ANYTHING {
+                ...
+                backup_retention_period = 0
+                ...
+              }
+          - pattern: |
+              resource "aws_db_instance" $ANYTHING {
+                ...
+                backup_retention_period = 0
+                ...
+              }
+    message: The AWS RDS has no retention. Missing retention can cause losing important event information. To fix this, set a `backup_retention_period`.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      technology:
+        - aws
+        - terraform
+      category: security
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.aws-sqs-queue-policy-wildcard-principal.aws-sqs-queue-policy-wildcard-principal
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              resource "aws_sqs_queue_policy" $ANYTHING {
+                ...
+              }
+          - pattern-inside: |
+              resource "aws_sqs_queue" $ANYTHING {
+                ...
+              }
+      - pattern-either:
+          - patterns:
+              - pattern: policy = "$JSONPOLICY"
+              - metavariable-pattern:
+                  metavariable: $JSONPOLICY
+                  language: json
+                  patterns:
+                    - pattern-not-inside: |
+                        {..., "Effect": "Deny", ...}
+                    - pattern-either:
+                        - pattern: |
+                            {..., "Principal": "*", ...}
+                        - pattern: |
+                            {..., "Principal": [..., "*", ...], ...}
+                        - pattern: |
+                            {..., "Principal": { "AWS": "*" }, ...}
+                        - pattern: |
+                            {..., "Principal": { "AWS": [..., "*", ...] }, ...}
+                    - pattern-not-inside: "{..., \n\"Condition\": {\n  \"ArnNotLike\": {\n    \"aws:SourceArn\": ...\n  }\n},\n...}\n"
+                    - pattern-not-inside: "{..., \n\"Condition\": {\n  \"ArnLike\": {\n    \"aws:SourceArn\": ...\n  }\n},\n...}\n"
+                    - pattern-not-inside: "{..., \n\"Condition\": {\n  \"ArnEquals\": {\n    \"aws:SourceArn\": ...\n  }\n},\n...}\n"
+                    - pattern-not-inside: "{..., \n\"Condition\": {\n  \"StringNotLike\": {\n    \"aws:PrincipalARN\": ...\n  }\n},\n...}\n"
+          - patterns:
+              - pattern-inside: policy = jsonencode(...)
+              - pattern-not-inside: |
+                  {..., Effect = "Deny", ...}
+              - pattern-not-inside: "{..., \nCondition = {\n  ArnNotLike = {\n    \"aws:SourceArn\" = ...\n  }\n},\n...}\n"
+              - pattern-not-inside: "{..., \nCondition = {\n  ArnLike = {\n    \"aws:SourceArn\" = ...\n  }\n},\n...}\n"
+              - pattern-not-inside: "{..., \nCondition = {\n  ArnEquals = {\n    \"aws:SourceArn\" = ...\n  }\n}\n...}\n"
+              - pattern-not-inside: "{..., \nCondition = {\n  StringNotLike = {\n    \"aws:PrincipalARN\" = ...\n  }\n},\n...}\n"
+              - pattern-either:
+                  - pattern: |
+                      {..., Principal = "*", ...}
+                  - pattern: |
+                      {..., Principal = [..., "*", ...], ...}
+                  - pattern: |
+                      {..., Principal = { AWS = "*" }, ...}
+                  - pattern: |
+                      {..., Principal = { AWS = [..., "*", ...] }, ...}
+    message: Wildcard used in your SQS queue policy principal. This grants access to all users, including anonymous users (public access). Unless you explicitly require anyone on the internet to be able to read or write to your queue, limit principals, actions and resources to what you need according to least privilege.
+    metadata:
+      category: security
+      technology:
+        - aws
+        - terraform
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      cwe:
+        - 'CWE-732: Incorrect Permission Assignment for Critical Resource'
+      references:
+        - https://cwe.mitre.org/data/definitions/732.html
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy
+        - https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-security-best-practices.html
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+      rule-origin-note: published from /src/aws-sqs-queue-policy-wildcard-principal.yml in None
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Improper Authorization
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address
+    patterns:
+      - pattern-either:
+          - pattern: |
+              resource "aws_subnet" $ANYTHING {
+                ...
+                map_public_ip_on_launch = true
+                ...
+              }
+          - pattern: |
+              resource "aws_default_subnet" $ANYTHING {
+                ...
+              }
+      - pattern-not: |
+          resource "aws_default_subnet" $ANYTHING {
+            ...
+            map_public_ip_on_launch = false
+            ...
+          }
+    message: Resources in the AWS subnet are assigned a public IP address. Resources should not be exposed on the public internet, but should have access limited to consumers required for the function of your application. Set `map_public_ip_on_launch` to false so that resources are not publicly-accessible.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      cwe:
+        - 'CWE-1220: Insufficient Granularity of Access Control'
+      references:
+        - https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet#map_public_ip_on_launch
+        - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-instance-addressing.html#concepts-public-addresses
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.aws.security.insecure-load-balancer-tls-version.insecure-load-balancer-tls-version
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: ssl_policy = $ANYTHING
+              - pattern-not-regex: ELBSecurityPolicy-TLS13-1-[23]-[(Res)0-9-]+
+              - pattern-not-regex: ELBSecurityPolicy-FS-1-2-[(Res)0-9-]+
+          - patterns:
+              - pattern: protocol = "HTTP"
+              - pattern-not-inside: |
+                  resource $ANYTHING $NAME {
+                    ...
+                    default_action {
+                      ...
+                      redirect {
+                        ...
+                        protocol = "HTTPS"
+                        ...
+                      }
+                      ...
+                    }
+                    ...
+                  }
+      - pattern-inside: |
+          resource $RESOURCE $X {
+            ...
+          }
+      - metavariable-pattern:
+          metavariable: $RESOURCE
+          patterns:
+            - pattern-either:
+                - pattern: |
+                    "aws_lb_listener"
+                - pattern: |
+                    "aws_alb_listener"
+    message: Detected an AWS load balancer with an insecure TLS version. TLS versions less than 1.2 are considered insecure because they can be broken. To fix this, set your `ssl_policy` to `"ELBSecurityPolicy-TLS13-1-2-Res-2021-06"`, or include a default action to redirect to HTTPS.
+    metadata:
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      references:
+        - https://www.ietf.org/rfc/rfc5246.txt
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.aws.security.unrestricted-github-oidc-policy.unrestricted-github-oidc-policy
+    metadata:
+      category: security
+      subcategory:
+        - audit
+      likelihood: MEDIUM
+      impact: HIGH
+      confidence: MEDIUM
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A05:2017 - Sensitive Data Exposure
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      cwe:
+        - 'CWE-1220: Insufficient Granularity of Access Control'
+      references:
+        - https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services#configuring-the-role-and-trust-policy
+        - https://dagrz.com/writing/aws-security/hacking-github-aws-oidc/
+    message: '`$POLICY` is missing a `condition` block which scopes users of this policy to specific GitHub repositories. Without this, `$POLICY` is open to all users on GitHub. Add a `condition` block on the variable `token.actions.githubusercontent.com:sub` which scopes it to prevent this.'
+    languages:
+      - hcl
+    severity: WARNING
+    match:
+      where:
+        - metavariable: $IDENTIFIER
+          regex: .*oidc-provider/token\.actions\.githubusercontent\.com
+      all:
+        - inside: |
+            data "aws_iam_policy_document" $POLICY {
+              ...
+            }
+        - |
+          statement {
+            ...
+            principals {
+              ...
+              type = "Federated"
+              identifiers = [..., $IDENTIFIER, ...]
+            }
+          }
+        - not: |
+            statement {
+              ...
+              condition {
+                ...
+                variable = "token.actions.githubusercontent.com:sub"
+              }
+            }
+  - id: terraform.aws.security.wildcard-assume-role.wildcard-assume-role
+    patterns:
+      - pattern-inside: |
+          resource "aws_iam_role" $NAME {
+            ...
+          }
+      - pattern: assume_role_policy = "$STATEMENT"
+      - metavariable-pattern:
+          metavariable: $STATEMENT
+          language: json
+          patterns:
+            - pattern-inside: |
+                {..., "Effect": "Allow", ..., "Action": "sts:AssumeRole", ...}
+            - pattern: |
+                "Principal": {..., "AWS": "*", ...}
+    message: 'Detected wildcard access granted to sts:AssumeRole. This means anyone with your AWS account ID and the name of the role can assume the role. Instead, limit to a specific identity in your account, like this: `arn:aws:iam::<account_id>:root`.'
+    metadata:
+      cwe:
+        - 'CWE-250: Execution with Unnecessary Privileges'
+      category: security
+      technology:
+        - aws
+      references:
+        - https://rhinosecuritylabs.com/aws/assume-worst-aws-assume-role-enumeration/
+      owasp:
+        - A06:2017 - Security Misconfiguration
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.azure.security.appservice.appservice-authentication-enabled.appservice-authentication-enabled
+    message: Enabling authentication ensures that all communications in the application are authenticated. The `auth_settings` block needs to be filled out with the appropriate auth backend settings
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+            auth_settings {
+              ...
+              enabled = true
+              ...
+            }
+          ...
+          }
+      - pattern-either:
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+              }
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+                auth_settings {
+                  ...
+                  enabled = false
+                  ...
+                }
+              ...
+              }
+    metadata:
+      cwe:
+        - 'CWE-287: Improper Authentication'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service#auth_settings
+      owasp:
+        - A02:2017 - Broken Authentication
+        - A07:2021 - Identification and Authentication Failures
+        - A07:2025 - Authentication Failures
+      cwe2022-top25: true
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.azure.security.appservice.appservice-enable-http2.appservice-enable-http2
+    message: Use the latest version of HTTP to ensure you are benefiting from security fixes. Add `http2_enabled = true` to your appservice resource block
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+            site_config {
+              ...
+              http2_enabled = true
+              ...
+            }
+          ...
+          }
+      - pattern-either:
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+              }
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+                site_config {
+                  ...
+                  http2_enabled = false
+                  ...
+                }
+              ...
+              }
+    metadata:
+      cwe:
+        - 'CWE-444: Inconsistent Interpretation of HTTP Requests (''HTTP Request/Response Smuggling'')'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service#http2_enabled
+      owasp:
+        - A04:2021 - Insecure Design
+        - A06:2025 - Insecure Design
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: INFO
+  - id: terraform.azure.security.appservice.appservice-enable-https-only.appservice-enable-https-only
+    message: By default, clients can connect to App Service by using both HTTP or HTTPS. HTTP should be disabled enabling the HTTPS Only setting.
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+            https_only = true
+          ...
+          }
+      - pattern-either:
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+              }
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+                https_only = false
+              ...
+              }
+    metadata:
+      cwe:
+        - 'CWE-319: Cleartext Transmission of Sensitive Information'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service#https_only
+        - https://docs.microsoft.com/en-us/azure/app-service/configure-ssl-bindings#enforce-https
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.azure.security.appservice.appservice-require-client-cert.appservice-require-client-cert
+    message: Detected an AppService that was not configured to use a client certificate. Add `client_cert_enabled = true` in your resource block.
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+            client_cert_enabled = true
+          ...
+          }
+      - pattern-either:
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+              }
+          - pattern-inside: |
+              resource "azurerm_app_service" "..." {
+              ...
+                client_cert_enabled = false
+              ...
+              }
+    metadata:
+      cwe:
+        - 'CWE-295: Improper Certificate Validation'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service#client_cert_enabled
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A07:2021 - Identification and Authentication Failures
+        - A07:2025 - Authentication Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: INFO
+  - id: terraform.azure.security.appservice.appservice-use-secure-tls-policy.appservice-use-secure-tls-policy
+    message: Detected an AppService that was not configured to use TLS 1.2. Add `site_config.min_tls_version = "1.2"` in your resource block.
+    patterns:
+      - pattern: min_tls_version = $ANYTHING
+      - pattern-inside: |
+          resource "azurerm_app_service" "$NAME" {
+            ...
+          }
+      - pattern-not-inside: min_tls_version = "1.2"
+    metadata:
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service#min_tls_version
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: HIGH
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.azure.security.appservice.azure-appservice-detailed-errormessages-enabled.azure-appservice-detailed-errormessages-enabled
+    message: Ensure that App service enables detailed error messages
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+          logs {
+            ...
+            detailed_error_messages_enabled = true
+            ...
+          }
+          ...
+          }
+      - pattern-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+          }
+    metadata:
+      owasp:
+        - A10:2017 - Insufficient Logging & Monitoring
+        - A09:2021 - Security Logging and Monitoring Failures
+        - A09:2025 - Security Logging & Alerting Failures
+      cwe:
+        - 'CWE-778: Insufficient Logging'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: LOW
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.appservice.azure-appservice-https-only.azure-appservice-https-only
+    message: Ensure web app redirects all HTTP traffic to HTTPS in Azure App Service Slot
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+          https_only = true
+          ...
+          }
+      - pattern-inside: |
+          resource "azurerm_app_service" "..." {
+          ...
+          }
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-319: Cleartext Transmission of Sensitive Information'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.appservice.azure-appservice-min-tls-version.azure-appservice-min-tls-version
+    message: Ensure web app is using the latest version of TLS encryption
+    patterns:
+      - pattern-either:
+          - pattern: |
+              "1.0"
+          - pattern: |
+              "1.1"
+      - pattern-inside: min_tls_version = ...
+      - pattern-inside: |
+          $RESOURCE "azurerm_app_service" "..." {
+          ...
+          }
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - audit
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.azure-key-no-expiration-date.azure-key-no-expiration-date
+    message: Ensure that the expiration date is set on all keys
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_key_vault_key" "..." {
+          ...
+          expiration_date = "..."
+          ...
+          }
+      - pattern-inside: |
+          resource "azurerm_key_vault_key" "..." {
+          ...
+          }
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: LOW
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.azure-mssql-service-mintls-version.azure-mssql-service-mintls-version
+    message: Ensure MSSQL is using the latest version of TLS encryption
+    patterns:
+      - pattern-either:
+          - pattern: |
+              "1.0"
+          - pattern: |
+              "1.1"
+      - pattern-inside: minimum_tls_version = ...
+      - pattern-inside: |
+          $RESOURCE "azurerm_mssql_server" "..." {
+          ...
+          }
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.azure-mysql-encryption-enabled.azure-mysql-encryption-enabled
+    message: Ensure that MySQL server enables infrastructure encryption
+    patterns:
+      - pattern: resource
+      - pattern-inside: |
+          resource "azurerm_mysql_server" "..." {
+          ...
+          }
+      - pattern-not-inside: |
+          resource "azurerm_mysql_server" "..." {
+          ...
+          infrastructure_encryption_enabled = true
+          ...
+          }
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+      cwe:
+        - 'CWE-320: CWE CATEGORY: Key Management Errors'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.azure-mysql-mintls-version.azure-mysql-mintls-version
+    message: Ensure MySQL is using the latest version of TLS encryption
+    patterns:
+      - pattern-either:
+          - pattern: |
+              "TLS1_0"
+          - pattern: |
+              "TLS1_1"
+      - pattern-inside: ssl_minimal_tls_version_enforced = ...
+      - pattern-inside: |
+          $RESOURCE "azurerm_mysql_server" "..." {
+          ...
+          }
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.keyvault.keyvault-ensure-key-expires.keyvault-ensure-key-expires
+    message: Ensure that the expiration date is set on all keys
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_key_vault_key" "..." {
+          ...
+          expiration_date = "..."
+          ...
+          }
+      - pattern-inside: |
+          resource "azurerm_key_vault_key" "..." {
+          ...
+          }
+    metadata:
+      cwe:
+        - 'CWE-262: Not Using Password Aging'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault_key#expiration_date
+        - https://docs.microsoft.com/en-us/powershell/module/az.keyvault/update-azkeyvaultkey?view=azps-5.8.0#example-1--modify-a-key-to-enable-it--and-set-the-expiration-date-and-tags
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: INFO
+  - id: terraform.azure.security.keyvault.keyvault-ensure-secret-expires.keyvault-ensure-secret-expires
+    message: Ensure that the expiration date is set on all secrets
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_key_vault_secret" "..." {
+          ...
+          expiration_date = "..."
+          ...
+          }
+      - pattern-not-inside: |
+          resource "azurerm_key_vault_secret" "..." {
+            ...
+            expiration_date = ...
+            ...
+          }
+      - pattern-inside: |
+          resource "azurerm_key_vault_secret" "..." {
+          ...
+          }
+    metadata:
+      cwe:
+        - 'CWE-262: Not Using Password Aging'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault_secret#expiration_date
+        - https://docs.microsoft.com/en-us/azure/key-vault/secrets/about-secrets
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: INFO
+  - id: terraform.azure.security.keyvault.keyvault-purge-enabled.keyvault-purge-enabled
+    message: Key vault should have purge protection enabled
+    patterns:
+      - pattern: resource
+      - pattern-not-inside: |
+          resource "azurerm_key_vault" "..." {
+          ...
+           purge_protection_enabled = true
+          ...
+          }
+      - pattern-either:
+          - pattern-inside: |
+              resource "azurerm_key_vault" "..." {
+              ...
+              }
+          - pattern-inside: |
+              resource "azurerm_key_vault" "..." {
+              ...
+                purge_protection_enabled = false
+              ...
+              }
+    metadata:
+      cwe:
+        - 'CWE-693: Protection Mechanism Failure'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault#purge_protection_enabled
+        - https://docs.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview#purge-protection
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.storage.storage-enforce-https.storage-enforce-https
+    message: Detected a Storage that was not configured to deny action by default. Add `enable_https_traffic_only = true` in your resource block.
+    patterns:
+      - pattern-not-inside: |
+          resource "azurerm_storage_account" "..." {
+          ...
+            enable_https_traffic_only = true
+          ...
+          }
+      - pattern-inside: |
+          resource "azurerm_storage_account" "..." {
+          ...
+            enable_https_traffic_only = false
+          ...
+          }
+    metadata:
+      cwe:
+        - 'CWE-319: Cleartext Transmission of Sensitive Information'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account#enable_https_traffic_only
+        - https://docs.microsoft.com/en-us/azure/storage/common/storage-require-secure-transfer
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.azure.security.storage.storage-use-secure-tls-policy.storage-use-secure-tls-policy
+    message: 'Azure Storage currently supports three versions of the TLS protocol: 1.0, 1.1, and 1.2. Azure Storage uses TLS 1.2 on public HTTPS endpoints, but TLS 1.0 and TLS 1.1 are still supported for backward compatibility. This check will warn if the minimum TLS is not set to TLS1_2.'
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              resource "azurerm_storage_account" "..." {
+                ...
+                min_tls_version = "$ANYTHING"
+                ...
+              }
+          - pattern-inside: |
+              resource "azurerm_storage_account" "..." {
+                ...
+              }
+      - pattern-not-inside: |
+          resource "azurerm_storage_account" "..." {
+            ...
+            min_tls_version = "TLS1_2"
+            ...
+          }
+    metadata:
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - azure
+      references:
+        - https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account#min_tls_version
+        - https://docs.microsoft.com/en-us/azure/storage/common/transport-layer-security-configure-minimum-version
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: ERROR
+  - id: terraform.gcp.security.gcp-cloud-storage-logging.gcp-cloud-storage-logging
+    patterns:
+      - pattern: |
+          resource "google_storage_bucket" $ANYTHING {
+            ...
+          }
+      - pattern-not-inside: "resource \"google_storage_bucket\" $ANYTHING {\n  ...\n  logging {\n      log_bucket = ...\n  }          \n  ...\n}\n"
+    message: Ensure bucket logs access.
+    languages:
+      - hcl
+    severity: WARNING
+    metadata:
+      owasp:
+        - A10:2017 - Insufficient Logging & Monitoring
+        - A09:2021 - Security Logging and Monitoring Failures
+        - A09:2025 - Security Logging & Alerting Failures
+      cwe:
+        - 'CWE-778: Insufficient Logging'
+      technology:
+        - terraform
+        - gcp
+      category: security
+      references:
+        - https://docs.bridgecrew.io/docs/google-cloud-policy-index
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: LOW
+      confidence: MEDIUM
+  - id: terraform.gcp.security.gcp-dns-key-specs-rsasha1.gcp-dns-key-specs-rsasha1
+    patterns:
+      - pattern: resource
+      - pattern-inside: |
+          resource "google_dns_managed_zone" "..." {
+          ...
+          dnssec_config {
+              ...
+              default_key_specs {
+                  ...
+                  algorithm  = "rsasha1"
+                  key_type   = "zoneSigning"
+                  ...
+              }
+              ...
+          }
+          ...
+          }
+      - pattern-inside: |
+          resource "google_dns_managed_zone" "..." {
+          ...
+          dnssec_config {
+              ...
+              default_key_specs {
+                  ...
+                  algorithm  = "rsasha1"
+                  key_type   = "keySigning"
+                  ...
+              }
+              ...
+          }
+          ...
+          }
+    message: "Ensure that RSASHA1 is not used for the zone-signing and key-signing keys in Cloud DNS DNSSEC\t"
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - gcp
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.gcp.security.gcp-sql-database-require-ssl.gcp-sql-database-require-ssl
+    patterns:
+      - pattern: resource
+      - pattern-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+          }
+      - pattern-not-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                  ...
+                  require_ssl = true
+                  ...
+              }
+              ...
+          }
+      - pattern-not-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                  ...
+                  ssl_mode = ...
+                  ...
+              }
+              ...
+          }
+    message: Ensure all Cloud SQL database instance requires all incoming connections to use SSL
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - gcp
+      references:
+        - https://cloud.google.com/sql/docs/postgres/admin-api/rest/v1/instances#ipconfiguration
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.gcp.security.gcp-sql-database-ssl-insecure-value-postgres-mysql.gcp-sql-database-ssl-insecure-value-postgres-mysql
+    patterns:
+      - pattern-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              database_version = "$DB"
+              ...
+          }
+      - pattern-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                  ...
+                  ssl_mode = $VALUE
+                  ...
+              }
+              ...
+          }
+      - pattern-not-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                  ...
+                  ssl_mode = "TRUSTED_CLIENT_CERTIFICATE_REQUIRED"
+                  ...
+              }
+              ...
+          }
+      - metavariable-regex:
+          metavariable: $DB
+          regex: .*(MYSQL|POSTGRES).*
+      - focus-metavariable: $VALUE
+    fix: |
+      "TRUSTED_CLIENT_CERTIFICATE_REQUIRED"
+    message: Ensure all Cloud SQL database instance require incoming connections to use SSL. To enable this for PostgresSQL and MySQL, use `ssl_mode="TRUSTED_CLIENT_CERTIFICATE_REQUIRED"`.
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - gcp
+      references:
+        - https://cloud.google.com/sql/docs/postgres/admin-api/rest/v1/instances#ipconfiguration
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.gcp.security.gcp-sql-database-ssl-insecure-value-sqlserver.gcp-sql-database-ssl-insecure-value-sqlserver
+    patterns:
+      - pattern-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              database_version = "$DB"
+              ...
+          }
+      - pattern-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                  ...
+                  ssl_mode = $VALUE
+                  ...
+              }
+              ...
+          }
+      - pattern-not-inside: |
+          resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                  ...
+                  ssl_mode = "ENCRYPTED_ONLY"
+                  ...
+              }
+              ...
+          }
+      - metavariable-regex:
+          metavariable: $DB
+          regex: .*(SQLSERVER).*
+      - focus-metavariable: $VALUE
+    fix: |
+      "ENCRYPTED_ONLY"
+    message: Ensure all Cloud SQL database instance require incoming connections to use SSL. For SQL Server, `ssl_mode="ENCRYPTED_ONLY"` is the most secure value that is supported.
+    metadata:
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A02:2021 - Cryptographic Failures
+        - A04:2025 - Cryptographic Failures
+      cwe:
+        - 'CWE-326: Inadequate Encryption Strength'
+      category: security
+      technology:
+        - terraform
+        - gcp
+      references:
+        - https://cloud.google.com/sql/docs/postgres/admin-api/rest/v1/instances#ipconfiguration
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.gcp.security.gcp-sql-public-database.gcp-sql-public-database
+    patterns:
+      - pattern: resource
+      - pattern-either:
+          - pattern-inside: |
+              resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                ...
+                authorized_networks {
+                  ...
+                  value = "0.0.0.0/0"
+                  ...
+                }
+                ...
+              }
+              ...
+              }
+          - pattern-inside: |
+              resource "google_sql_database_instance" "..." {
+              ...
+              ip_configuration {
+                ...
+                dynamic "authorized_networks" {
+                  ...
+                  content {
+                    ...
+                    value = "0.0.0.0/0"
+                    ...
+                  }
+                  ...
+                }
+                ...
+              }
+              ...
+              }
+    message: Ensure that Cloud SQL database Instances are not open to the world
+    metadata:
+      owasp:
+        - A05:2017 - Broken Access Control
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      cwe:
+        - 'CWE-1220: Insufficient Granularity of Access Control'
+      category: security
+      technology:
+        - terraform
+        - gcp
+      references:
+        - https://owasp.org/Top10/A01_2021-Broken_Access_Control
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+    languages:
+      - hcl
+    severity: WARNING
+  - id: terraform.lang.security.ec2-imdsv1-optional.ec2-imdsv1-optional
+    languages:
+      - hcl
+    message: AWS EC2 Instance allowing use of the IMDSv1
+    metadata:
+      cwe:
+        - 'CWE-918: Server-Side Request Forgery (SSRF)'
+      references:
+        - https://aws.amazon.com/blogs/security/defense-in-depth-open-firewalls-reverse-proxies-ssrf-vulnerabilities-ec2-instance-metadata-service
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance#metadata-options
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A10:2021 - Server-Side Request Forgery (SSRF)
+        - A01:2025 - Broken Access Control
+      cwe2022-top25: true
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+    pattern-either:
+      - patterns:
+          - pattern: http_tokens = "optional"
+          - pattern-inside: |
+              metadata_options { ... }
+      - patterns:
+          - pattern: |
+              resource "aws_instance" "$NAME" {
+                ...
+              }
+          - pattern-not: |
+              resource "aws_instance" "$NAME" {
+                ...
+                metadata_options {
+                  ...
+                  http_tokens = "required"
+                  ...
+                }
+                ...
+              }
+          - pattern-not: |
+              resource "aws_instance" "$NAME" {
+                ...
+                metadata_options {
+                  ...
+                  http_tokens = "optional"
+                  ...
+                }
+                ...
+              }
+          - pattern-not: |
+              resource "aws_instance" "$NAME" {
+                ...
+                metadata_options {
+                  ...
+                  http_endpoint = "disabled"
+                  ...
+                }
+                ...
+              }
+    severity: ERROR
+  - id: terraform.lang.security.rds-insecure-password-storage-in-source-code.rds-insecure-password-storage-in-source-code
+    pattern-either:
+      - patterns:
+          - pattern: password = "..."
+          - pattern-inside: |
+              resource "aws_db_instance" "..." {
+                ...
+              }
+      - patterns:
+          - pattern: master_password = "..."
+          - pattern-inside: |
+              resource "aws_rds_cluster" "..." {
+                ...
+              }
+    languages:
+      - hcl
+    severity: WARNING
+    message: RDS instance or cluster with hardcoded credentials in source code. It is recommended to pass the credentials at runtime, or generate random credentials using the random_password resource.
+    metadata:
+      references:
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance#master_password
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster#master_password
+        - https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password
+      cwe:
+        - 'CWE-522: Insufficiently Protected Credentials'
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A02:2017 - Broken Authentication
+        - A04:2021 - Insecure Design
+        - A06:2025 - Insecure Design
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.lang.security.s3-public-rw-bucket.s3-public-rw-bucket
+    pattern: acl = "public-read-write"
+    languages:
+      - hcl
+    severity: ERROR
+    message: S3 bucket with public read-write access detected.
+    metadata:
+      references:
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket#acl
+        - https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+      cwe:
+        - 'CWE-200: Exposure of Sensitive Information to an Unauthorized Actor'
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: LOW
+      impact: MEDIUM
+      confidence: MEDIUM
+  - id: terraform.lang.security.s3-unencrypted-bucket.s3-unencrypted-bucket
+    patterns:
+      - pattern: a
+      - pattern: b
+    languages:
+      - hcl
+    severity: INFO
+    message: This rule has been deprecated, as all s3 buckets are encrypted by default with no way to disable it. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_server_side_encryption_configuration for more info.
+    metadata:
+      references:
+        - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket#server_side_encryption_configuration
+        - https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-encryption.html
+      cwe:
+        - 'CWE-311: Missing Encryption of Sensitive Data'
+      category: security
+      technology:
+        - terraform
+        - aws
+      owasp:
+        - A03:2017 - Sensitive Data Exposure
+        - A04:2021 - Insecure Design
+        - A06:2025 - Insecure Design
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+      deprecated: true

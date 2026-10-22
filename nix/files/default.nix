@@ -1,34 +1,23 @@
-{ pkgs, sourceRoot }:
+{ pkgs }:
 files:
 let
-  manifestText = pkgs.writeText "factory-files.json" (
+  # Interpolation copies local paths into the store and retains derivation references.
+  manifest = pkgs.writeText "factory-files.json" (
     builtins.toJSON (
       builtins.mapAttrs (_: file: {
         inherit (file) mode;
-        source = toString file.source;
+        source = "${file.source}";
       }) files
     )
   );
-  # Retain the checkout and generated source paths as Nix inputs, not just JSON text.
-  manifest =
-    pkgs.runCommand "factory-files.json"
-      {
-        inherit sourceRoot;
-        sourceReferences = pkgs.lib.concatStringsSep " " (
-          builtins.map (file: toString file.source) (builtins.attrValues files)
-        );
-      }
-      ''
-        cp -- ${manifestText} "$out"
-      '';
 in
 pkgs.writeShellApplication {
   name = "factory-files";
   runtimeInputs = [
     pkgs.git
-    pkgs.nodejs
+    pkgs.nodejs_24
   ];
   text = ''
-    exec node ${./files.ts} "$@" ${manifest}
+    exec node ${./default.ts} "$@" ${manifest}
   '';
 }

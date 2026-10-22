@@ -22,7 +22,9 @@ it("keeps protected local workflows on pinned direnv without callable references
     expect(source).not.toMatch(/^ {2}workflow_call:/m);
     expect(source).not.toContain("extra-substituters = ");
     expect(source).toContain("extra_nix_config: require-sigs = true");
-    expect(source).toContain("nix build --no-link --print-out-paths .#direnv");
+    expect(source).toContain(
+      "nix build --no-link --print-out-paths '.#direnv'",
+    );
     expect(source).toContain('"$direnv" allow .');
     expect(source).toContain(`"$direnv" exec . ./scripts/github/${name}.sh`);
   }
@@ -53,7 +55,7 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
       f = builtins.getFlake ${JSON.stringify(factory)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       config = (pkgs.lib.evalModules {
-        specialArgs = { inherit pkgs; };
+        specialArgs.pkgs = pkgs // { google-cloud-sdk = config.testGcloud; };
         modules = [ f.nixModules.github f.nixModules.opentofu ({ lib, ... }: {
           config.quantile-co.factory.opentofu.package = pkgs.writeShellScriptBin "tofu" ''
             set -euo pipefail
@@ -76,7 +78,7 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
               exit 81
             fi
           '';
-          options.quantile-co.factory.gcloud.package = lib.mkOption {
+          options.testGcloud = lib.mkOption {
             type = lib.types.package;
             default = pkgs.writeShellApplication {
               name = "gcloud";

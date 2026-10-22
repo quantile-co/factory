@@ -86,7 +86,7 @@ in builtins.toJSON {
   }
 });
 
-it("ships opt-in skill scripts without touching unrelated local state", () => {
+it("ships opt-in skill scripts and validates nvim navigation arguments", () => {
   const root = new URL("../../", import.meta.url);
   const built = spawnSync(
     "nix",
@@ -151,19 +151,6 @@ it("ships opt-in skill scripts without touching unrelated local state", () => {
       encoding: "utf8",
     });
     expect(invalid.status).not.toBe(0);
-
-    const servers = join(work, "state/marimo/servers");
-    mkdirSync(servers, { recursive: true });
-    const stale = join(servers, "stale.json");
-    writeFileSync(stale, '{"pid": 0, "server_id": "stale"}\n');
-    const discovered = spawnSync("bash", [marimo], {
-      cwd: work,
-      env: { ...process.env, XDG_STATE_HOME: join(work, "state") },
-      encoding: "utf8",
-    });
-    expect(discovered.status, discovered.stderr).toBe(0);
-    expect(JSON.parse(discovered.stdout)).toEqual([]);
-    expect(readFileSync(stale, "utf8")).toContain('"pid": 0');
   } finally {
     rmSync(work, { recursive: true, force: true });
   }

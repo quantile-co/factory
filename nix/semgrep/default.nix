@@ -13,7 +13,10 @@ let
   packs =
     pkgs.runCommand "semgrep-packs"
       {
-        nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ ps.pyyaml ])) ];
+        nativeBuildInputs = [
+          (pkgs.python3.withPackages (ps: [ ps.pyyaml ]))
+          pkgs.yq-go
+        ];
       }
       ''
         mkdir -p "$out"
@@ -39,6 +42,10 @@ let
                 rules.append({**matches[0], "id": rule_id})
             (output / f"{pack}.json").write_text(json.dumps({"rules": rules}) + "\n")
         PY
+        for json in "$out"/*.json; do
+          yq --prettyPrint --output-format yaml '.' "$json" > "''${json%.json}.yaml"
+          rm "$json"
+        done
       '';
 in
 {
@@ -51,7 +58,7 @@ in
 
     packs = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
-      default = lib.genAttrs packNames (name: "${packs}/${name}.json");
+      default = lib.genAttrs packNames (name: "${packs}/${name}.yaml");
       description = "Pinned local rule configurations, keyed by registry pack name.";
     };
 

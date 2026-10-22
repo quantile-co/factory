@@ -167,6 +167,68 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
   }
 }, 150_000);
 
+it("Factory's checked-in rules cover TypeScript, Terraform and GitHub Actions", () => {
+  const root = new URL("../../", import.meta.url);
+  const work = mkdtempSync(join(tmpdir(), "factory-development-rules-"));
+  try {
+    const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
+      pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    in (pkgs.lib.evalModules {
+      modules = [ f.nixModules.semgrep ]; specialArgs = { inherit pkgs; };
+    }).config.quantile-co.factory.semgrep.check.package`;
+    const built = spawnSync(
+      "nix",
+      ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
+      {
+        encoding: "utf8",
+        timeout: 120_000,
+      },
+    );
+    expect(built.status, built.stderr).toBe(0);
+    const scan = () =>
+      spawnSync(
+        join(built.stdout.trim(), "bin/check-semgrep"),
+        ["sample.ts", "sample.tf", "workflow.yaml"],
+        {
+          cwd: work,
+          env: {
+            ...process.env,
+            SEMGREP_RULES_DIR: fileURLToPath(new URL(".semgrep", root)),
+          },
+          encoding: "utf8",
+          timeout: 120_000,
+        },
+      );
+    writeFileSync(join(work, "sample.ts"), "eval(location.hash);\n");
+    writeFileSync(
+      join(work, "sample.tf"),
+      'resource "google_storage_bucket" "sample" {\n  public_access_prevention = "enforced"\n}\n',
+    );
+    writeFileSync(
+      join(work, "workflow.yaml"),
+      `jobs:\n  sample:\n    steps:\n      - run: echo "\${{ github.event.issue.title }}"\n`,
+    );
+    const bad = scan();
+    expect(bad.status, bad.stdout + bad.stderr).toBe(1);
+    expect(bad.stdout).toContain("detect-eval-with-expression");
+    expect(bad.stdout).toContain("gcp-cloud-storage-logging");
+    expect(bad.stdout).toContain("run-shell-injection");
+    writeFileSync(join(work, "sample.ts"), "console.log(location.hash);\n");
+    writeFileSync(
+      join(work, "sample.tf"),
+      'resource "google_storage_bucket" "sample" {\n  public_access_prevention = "enforced"\n  logging {\n    log_bucket = "logs"\n  }\n}\n',
+    );
+    writeFileSync(
+      join(work, "workflow.yaml"),
+      `jobs:\n  sample:\n    steps:\n      - env:\n          TITLE: \${{ github.event.issue.title }}\n        run: echo "$TITLE"\n`,
+    );
+    const good = scan();
+    expect(good.status, good.stdout + good.stderr).toBe(0);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}, 180_000);
+
 it("scans with pinned packs and local rules together", () => {
   const root = new URL("../../", import.meta.url);
   const work = mkdtempSync(join(tmpdir(), "factory-semgrep-packs-"));

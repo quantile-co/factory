@@ -2,7 +2,7 @@
   description = "Quantile software factory";
 
   inputs = {
-    # Moving refs propose updates; the committed flake.lock fixes exact revisions.
+    # Moving refs propose updates; flake.lock fixes exact revisions.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     llm-agents.url = "github:numtide/llm-agents.nix/main";
     semgrep-rules = {
@@ -15,147 +15,109 @@
     inputs:
     let
       shared = import ./nix { inherit inputs; };
+    in
+    shared
+    // shared.lib.mkFlake {
+      inherit (inputs) nixpkgs;
+      modules = [ shared.nixModules.default ];
+      nixpkgsConfig.allowUnfree = true;
       systems = [
         "x86_64-linux"
         "aarch64-linux"
         "aarch64-darwin"
       ];
-      forEachSystem =
-        f:
-        inputs.nixpkgs.lib.genAttrs systems (
-          system:
-          let
-            pkgs = inputs.nixpkgs.legacyPackages.${system};
-            inherit
-              (pkgs.lib.evalModules {
-                specialArgs = { inherit pkgs; };
-                modules = [ shared.nixModules.default ];
-              })
-              config
+
+      perSystem =
+        { pkgs, factory }:
+        let
+          copy = source: {
+            inherit source;
+            mode = "copy";
+          };
+        in
+        {
+          # Public packages are aliases, not wrappers or an implicit shell bundle.
+          exports = {
+            inherit (pkgs)
+              age
+              bash
+              bear
+              buf
+              cmake
+              container-structure-test
+              coreutils
+              delve
+              diffutils
+              direnv
+              docker-client
+              duckdb
+              gdb
+              gh
+              go
+              gopls
+              gotools
+              jq
+              k9s
+              kustomize
+              lnav
+              meson
+              minikube
+              ngrok
+              ninja
+              nix
+              pkg-config
+              pnpm
+              postgresql
+              skopeo
+              sqlc
+              stripe-cli
+              templ
+              tilt
+              uv
+              valgrind
               ;
-            cfg = config.quantile-co.factory;
-            # Destinations are committed; copy refreshes them when direnv enters.
-            copy = source: {
-              inherit source;
-              mode = "copy";
-            };
-            files =
-              shared.lib.mkFiles
-                {
-                  inherit pkgs;
-                  sourceRoot = inputs.self.outPath;
-                }
-                {
-                  "tsconfig.json" = {
-                    source = cfg.typescript.withOverrides {
-                      compilerOptions = {
-                        module = "ESNext";
-                        moduleResolution = "Bundler";
-                        types = [ "node" ];
-                      };
-                      include = [
-                        "*.test.ts"
-                        "nix/**/*.test.ts"
-                        "tf/**/*.test.ts"
-                      ];
-                    };
-                    mode = "copy";
-                  };
-                  ".editorconfig" = copy cfg.editorconfig.configFile;
-                  ".editorconfig-checker.json" = copy cfg.editorconfig.checker.configFile;
-                  ".markdownlint-cli2.jsonc" = copy cfg.markdownlint-cli2.configFile;
-                  ".pre-commit-config.yaml" = copy cfg.prek.configFile;
-                  ".cz.toml" = copy cfg.commitizen.configFile;
-                  ".shellcheckrc" = copy cfg.shellcheck.configFile;
-                  ".tflint.hcl" = copy cfg.tflint.configFile;
-                  "taplo.toml" = copy cfg.taplo.configFile;
-                  "trivy.yaml" = copy cfg.trivy.configFile;
-                  "typos.toml" = copy cfg.typos.configFile;
-                  ".vale.ini" = copy cfg.vale.configFile;
-                  ".yamllint.yaml" = copy cfg.yamllint.configFile;
-                  "biome.json" = copy cfg.biome.configFile;
-                  ".github/actionlint.yaml" = copy cfg.actionlint.configFile;
+            gcloud = pkgs.google-cloud-sdk;
+            helm = pkgs.kubernetes-helm;
+            mockery = pkgs.go-mockery;
+            nodejs = pkgs.nodejs_24;
+            nss = pkgs.nssTools;
+            python = pkgs.python3;
+            githubWorkflowPlan = factory.github.workflows.plan.package;
+            githubWorkflowApply = factory.github.workflows.apply.package;
+          };
 
-                  ".github/workflows/check.yaml" = copy cfg.github.workflows.check.configFile;
-                  ".github/workflows/test.yaml" = copy cfg.github.workflows.test.configFile;
-                  ".github/workflows/plan.yaml" = copy cfg.github.workflows.plan.configFile;
-                  ".github/workflows/apply.yaml" = copy cfg.github.workflows.apply.configFile;
-                  ".github/dependabot.yml" = {
-                    source = cfg.dependabot.withUpdates [
-                      "github-actions"
-                      "npm"
-                      "opentofu"
-                      "nix"
-                    ];
-                    mode = "copy";
-                  };
-
-                  ".pi/settings.json" = copy cfg.pi.settingsFile;
-                  ".pi/skills/deploy" = copy (cfg.pi.skillsDir + "/deploy");
-                  ".pi/skills/day-zero-deploy" = copy (cfg.pi.skillsDir + "/day-zero-deploy");
-                  ".qmd/index.yml" = copy cfg.qmd.configFile;
-                  ".semgrep" = copy cfg.semgrep.rulesDir;
-                  ".semgrepignore" = copy cfg.semgrep.ignoreFile;
-                };
-          in
-          f { inherit pkgs cfg files; }
-        );
-    in
-    shared
-    // {
-      packages = forEachSystem (
-        {
-          pkgs,
-          cfg,
-          files,
-        }:
-        {
-          inherit (pkgs) direnv;
-          inherit files;
-          githubWorkflowPlan = cfg.github.workflows.plan.package;
-          githubWorkflowApply = cfg.github.workflows.apply.package;
-        }
-      );
-      devShells = forEachSystem (
-        {
-          pkgs,
-          cfg,
-          files,
-        }:
-        {
-          default = pkgs.mkShell {
-            packages = [
-              files
-              pkgs.direnv
-            ]
-            ++ (with cfg; [
-              bash.package
-              coreutils.package
-              diffutils.package
-              nix.package
-              git.package
-              git.lfs.package
-              opentofu.package
-              tflint.package
-              taplo.package
-              gcloud.package
-              gh.package
-              actionlint.package
+          packages =
+            (with pkgs; [
+              bash
+              coreutils
+              diffutils
+              direnv
+              nix
+              git
+              git-lfs
+              opentofu
+              tflint
+              taplo
+              google-cloud-sdk
+              gh
+              actionlint
+              shellcheck
+              shfmt
+              jq
+              nodejs_24
+              pnpm
+              conftest
+              trivy
+              typos
+              vale
+              yamllint
+              semgrep
+            ])
+            ++ (with factory; [
+              pi.package
+              qmd.package
               prek.package
               prek.tools.package
-              shellcheck.package
-              shfmt.package
-              jq.package
-              pi.package
-              nodejs.package
-              qmd.package
-              pnpm.package
-              conftest.package
-              trivy.package
-              typos.package
-              vale.package
-              yamllint.package
-              semgrep.package
               dependabot.check.package
               prek.check.package
               nixfmt.check.package
@@ -185,8 +147,62 @@
               taplo.fix.package
               editorconfig.fix.package
             ]);
+
+          # Only configurations used to develop this repository belong in its root.
+          files = {
+            "tsconfig.json" = copy (
+              factory.typescript.withOverrides {
+                compilerOptions = {
+                  module = "ESNext";
+                  moduleResolution = "Bundler";
+                  types = [ "node" ];
+                };
+                include = [
+                  "*.test.ts"
+                  "nix/**/*.test.ts"
+                  "tf/**/*.test.ts"
+                ];
+              }
+            );
+            ".editorconfig" = copy factory.editorconfig.configFile;
+            ".editorconfig-checker.json" = copy factory.editorconfig.checker.configFile;
+            ".markdownlint-cli2.jsonc" = copy factory.markdownlint-cli2.configFile;
+            ".pre-commit-config.yaml" = copy factory.prek.configFile;
+            ".cz.toml" = copy factory.commitizen.configFile;
+            ".shellcheckrc" = copy factory.shellcheck.configFile;
+            ".tflint.hcl" = copy factory.tflint.configFile;
+            "taplo.toml" = copy factory.taplo.configFile;
+            "trivy.yaml" = copy factory.trivy.configFile;
+            "typos.toml" = copy factory.typos.configFile;
+            ".vale.ini" = copy factory.vale.configFile;
+            ".yamllint.yaml" = copy factory.yamllint.configFile;
+            "biome.json" = copy factory.biome.configFile;
+            ".github/actionlint.yaml" = copy factory.actionlint.configFile;
+
+            ".github/workflows/check.yaml" = copy factory.github.workflows.check.configFile;
+            ".github/workflows/test.yaml" = copy factory.github.workflows.test.configFile;
+            ".github/workflows/plan.yaml" = copy factory.github.workflows.plan.configFile;
+            ".github/workflows/apply.yaml" = copy factory.github.workflows.apply.configFile;
+            ".github/dependabot.yml" = copy (
+              factory.dependabot.withUpdates [
+                "github-actions"
+                "npm"
+                "opentofu"
+                "nix"
+              ]
+            );
+
+            ".pi/settings.json" = copy factory.pi.settingsFile;
+            ".pi/skills/deploy" = copy (factory.pi.skillsDir + "/deploy");
+            ".pi/skills/day-zero-deploy" = copy (factory.pi.skillsDir + "/day-zero-deploy");
+            ".qmd/index.yml" = copy factory.qmd.configFile;
+
+            ".semgrep/tf" = copy (factory.semgrep.rulesDir + "/tf");
+            ".semgrep/packs/typescript.yaml" = copy factory.semgrep.packs.typescript;
+            ".semgrep/packs/terraform.yaml" = copy factory.semgrep.packs.terraform;
+            ".semgrep/packs/github-actions.yaml" = copy factory.semgrep.packs.github-actions;
+            ".semgrepignore" = copy factory.semgrep.ignoreFile;
           };
-        }
-      );
+        };
     };
 }

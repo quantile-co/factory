@@ -18,6 +18,7 @@ copying their contents into this file.
 - [scripts/](scripts/): pnpm tasks and workflow entry points.
 - [nix/](nix/): reusable Nix modules and executables.
 - [nix/files/](nix/files/): managed-file command and tests.
+- [nix/flake/](nix/flake/): reusable flake wiring and tests.
 - [etc/](etc/): reusable native-format configuration assets.
 - [tf/infrastructure/](tf/infrastructure/): this repository's deployment root.
 - [tf/modules/project/](tf/modules/project/): independent GitHub and GCP modules.

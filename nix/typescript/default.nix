@@ -5,8 +5,6 @@
   ...
 }:
 {
-  imports = [ ../nodejs ];
-
   options.quantile-co.factory.typescript = {
     configFile = lib.mkOption {
       type = lib.types.path;
@@ -33,7 +31,7 @@
       default = pkgs.writeShellApplication {
         name = "check-typescript";
         runtimeInputs = [
-          config.quantile-co.factory.nodejs.package
+          pkgs.nodejs_24
           pkgs.git
           pkgs.coreutils
           pkgs.gnugrep

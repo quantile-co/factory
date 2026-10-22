@@ -69,6 +69,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
           REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
         run: |
-          direnv="$(nix build --no-link --print-out-paths .#direnv)/bin/direnv"
+          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . ./scripts/github/plan.sh

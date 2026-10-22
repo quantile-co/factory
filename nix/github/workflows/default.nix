@@ -41,7 +41,7 @@ in
         default = pkgs.writeShellApplication {
           name = "github-workflow-plan";
           runtimeInputs = [
-            config.quantile-co.factory.gcloud.package
+            pkgs.google-cloud-sdk
             config.quantile-co.factory.opentofu.package
             pkgs.coreutils
           ];
@@ -101,7 +101,7 @@ in
         default = pkgs.writeShellApplication {
           name = "github-workflow-apply";
           runtimeInputs = [
-            config.quantile-co.factory.gcloud.package
+            pkgs.google-cloud-sdk
             config.quantile-co.factory.opentofu.package
             pkgs.coreutils
           ];

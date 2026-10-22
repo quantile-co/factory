@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
-import { type FileEntry, manageFiles } from "./files";
+import { type FileEntry, manageFiles } from "./default";
 
 const work = mkdtempSync(join(tmpdir(), "factory-files-"));
 afterEach(() => rmSync(work, { recursive: true, force: true }));

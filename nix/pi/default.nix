@@ -1,14 +1,11 @@
 { llmAgents }:
 { lib, pkgs, ... }:
 let
-  marimo = pkgs.applyPatches {
-    src = pkgs.fetchFromGitHub {
-      owner = "marimo-team";
-      repo = "marimo-pair";
-      rev = "5368e127e736881fedd6bd7db315f6f974290230"; # v0.0.16
-      hash = "sha256-xZX2W7w5gkqV0unHjdndFyEoFzxgCVCWLWuwtiEtUDQ=";
-    };
-    patches = [ ./marimo-pair.patch ];
+  marimo = pkgs.fetchFromGitHub {
+    owner = "marimo-team";
+    repo = "marimo-pair";
+    rev = "5368e127e736881fedd6bd7db315f6f974290230"; # v0.0.16
+    hash = "sha256-xZX2W7w5gkqV0unHjdndFyEoFzxgCVCWLWuwtiEtUDQ=";
   };
   marketing = pkgs.fetchFromGitHub {
     owner = "coreyhaines31";

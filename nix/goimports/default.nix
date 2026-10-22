@@ -12,7 +12,7 @@ let
       inherit name;
       runtimeInputs = [
         cfg.package
-        config.quantile-co.factory.go.package
+        pkgs.go
         pkgs.git
       ];
       text = ''
@@ -44,14 +44,10 @@ let
     };
 in
 {
-  imports = [
-    ../go
-    ../gotools
-  ];
   options.quantile-co.factory.goimports = {
     package = lib.mkOption {
       type = lib.types.package;
-      default = config.quantile-co.factory.gotools.package;
+      default = pkgs.gotools;
       description = "goimports formatter.";
     };
     check.package = lib.mkOption {

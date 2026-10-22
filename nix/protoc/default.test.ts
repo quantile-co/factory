@@ -49,7 +49,7 @@ it("exposes protoc, Buf and Go/Connect generators while leaving generation expli
       const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
         config = (pkgs.lib.evalModules {
-          modules = [ f.nixModules.protoc f.nixModules.buf ]; specialArgs = { inherit pkgs; };
+          modules = [ f.nixModules.protoc ]; specialArgs = { inherit pkgs; };
         }).config;
       in ${selector}`;
       const result = spawnSync(
@@ -75,7 +75,7 @@ it("exposes protoc, Buf and Go/Connect generators while leaving generation expli
       "bin/protoc",
     );
     const buf = join(
-      build("config.quantile-co.factory.buf.package.out"),
+      build(`f.packages.\${builtins.currentSystem}.buf.out`),
       "bin/buf",
     );
     const go = join(

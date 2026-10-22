@@ -45,6 +45,6 @@ jobs:
 
       - name: Run checks, then tests
         run: |
-          direnv="$(nix build --no-link --print-out-paths .#direnv)/bin/direnv"
+          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . ./scripts/github/test.sh

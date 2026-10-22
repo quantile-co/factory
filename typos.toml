@@ -10,10 +10,11 @@ extend-exclude = [
   "*.lock",
   "pnpm-lock.yaml",
   "package-lock.json",
-  # Factory's agent instructions, negative-rule fixtures, and vendored prose styles.
+  # Agent instructions, negative-rule fixtures, and vendored rules/styles.
   "**/AGENTS.md",
   "nix/**/fixtures/**",
   "etc/vale/styles/Google/**",
+  ".semgrep/packs/**",
 ]
 ignore-files = false
 ignore-hidden = false

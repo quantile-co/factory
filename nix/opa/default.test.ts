@@ -85,6 +85,30 @@ deny contains "unselected policy loaded"
     };
     const check = join(build("conftest", "check"), "bin/check-opa");
     const test = join(build("opa", "test"), "bin/test-opa");
+    writeFileSync(join(work, "outside.rego"), files["policy/main.rego"]);
+    symlinkSync(join(work, "outside.rego"), join(repo, "policy/linked.rego"));
+    for (const command of [check, test]) {
+      const traversal = run(command, [
+        "--policy",
+        "policy",
+        "--namespace",
+        "main",
+        "--policy-file",
+        "../../outside.rego",
+      ]);
+      expect(traversal.status).not.toBe(0);
+      expect(traversal.output).toContain("Rego policy escapes --policy");
+      const linked = run(command, [
+        "--policy",
+        "policy",
+        "--namespace",
+        "main",
+        "--policy-file",
+        "linked.rego",
+      ]);
+      expect(linked.status).not.toBe(0);
+      expect(linked.output).toContain("Missing or invalid Rego policy");
+    }
     const args = [
       "--policy",
       "policy",

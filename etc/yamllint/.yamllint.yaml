@@ -7,7 +7,8 @@ ignore:
   - "**/node_modules/**"
   - "*.min.yaml"
   - "*.min.yml"
-  # The checked-in Google Vale styles are third-party sources.
+  # Keep upstream rule metadata and Vale styles unchanged.
+  - ".semgrep/packs/**"
   - "etc/vale/styles/Google/**"
 
 rules:

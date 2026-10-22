@@ -16,13 +16,13 @@ it("runs strict JSON checks from one consumer-owned Prek config without installi
   const root = new URL("../../", import.meta.url);
   const repo = mkdtempSync(join(tmpdir(), "factory-json-"));
   try {
-    const build = (tool: "jq" | "prek", selector: string) => {
+    const build = () => {
       const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
-        modules = [ f.nixModules.${tool} ];
+        modules = [ f.nixModules.prek ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile-co.factory.${tool}.${selector ? `${selector}.` : ""}package`;
+      }).config.quantile-co.factory.prek.checkJson.package`;
       const result = spawnSync(
         "nix",
         [
@@ -71,15 +71,7 @@ it("runs strict JSON checks from one consumer-owned Prek config without installi
       run("git", ["init", "--quiet", "--initial-branch=main"]).status,
     ).toBe(0);
     expect(run("git", ["add", "."]).status).toBe(0);
-    const jq = join(build("jq", ""), "bin/jq");
-    const parsed = run(
-      jq,
-      ["-er", ".plan.storage"],
-      '{"plan":{"storage":"gcs"}}',
-    );
-    expect(parsed.status, parsed.output).toBe(0);
-    expect(parsed.stdout.trim()).toBe("gcs");
-    const check = join(build("prek", "checkJson"), "bin/check-json");
+    const check = join(build(), "bin/check-json");
     expect(run(check).status).toBe(0);
     expect(existsSync(join(repo, ".git/hooks/pre-push"))).toBe(false);
 

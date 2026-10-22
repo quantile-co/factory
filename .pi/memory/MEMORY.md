@@ -53,6 +53,30 @@ Git index and compares copies with their source and index so entry cannot hide
 committed drift. Q0 remains
 Factory-independent.
 
+#decision [[factory-declarative-flake]] [[factory-package-exports]]
+Keep repository-level inputs, systems, package exports, development packages and
+file selections in `flake.nix`. `lib.mkFlake` under `nix/flake/` handles only
+module evaluation, platform iteration and output wiring; do not hide repository
+policy in a shell module. `lib.mkFiles { inherit pkgs; }` accepts destination-to-source/mode
+declarations; local paths and derivation references are retained without a caller
+`sourceRoot` or manifest variable. Package-only modules are replaced by explicit
+`packages.<system>.<name>` aliases, preserving selections such as Node 24.
+Unsupported or broken exports are omitted for that platform. Factory enables
+unfree packages in its own Nixpkgs instance; host configuration is unchanged.
+Exports alone do not build packages or publish caches. Downstreams must replace
+removed package-only module imports/options when updating their Factory input.
+
+#decision [[factory-development-rules]]
+Root copies serve Factory development rather than mirroring the reusable catalog.
+Select custom Terraform rules and pinned TypeScript, Terraform and GitHub Actions
+packs. Packs are YAML under `.semgrep/packs/` so native directory scans load them;
+upstream metadata is excluded from formatting, spelling and permalink policies,
+not from rule validation or scanning. Docker, Go and Kubernetes rules remain in
+the reusable catalog and its tests. No Nix Semgrep pack is available; keep the
+existing Nix checks. OPA and Conftest independently select explicit Rego paths,
+reject empty checks and prevent policy traversal without a shared shell fragment.
+Third-party Marimo skills are used unpatched.
+
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
 snapshots, tests of upstream behavior, unnecessary abstractions and repetitive
