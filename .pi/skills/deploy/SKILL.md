@@ -7,8 +7,10 @@ description: Plan, privately review, apply or troubleshoot existing Factory-modu
 
 Read [the full Plan and Apply procedure](references/plan-apply.md). Work from
 the consuming repository root in its pinned direnv shell. Read `AGENTS.md`,
-`.pi/memory/MEMORY.md`, current `tf/infrastructure/`, its Factory module
+`.pi/memory/MEMORY.md`, the current Terraform root, its Factory module
 references, the consumer's shell and task scripts, and the pinned caller **and** called workflows.
+Use the root selected by those scripts as `TF_DIR`; Factory defaults to
+`tf/infrastructure`, while single-root consumers may use `tf`.
 
 Skill invocation, a source merge, a green Check or a successful Plan is not
 authorization to Apply. Obtain separate approval for each dispatch, credential

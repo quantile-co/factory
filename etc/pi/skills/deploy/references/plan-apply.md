@@ -1,8 +1,11 @@
 # Plan and Apply
 
 Read the caller's current workflows, the pinned Factory reusable workflows,
-the consumer's shell and task scripts, `tf/infrastructure/`, its declared Factory Terraform module
-sources and `nix/github/workflows/default.nix` from the pinned Factory revision.
+the consumer's shell and task scripts, its Terraform root and declared Factory
+Terraform module sources, and `nix/github/workflows/default.nix` from the pinned
+Factory revision. Export `TF_DIR` to the root selected by the consumer's workflow
+scripts (`tf/infrastructure` for Factory, or `tf` for a single-root consumer).
+Changing this source directory does not change the backend bucket or prefix.
 Use the pinned direnv shell. Ordinary production changes use protected workflows,
 not local Apply. Validate source without backend access:
 
@@ -35,11 +38,12 @@ set -euo pipefail; set +x; umask 077
 : "${TF_BACKEND_PREFIX:?Set the existing prefix}"
 : "${TF_PLAN_FILE:?Set an absolute private plan path}"
 case "$TF_PLAN_FILE" in /*) ;; *) exit 1 ;; esac
-tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly \
+: "${TF_DIR:?Set the reviewed Terraform root}"
+tofu -chdir="$TF_DIR" init -input=false -lockfile=readonly \
   -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
   -backend-config="prefix=$TF_BACKEND_PREFIX"
 test ! -e "$TF_PLAN_FILE"
-tofu -chdir=tf/infrastructure plan -input=false -no-color -out="$TF_PLAN_FILE"
+tofu -chdir="$TF_DIR" plan -input=false -no-color -out="$TF_PLAN_FILE"
 ```
 
 A *separately approved* local Apply uses the exact reviewed saved bytes, with
@@ -53,10 +57,11 @@ set -euo pipefail; set +x; umask 077
 : "${TF_PLAN_FILE:?Set the reviewed absolute private plan path}"
 case "$TF_PLAN_FILE" in /*) ;; *) exit 1 ;; esac
 test -s "$TF_PLAN_FILE"
-tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly \
+: "${TF_DIR:?Set the reviewed Terraform root}"
+tofu -chdir="$TF_DIR" init -input=false -lockfile=readonly \
   -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
   -backend-config="prefix=$TF_BACKEND_PREFIX"
-tofu -chdir=tf/infrastructure apply -input=false "$TF_PLAN_FILE"
+tofu -chdir="$TF_DIR" apply -input=false "$TF_PLAN_FILE"
 ```
 
 ## 1. Confirm context
@@ -67,6 +72,7 @@ From a clean checkout of the current protected main revision:
 set -euo pipefail
 set +x
 umask 077
+: "${TF_DIR:?Set the reviewed Terraform root}"
 : "${REPO:?Set and verify the intended owner/repository before any dispatch}"
 test "$REPO" = "$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
 SHA=$(git rev-parse HEAD)
@@ -135,7 +141,7 @@ repository_id=$(gh api "repos/$REPO" --jq .id)
 : "${GCP_TF_STATE_BUCKET:?Set and verify the producing Plan's state bucket}"
 base="gs://$GCP_TF_STATE_BUCKET/plans/$repository_id/$PLAN_RUN_ID/$PLAN_ATTEMPT"
 gcloud storage cp "$base/saved-plan/plan.tfplan#$PLAN_GENERATION" "$PRIVATE_DIR/plan.tfplan"
-tofu -chdir=tf/infrastructure show -no-color "$PRIVATE_DIR/plan.tfplan" > "$PRIVATE_DIR/plan.txt"
+tofu -chdir="$TF_DIR" show -no-color "$PRIVATE_DIR/plan.tfplan" > "$PRIVATE_DIR/plan.txt"
 ```
 
 Read the complete private `plan.txt`, including replacements, deletions, IAM,

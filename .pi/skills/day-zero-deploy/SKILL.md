@@ -7,9 +7,9 @@ description: Bootstrap a genuinely new Factory-module installation, migrate loca
 
 Read [the full shared bootstrap procedure](references/local-state.md) before
 acting. Work from the consuming repository root in its pinned direnv shell.
-Read `AGENTS.md`, `.pi/memory/MEMORY.md`, current `tf/infrastructure/`, its
+Read `AGENTS.md`, `.pi/memory/MEMORY.md`, the current Terraform root, its
 pinned Factory module sources, the consumer's shell and task scripts, and production workflow callers
-**and** called workflows. Do not substitute unverified bootstrap instructions
+**and** called workflows. Set `TF_DIR` to the root selected by those scripts. Do not substitute unverified bootstrap instructions
 or assume a local checkout without state is a fresh installation.
 
 Confirm the target and inventory existing resources and local/remote state

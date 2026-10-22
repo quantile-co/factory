@@ -13,6 +13,8 @@ Use the pinned direnv shell; ordinary entry is credential-free.
 Do not run protected Plan/Apply while bootstrapping: their CI inputs are not ready.
 Keep credentials in the process environment, not Nix attributes or shell history.
 Google CLI login, ADC, the operator's GitHub login and the provider PAT are distinct.
+Export `TF_DIR` to the root selected by the repository's workflow scripts:
+`tf/infrastructure` for Factory, or `tf` for a single-root consumer.
 
 ```sh
 set -euo pipefail
@@ -28,6 +30,7 @@ umask 077
 # about a different repository's organization or credentials.
 
 # Authenticate locally and check the operator-supplied inputs.
+: "${TF_DIR:?set the reviewed repository Terraform root}"
 gcloud auth login
 gcloud auth application-default login # select the same Google account
 : "${GCP_BILLING_ACCOUNT:?set the authorized billing account}"
@@ -65,15 +68,15 @@ resources before creating anything.
 
 ```sh
 # Start with local state: the bucket does not exist yet.
-test ! -e tf/infrastructure/backend_override.tf
-test ! -e tf/infrastructure/terraform.tfstate
+test ! -e "$TF_DIR/backend_override.tf"
+test ! -e "$TF_DIR/terraform.tfstate"
 unset TF_DATA_DIR TF_WORKSPACE
-printf 'terraform {\n  backend "local" {}\n}\n' > tf/infrastructure/backend_override.tf
-tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly
+printf 'terraform {\n  backend "local" {}\n}\n' > "$TF_DIR/backend_override.tf"
+tofu -chdir="$TF_DIR" init -input=false -lockfile=readonly
 
 # The repository already exists. Import it ONLY when it has no state address.
-tofu -chdir=tf/infrastructure import module.github.github_repository.self "$REPOSITORY_NAME"
-tofu -chdir=tf/infrastructure plan
+tofu -chdir="$TF_DIR" import module.github.github_repository.self "$REPOSITORY_NAME"
+tofu -chdir="$TF_DIR" plan
 
 # Review existing repo settings, the observed required Check context, and all changes.
 # Import any other existing resources before approving a fresh local plan.
@@ -83,7 +86,7 @@ After separate bootstrap Apply approval, inspect the interactive plan again
 before confirming it. This local bootstrap exception is not the ordinary CI path.
 
 ```sh
-tofu -chdir=tf/infrastructure apply
+tofu -chdir="$TF_DIR" apply
 ```
 
 ## 2a. Out-of-band project deletion lien
@@ -105,7 +108,7 @@ The read, credential choice, creation, and verification are separately approved
 operations; do not run this block as one automated script.
 
 ```sh
-GCP_PROJECT_ID=$(tofu -chdir=tf/infrastructure output -raw gcp_tf_state_project_id)
+GCP_PROJECT_ID=$(tofu -chdir="$TF_DIR" output -raw gcp_tf_state_project_id)
 : "${GCP_PROJECT_ID:?verify the new state project ID}"
 gcloud config get-value account
 # After read-only inspection is approved:
@@ -138,15 +141,15 @@ an existing backend. Stop if the post-migration plan is not clean.
 
 ```sh
 # Move that same local state to its new, versioned GCS bucket.
-GCP_TF_STATE_BUCKET=$(tofu -chdir=tf/infrastructure output -raw gcp_tf_state_bucket)
-GCP_PROJECT_ID=$(tofu -chdir=tf/infrastructure output -raw gcp_tf_state_project_id)
-cp tf/infrastructure/terraform.tfstate tf/infrastructure/terraform.tfstate.pre-gcs
-rm tf/infrastructure/backend_override.tf
-tofu -chdir=tf/infrastructure init -migrate-state -lockfile=readonly \
+GCP_TF_STATE_BUCKET=$(tofu -chdir="$TF_DIR" output -raw gcp_tf_state_bucket)
+GCP_PROJECT_ID=$(tofu -chdir="$TF_DIR" output -raw gcp_tf_state_project_id)
+cp "$TF_DIR/terraform.tfstate" "$TF_DIR/terraform.tfstate.pre-gcs"
+rm "$TF_DIR/backend_override.tf"
+tofu -chdir="$TF_DIR" init -migrate-state -lockfile=readonly \
   -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
   -backend-config="prefix=repository/prod"
-tofu -chdir=tf/infrastructure state list
-tofu -chdir=tf/infrastructure plan # expect no changes; keep the ignored backup securely until verified
+tofu -chdir="$TF_DIR" state list
+tofu -chdir="$TF_DIR" plan # expect no changes; keep the ignored backup securely until verified
 unset GITHUB_TOKEN # gh run watch cannot use the Terraform fine-grained PAT
 unset REST_API_BEARER
 ```

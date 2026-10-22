@@ -8,7 +8,7 @@ let
   remoteInit = ''
     : "''${GCP_TF_STATE_BUCKET:?Missing state bucket}"
     : "''${TF_BACKEND_PREFIX:?Missing backend prefix}"
-    tofu -chdir=tf/infrastructure init -input=false -lockfile=readonly \
+    tofu -chdir="''${TF_DIR:-tf/infrastructure}" init -input=false -lockfile=readonly \
       -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
       -backend-config="prefix=$TF_BACKEND_PREFIX"
   '';
@@ -75,7 +75,7 @@ in
 
             {
               ${remoteInit}
-              tofu -chdir=tf/infrastructure plan -input=false -no-color -out="$plan"
+              tofu -chdir="''${TF_DIR:-tf/infrastructure}" plan -input=false -no-color -out="$plan"
             } > "$private/plan.log" 2>&1
             test -s "$plan"
             gcloud storage cp --recursive "$private" "$base/" \
@@ -139,7 +139,7 @@ in
             test -s "$plan"
             {
               ${remoteInit}
-              tofu -chdir=tf/infrastructure apply -input=false "$plan"
+              tofu -chdir="''${TF_DIR:-tf/infrastructure}" apply -input=false "$plan"
             } >> "$private/apply.log" 2>&1
           '';
         };

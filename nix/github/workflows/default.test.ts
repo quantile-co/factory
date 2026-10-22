@@ -47,11 +47,13 @@ it("keeps protected local workflows on pinned direnv without callable references
   }
 });
 
-it("CI-only scripts transfer reviewed saved bytes and keep provider logs private", () => {
-  const root = mkdtempSync(join(tmpdir(), "factory-workflow-gcs-"));
-  try {
-    const factory = `git+${new URL("../../../", import.meta.url).href}`;
-    const expr = `let
+it.each([undefined, "tf"])(
+  "CI-only scripts preserve saved bytes and private logs with TF_DIR=%s",
+  (tfDir) => {
+    const root = mkdtempSync(join(tmpdir(), "factory-workflow-gcs-"));
+    try {
+      const factory = `git+${new URL("../../../", import.meta.url).href}`;
+      const expr = `let
       f = builtins.getFlake ${JSON.stringify(factory)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       config = (pkgs.lib.evalModules {
@@ -108,80 +110,95 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
       name = "factory-workflow-gcs-test";
       paths = [ config.quantile-co.factory.github.workflows.plan.package config.quantile-co.factory.github.workflows.apply.package ];
     }`;
-    const build = spawnSync(
-      "nix",
-      ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
-      { encoding: "utf8", timeout: 120_000 },
-    );
-    if (build.error) throw build.error;
-    expect(build.status, build.stderr).toBe(0);
-    const bin = join(build.stdout.trim(), "bin");
-    const planFile = join(root, "saved-plan", "plan.tfplan");
-    const env = {
-      ...process.env,
-      GCP_TF_STATE_BUCKET: "private-bucket",
-      GITHUB_REPOSITORY_ID: "123",
-      GITHUB_RUN_ID: "456",
-      GITHUB_RUN_ATTEMPT: "1",
-      GITHUB_STEP_SUMMARY: join(root, "summary"),
-      RUNNER_TEMP: root,
-      TF_BACKEND_PREFIX: "repository/prod",
-      FAKE_STORAGE: join(root, "storage"),
-      FAKE_GCLOUD_CALLS: join(root, "gcloud-calls"),
-      FAKE_TOFU_CALLS: join(root, "tofu-calls"),
-      FAKE_APPLIED: join(root, "applied"),
-    };
-    const invoke = (phase: "plan" | "apply", extra: NodeJS.ProcessEnv = {}) => {
-      const result = spawnSync(join(bin, `github-workflow-${phase}`), [], {
-        env: { ...env, ...extra },
-        encoding: "utf8",
-        timeout: 20_000,
-      });
-      if (result.error) throw result.error;
-      expect(result.stdout + result.stderr).not.toContain(
-        "provider-private-diagnostic",
+      const build = spawnSync(
+        "nix",
+        ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
+        { encoding: "utf8", timeout: 120_000 },
       );
-      return result;
-    };
-    expect(invoke("plan", { FAKE_FAIL_PLAN: "1" }).status).toBe(7);
-    expect(readFileSync(join(env.FAKE_STORAGE, "plan.log"), "utf8")).toContain(
-      "provider-private-diagnostic",
-    );
-    expect(existsSync(planFile)).toBe(false);
+      if (build.error) throw build.error;
+      expect(build.status, build.stderr).toBe(0);
+      const bin = join(build.stdout.trim(), "bin");
+      const planFile = join(root, "saved-plan", "plan.tfplan");
+      const env = {
+        ...process.env,
+        GCP_TF_STATE_BUCKET: "private-bucket",
+        GITHUB_REPOSITORY_ID: "123",
+        GITHUB_RUN_ID: "456",
+        GITHUB_RUN_ATTEMPT: "1",
+        GITHUB_STEP_SUMMARY: join(root, "summary"),
+        RUNNER_TEMP: root,
+        TF_BACKEND_PREFIX: "repository/prod",
+        TF_DIR: tfDir,
+        FAKE_STORAGE: join(root, "storage"),
+        FAKE_GCLOUD_CALLS: join(root, "gcloud-calls"),
+        FAKE_TOFU_CALLS: join(root, "tofu-calls"),
+        FAKE_APPLIED: join(root, "applied"),
+      };
+      const invoke = (
+        phase: "plan" | "apply",
+        extra: NodeJS.ProcessEnv = {},
+      ) => {
+        const result = spawnSync(join(bin, `github-workflow-${phase}`), [], {
+          env: { ...env, ...extra },
+          encoding: "utf8",
+          timeout: 20_000,
+        });
+        if (result.error) throw result.error;
+        expect(result.stdout + result.stderr).not.toContain(
+          "provider-private-diagnostic",
+        );
+        return result;
+      };
+      expect(invoke("plan", { FAKE_FAIL_PLAN: "1" }).status).toBe(7);
+      expect(
+        readFileSync(join(env.FAKE_STORAGE, "plan.log"), "utf8"),
+      ).toContain("provider-private-diagnostic");
+      expect(existsSync(planFile)).toBe(false);
 
-    const planned = invoke("plan");
-    expect(planned.status, planned.stderr).toBe(0);
-    expect(readFileSync(env.GITHUB_STEP_SUMMARY, "utf8")).toContain("456/1/42");
-    expect(
-      readFileSync(join(env.FAKE_STORAGE, "saved-plan/plan.tfplan"), "utf8"),
-    ).toBe("reviewed saved bytes");
-    expect(existsSync(planFile)).toBe(false);
+      const planned = invoke("plan");
+      expect(planned.status, planned.stderr).toBe(0);
+      expect(readFileSync(env.GITHUB_STEP_SUMMARY, "utf8")).toContain(
+        "456/1/42",
+      );
+      expect(
+        readFileSync(join(env.FAKE_STORAGE, "saved-plan/plan.tfplan"), "utf8"),
+      ).toBe("reviewed saved bytes");
+      expect(existsSync(planFile)).toBe(false);
 
-    const callsBeforeInvalid = readFileSync(env.FAKE_GCLOUD_CALLS, "utf8");
-    expect(invoke("apply", { PLAN_REF: "bad" }).status).not.toBe(0);
-    expect(readFileSync(env.FAKE_GCLOUD_CALLS, "utf8")).toBe(
-      callsBeforeInvalid,
-    );
-    expect(
-      invoke("apply", { PLAN_REF: "456/1/42", FAKE_FAIL_APPLY: "1" }).status,
-    ).toBe(9);
-    expect(readFileSync(join(env.FAKE_STORAGE, "apply.log"), "utf8")).toContain(
-      "provider-private-diagnostic",
-    );
-    expect(existsSync(planFile)).toBe(false);
-    expect(existsSync(env.FAKE_APPLIED)).toBe(false);
+      const callsBeforeInvalid = readFileSync(env.FAKE_GCLOUD_CALLS, "utf8");
+      expect(invoke("apply", { PLAN_REF: "bad" }).status).not.toBe(0);
+      expect(readFileSync(env.FAKE_GCLOUD_CALLS, "utf8")).toBe(
+        callsBeforeInvalid,
+      );
+      expect(
+        invoke("apply", { PLAN_REF: "456/1/42", FAKE_FAIL_APPLY: "1" }).status,
+      ).toBe(9);
+      expect(
+        readFileSync(join(env.FAKE_STORAGE, "apply.log"), "utf8"),
+      ).toContain("provider-private-diagnostic");
+      expect(existsSync(planFile)).toBe(false);
+      expect(existsSync(env.FAKE_APPLIED)).toBe(false);
 
-    const applied = invoke("apply", { PLAN_REF: "456/1/42" });
-    expect(applied.status, applied.stderr).toBe(0);
-    expect(existsSync(env.FAKE_APPLIED)).toBe(true);
-    expect(existsSync(planFile)).toBe(false);
-    expect(readFileSync(env.FAKE_GCLOUD_CALLS, "utf8")).toContain(
-      "plan.tfplan#42",
-    );
-    const tofuCalls = readFileSync(env.FAKE_TOFU_CALLS, "utf8");
-    expect(tofuCalls.match(/ plan /g)).toHaveLength(2);
-    expect(tofuCalls.match(/ apply /g)).toHaveLength(2);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-}, 150_000);
+      const applied = invoke("apply", { PLAN_REF: "456/1/42" });
+      expect(applied.status, applied.stderr).toBe(0);
+      expect(existsSync(env.FAKE_APPLIED)).toBe(true);
+      expect(existsSync(planFile)).toBe(false);
+      expect(readFileSync(env.FAKE_GCLOUD_CALLS, "utf8")).toContain(
+        "plan.tfplan#42",
+      );
+      const tofuCalls = readFileSync(env.FAKE_TOFU_CALLS, "utf8");
+      expect(tofuCalls.match(/ plan /g)).toHaveLength(2);
+      expect(tofuCalls.match(/ apply /g)).toHaveLength(2);
+      for (const call of tofuCalls.trim().split("\n")) {
+        expect(call).toMatch(
+          new RegExp(
+            `^-chdir=${tfDir ?? "tf/infrastructure"} (init|plan|apply) `,
+          ),
+        );
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  },
+  150_000,
+);
