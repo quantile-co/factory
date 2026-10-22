@@ -52,7 +52,7 @@ it("lints selected Markdown read-only with consumer-native rule overrides", () =
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.markdownlint-cli2 ];
       specialArgs = { inherit pkgs; };
-    }).config.quantile.markdownlint-cli2.check.package`;
+    }).config.quantile-co.factory.markdownlint-cli2.check.package`;
     const built = spawnSync(
       "nix",
       [

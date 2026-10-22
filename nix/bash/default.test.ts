@@ -6,7 +6,7 @@ it("provides Bash without an ambient shell or startup configuration", () => {
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.bash ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile.bash.package.out`;
+    in cfg.config.quantile-co.factory.bash.package.out`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

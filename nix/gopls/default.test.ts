@@ -9,8 +9,8 @@ it("provides overridable gopls without launching a language server", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.gopls override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.gopls.package.out;
-  in [ (pkg {}) (pkg { quantile.gopls.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.gopls.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.gopls.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

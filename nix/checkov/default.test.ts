@@ -18,7 +18,7 @@ it("scans explicit consumer roots read-only with isolated Checkov and local CKV 
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${factory.href}`)};
   pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.checkov ]; specialArgs = { inherit pkgs; }; }).config;
-in cfg.quantile.checkov.check.package`;
+in cfg.quantile-co.factory.checkov.check.package`;
     const built = spawnSync(
       "nix",
       [

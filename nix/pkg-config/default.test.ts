@@ -12,8 +12,8 @@ it("runs pkg-config from Nix and permits a consumer package override", () => {
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       evaluate = override: (pkgs.lib.evalModules {
         modules = [ f.nixModules.pkg-config override ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.pkg-config.package;
-    in [ (evaluate {}).out (evaluate { quantile.pkg-config.package = pkgs.hello; }).out ]`;
+      }).config.quantile-co.factory.pkg-config.package;
+    in [ (evaluate {}).out (evaluate { quantile-co.factory.pkg-config.package = pkgs.hello; }).out ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

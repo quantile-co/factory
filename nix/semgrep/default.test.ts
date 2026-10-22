@@ -19,7 +19,7 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in let cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.semgrep ]; specialArgs = { inherit pkgs; }; }).config.quantile.semgrep;
+    in let cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.semgrep ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.semgrep;
     in [ cfg.test.package cfg.check.package ]`;
     const built = spawnSync(
       "nix",
@@ -176,9 +176,9 @@ it("scans with pinned packs and local rules together", () => {
     in (pkgs.lib.evalModules {
       specialArgs = { inherit pkgs; };
       modules = [ f.nixModules.semgrep ({ config, ... }: {
-        quantile.semgrep.check.configs = builtins.attrValues config.quantile.semgrep.packs;
+        quantile-co.factory.semgrep.check.configs = builtins.attrValues config.quantile-co.factory.semgrep.packs;
       }) ];
-    }).config.quantile.semgrep.check.package`;
+    }).config.quantile-co.factory.semgrep.check.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

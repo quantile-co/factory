@@ -9,7 +9,7 @@ it("provides Resend's webhook listener without host Node or credentials", () => 
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.resend-cli ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile.resend-cli.package`;
+    in cfg.config.quantile-co.factory.resend-cli.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

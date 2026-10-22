@@ -8,7 +8,7 @@ it("exposes Buf without generating sources or choosing consumer schema policy", 
   const root = new URL("../../", import.meta.url);
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-  in (pkgs.lib.evalModules { modules = [ f.nixModules.buf ]; specialArgs = { inherit pkgs; }; }).config.quantile.buf.package.out`;
+  in (pkgs.lib.evalModules { modules = [ f.nixModules.buf ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.buf.package.out`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

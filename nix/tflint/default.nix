@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.tflint;
+  cfg = config.quantile-co.factory.tflint;
 in
 {
-  options.quantile.tflint = {
+  options.quantile-co.factory.tflint = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.tflint;
@@ -41,7 +41,7 @@ in
           root=$(cd "$tf_dir" && pwd -P)
           git_dir=$(git -C "$root" rev-parse --absolute-git-dir)
           hash=$(printf '%s' "$root" | sha256sum | cut -d ' ' -f1)
-          state="''${DEVENV_STATE:-$git_dir/factory}"
+          state="''${QUANTILE_CO_FACTORY_STATE_DIR:-$git_dir/factory}"
           export TF_DATA_DIR="$state/tofu-check/$hash"
           tflint --chdir="$root" --config="$config" --no-color
         '';

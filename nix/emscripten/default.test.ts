@@ -11,9 +11,9 @@ it("sets a writable Emscripten cache only for an explicitly requested command", 
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
-      modules = [ f.nixModules.emscripten ({ ... }: { quantile.emscripten.package = pkgs.coreutils; }) ];
+      modules = [ f.nixModules.emscripten ({ ... }: { quantile-co.factory.emscripten.package = pkgs.coreutils; }) ];
       specialArgs = { inherit pkgs; };
-    }).config.quantile.emscripten.cache.package`;
+    }).config.quantile-co.factory.emscripten.cache.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
@@ -29,7 +29,7 @@ it("sets a writable Emscripten cache only for an explicitly requested command", 
     expect(existsSync(state)).toBe(false);
     const missing = spawnSync(command, ["/bin/true"], {
       cwd: work,
-      env: { ...process.env, DEVENV_STATE: "" },
+      env: { ...process.env, EMSCRIPTEN_STATE_DIR: "" },
     });
     expect(missing.status).not.toBe(0);
     expect(existsSync(state)).toBe(false);
@@ -38,7 +38,7 @@ it("sets a writable Emscripten cache only for an explicitly requested command", 
       ["/bin/sh", "-c", 'printf "%s" "$EM_CACHE"'],
       {
         cwd: work,
-        env: { ...process.env, DEVENV_STATE: state },
+        env: { ...process.env, EMSCRIPTEN_STATE_DIR: state },
         encoding: "utf8",
         timeout: 60_000,
       },

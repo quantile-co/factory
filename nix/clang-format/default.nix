@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.clang-format;
+  cfg = config.quantile-co.factory.clang-format;
   selectFiles = ''
     cd "$(git rev-parse --show-toplevel)"
     files=()
@@ -51,7 +51,7 @@ let
     };
 in
 {
-  options.quantile.clang-format = {
+  options.quantile-co.factory.clang-format = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.clang-tools;

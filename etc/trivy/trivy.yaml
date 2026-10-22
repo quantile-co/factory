@@ -23,6 +23,7 @@ scan:
     - .git
     - .devenv
     - .direnv
+    - .semgrep
     - .terraform
     - "**/.terraform"
     - "**/node_modules"

@@ -42,7 +42,7 @@ let
       '';
 in
 {
-  options.quantile.semgrep = {
+  options.quantile-co.factory.semgrep = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.semgrep;
@@ -78,7 +78,7 @@ in
       default = pkgs.writeShellApplication {
         name = "test-semgrep";
         runtimeInputs = [
-          config.quantile.semgrep.package
+          config.quantile-co.factory.semgrep.package
           pkgs.jq
         ];
         text = ''
@@ -103,7 +103,7 @@ in
       type = lib.types.package;
       default = pkgs.writeShellApplication {
         name = "check-semgrep";
-        runtimeInputs = [ config.quantile.semgrep.package ];
+        runtimeInputs = [ config.quantile-co.factory.semgrep.package ];
         text = ''
           set -euo pipefail
           export SEMGREP_SEND_METRICS=off SEMGREP_ENABLE_VERSION_CHECK=0
@@ -114,7 +114,7 @@ in
             ${
               lib.concatMapStringsSep " " (
                 path: "--config ${lib.escapeShellArg (toString path)}"
-              ) config.quantile.semgrep.check.configs
+              ) config.quantile-co.factory.semgrep.check.configs
             } \
             --metrics off --no-rewrite-rule-ids --jobs 1 \
             --error --strict --scan-unknown-extensions --quiet -- "$@"

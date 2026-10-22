@@ -20,7 +20,7 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.vale ]; specialArgs = { inherit pkgs; }; }).config.quantile.vale.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.vale ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.vale.check.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

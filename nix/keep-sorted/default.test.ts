@@ -65,7 +65,7 @@ it("checks annotated blocks read-only and fixes only selected tracked text on re
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.keep-sorted ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.keep-sorted.${selector}.package`;
+      }).config.quantile-co.factory.keep-sorted.${selector}.package`;
       const result = spawnSync(
         "nix",
         [

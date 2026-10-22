@@ -10,8 +10,8 @@ it("exposes overridable Helm without connecting to a cluster", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.helm override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.helm.package.out;
-  in [ (pkg {}) (pkg { quantile.helm.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.helm.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.helm.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.editorconfig;
+  cfg = config.quantile-co.factory.editorconfig;
   selectFiles = ''
     cd "$(git rev-parse --show-toplevel)"
     test -f .editorconfig || { echo 'Missing consumer .editorconfig' >&2; exit 1; }
@@ -51,7 +51,7 @@ let
   '';
 in
 {
-  options.quantile.editorconfig = {
+  options.quantile-co.factory.editorconfig = {
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/editorconfig/.editorconfig;

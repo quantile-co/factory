@@ -1,6 +1,6 @@
 { lib, pkgs, ... }:
 {
-  options.quantile.protoc = {
+  options.quantile-co.factory.protoc = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.protobuf;
@@ -14,7 +14,7 @@
   };
 
   # Contribute defaults here so mkAfter can append and mkForce can replace them.
-  config.quantile.protoc.generators = [
+  config.quantile-co.factory.protoc.generators = [
     pkgs.protoc-gen-go
     pkgs.protoc-gen-connect-go
   ];

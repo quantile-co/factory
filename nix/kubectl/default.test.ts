@@ -10,7 +10,7 @@ it("keeps host krew plugins out of the kubectl wrapper PATH", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
     modules = [ f.nixModules.kubectl ]; specialArgs = { inherit pkgs; };
-  }).config.quantile.kubectl.safePackage`;
+  }).config.quantile-co.factory.kubectl.safePackage`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

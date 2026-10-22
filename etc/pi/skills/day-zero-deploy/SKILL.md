@@ -8,7 +8,7 @@ description: Bootstrap a genuinely new Factory-module installation, migrate loca
 Read [the full shared bootstrap procedure](references/local-state.md) before
 acting. Work from the consuming repository root in its pinned direnv shell.
 Read `AGENTS.md`, `.pi/memory/MEMORY.md`, current `tf/infrastructure/`, its
-pinned Factory module sources, `devenv.nix` and production workflow callers
+pinned Factory module sources, the consumer's shell and task scripts, and production workflow callers
 **and** called workflows. Do not substitute unverified bootstrap instructions
 or assume a local checkout without state is a fresh installation.
 

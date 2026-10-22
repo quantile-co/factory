@@ -9,7 +9,7 @@ it("compares exact bytes without host file comparison tools", () => {
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.diffutils ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile.diffutils.package`;
+    in cfg.config.quantile-co.factory.diffutils.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

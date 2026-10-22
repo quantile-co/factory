@@ -7,7 +7,7 @@ it("provides uv without synchronizing a Python project", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
     modules = [ f.nixModules.uv ]; specialArgs = { inherit pkgs; };
-  }).config.quantile.uv.package`;
+  }).config.quantile-co.factory.uv.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

@@ -22,7 +22,7 @@ it("selects ecosystems from one native Dependabot policy", () => {
       cfg = (pkgs.lib.evalModules {
         modules = [ f.nixModules.dependabot ]; specialArgs = { inherit pkgs; };
       }).config;
-    in cfg.quantile.dependabot.withUpdates [ ${ecosystems.map((name) => JSON.stringify(name)).join(" ")} ]`;
+    in cfg.quantile-co.factory.dependabot.withUpdates [ ${ecosystems.map((name) => JSON.stringify(name)).join(" ")} ]`;
     const result = spawnSync(
       "nix",
       [
@@ -73,7 +73,7 @@ it("checks the indexed Dependabot copy rather than a repaired working copy", () 
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.dependabot ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.dependabot.check.package`;
+    }).config.quantile-co.factory.dependabot.check.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

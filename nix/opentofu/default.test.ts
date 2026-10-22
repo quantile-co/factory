@@ -18,7 +18,7 @@ it("validates a backend-free caller root without formatting it implicitly", () =
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.opentofu ]; specialArgs = { inherit pkgs; }; }).config.quantile.opentofu.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.opentofu ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.opentofu.check.package`;
     const built = spawnSync(
       "nix",
       [
@@ -51,7 +51,7 @@ it("validates a backend-free caller root without formatting it implicitly", () =
           ...process.env,
           TF_DIR: work,
           TF_DATA_DIR: join(work, ".terraform"),
-          DEVENV_STATE: join(work, "isolated-check-data"),
+          QUANTILE_CO_FACTORY_STATE_DIR: join(work, "isolated-check-data"),
           TF_CLI_ARGS_init: "-backend=true",
           TF_LOG: "TRACE",
           TF_LOG_PATH: join(work, "unexpected-tofu.log"),
@@ -79,7 +79,7 @@ it("checks nonempty source and formats only tracked regular Terraform files on e
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-      cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.opentofu ]; specialArgs = { inherit pkgs; }; }).config.quantile.opentofu;
+      cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.opentofu ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.opentofu;
     in [ cfg.nonempty.package cfg.format.package cfg.fix.package ]`;
     const built = spawnSync(
       "nix",

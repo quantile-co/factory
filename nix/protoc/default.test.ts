@@ -19,9 +19,9 @@ it("keeps protoc plugins mergeable and replaces them with mkForce", () => {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       cfg = (pkgs.lib.evalModules {
-        modules = [ f.nixModules.protoc { quantile.protoc.generators = ${override}; } ];
+        modules = [ f.nixModules.protoc { quantile-co.factory.protoc.generators = ${override}; } ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.protoc;
+      }).config.quantile-co.factory.protoc;
     in builtins.map pkgs.lib.getName cfg.generators`;
     const result = spawnSync(
       "nix",
@@ -71,16 +71,23 @@ it("exposes protoc, Buf and Go/Connect generators while leaving generation expli
       return result.stdout.trim();
     };
     const protoc = join(
-      build("config.quantile.protoc.package.out"),
+      build("config.quantile-co.factory.protoc.package.out"),
       "bin/protoc",
     );
-    const buf = join(build("config.quantile.buf.package.out"), "bin/buf");
+    const buf = join(
+      build("config.quantile-co.factory.buf.package.out"),
+      "bin/buf",
+    );
     const go = join(
-      build("(builtins.elemAt config.quantile.protoc.generators 0).out"),
+      build(
+        "(builtins.elemAt config.quantile-co.factory.protoc.generators 0).out",
+      ),
       "bin/protoc-gen-go",
     );
     const connect = join(
-      build("(builtins.elemAt config.quantile.protoc.generators 1).out"),
+      build(
+        "(builtins.elemAt config.quantile-co.factory.protoc.generators 1).out",
+      ),
       "bin/protoc-gen-connect-go",
     );
     const run = (binary: string, args: string[]) => {

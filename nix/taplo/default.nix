@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.taplo;
+  cfg = config.quantile-co.factory.taplo;
   select = ''
     cd "$(git rev-parse --show-toplevel)"
     config="''${TAPLO_CONFIG_FILE:-taplo.toml}"
@@ -27,7 +27,7 @@ let
   ];
 in
 {
-  options.quantile.taplo = {
+  options.quantile-co.factory.taplo = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.taplo;

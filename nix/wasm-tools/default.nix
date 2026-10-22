@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.wasm-tools;
+  cfg = config.quantile-co.factory.wasm-tools;
 in
 {
-  options.quantile.wasm-tools = {
+  options.quantile-co.factory.wasm-tools = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.wasm-tools;

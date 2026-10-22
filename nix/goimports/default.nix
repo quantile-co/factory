@@ -5,14 +5,14 @@
   ...
 }:
 let
-  cfg = config.quantile.goimports;
+  cfg = config.quantile-co.factory.goimports;
   source =
     name: check:
     pkgs.writeShellApplication {
       inherit name;
       runtimeInputs = [
         cfg.package
-        config.quantile.go.package
+        config.quantile-co.factory.go.package
         pkgs.git
       ];
       text = ''
@@ -48,10 +48,10 @@ in
     ../go
     ../gotools
   ];
-  options.quantile.goimports = {
+  options.quantile-co.factory.goimports = {
     package = lib.mkOption {
       type = lib.types.package;
-      default = config.quantile.gotools.package;
+      default = config.quantile-co.factory.gotools.package;
       description = "goimports formatter.";
     };
     check.package = lib.mkOption {

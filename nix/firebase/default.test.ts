@@ -9,8 +9,8 @@ it("keeps loopback emulator defaults and deny-all Rules when a site adds hosting
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     config = (pkgs.lib.evalModules { modules = [ f.nixModules.firebase ]; specialArgs = { inherit pkgs; }; }).config;
   in [
-    (config.quantile.firebase.withOverrides { hosting.public = "out"; })
-    (pkgs.writeText "firestore.rules" (builtins.readFile config.quantile.firebase.rulesFile))
+    (config.quantile-co.factory.firebase.withOverrides { hosting.public = "out"; })
+    (pkgs.writeText "firestore.rules" (builtins.readFile config.quantile-co.factory.firebase.rulesFile))
   ]`;
   const result = spawnSync(
     "nix",

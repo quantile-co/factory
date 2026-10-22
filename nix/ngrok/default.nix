@@ -1,6 +1,6 @@
 { lib, pkgs, ... }:
 {
-  options.quantile.ngrok.package = lib.mkOption {
+  options.quantile-co.factory.ngrok.package = lib.mkOption {
     type = lib.types.package;
     default = pkgs.ngrok;
     description = "ngrok CLI.";

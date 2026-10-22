@@ -20,7 +20,7 @@ it("lints the selected root with consumer-native TFLint rules without changing s
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       cfg = (pkgs.lib.evalModules {
         modules = [ f.nixModules.tflint f.nixModules.opentofu ]; specialArgs = { inherit pkgs; };
-      }).config.quantile;
+      }).config.quantile-co.factory;
     in [ cfg.tflint.check.package cfg.opentofu.check.package ]`;
     const built = spawnSync(
       "nix",
@@ -134,7 +134,7 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     expect(run(ambient).status).not.toBe(0);
     // Both explicit Devenv storage and the Git-owned fallback must work.
     for (const state of [join(work, "isolated-data"), ""]) {
-      const env = { ...ambient, DEVENV_STATE: state };
+      const env = { ...ambient, QUANTILE_CO_FACTORY_STATE_DIR: state };
       const initialized = run(env, tofuCheck);
       expect(initialized.status, initialized.output).toBe(0);
       const linted = run(env);
@@ -150,7 +150,7 @@ it("lints the selected root with consumer-native TFLint rules without changing s
     const child = join(work, "companion-ran");
     writeFileSync(source, "invalid Terraform syntax\n");
     const rejectedCommand = run(
-      { DEVENV_STATE: join(work, "isolated-data") },
+      { QUANTILE_CO_FACTORY_STATE_DIR: join(work, "isolated-data") },
       tofuCheck,
       ["--", "touch", child],
     );

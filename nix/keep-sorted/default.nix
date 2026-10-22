@@ -5,14 +5,14 @@
   ...
 }:
 let
-  cfg = config.quantile.keep-sorted;
+  cfg = config.quantile-co.factory.keep-sorted;
   hook =
     mode:
     pkgs.writeShellApplication {
       name = if mode == "lint" then "check-keep-sorted" else "fix-keep-sorted";
       runtimeInputs = [
         cfg.package
-        config.quantile.prek.package
+        config.quantile-co.factory.prek.package
         pkgs.git
         pkgs.yq-go
       ];
@@ -51,7 +51,7 @@ let
 in
 {
   imports = [ ../prek ];
-  options.quantile.keep-sorted = {
+  options.quantile-co.factory.keep-sorted = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.keep-sorted;

@@ -14,7 +14,8 @@ copying their contents into this file.
 ## Repository map
 
 - [README.md](README.md): usage and development entry points.
-- [devenv.nix](devenv.nix): shell wiring and check/fix/test/deployment tasks.
+- [flake.nix](flake.nix) and [.envrc](.envrc): pinned shell and direnv entry.
+- [scripts/](scripts/): file materialization, checks, fixes, tests, and deployment entry points.
 - [nix/](nix/): reusable Nix modules and executables.
 - [etc/](etc/): reusable native-format configuration assets.
 - [tf/infrastructure/](tf/infrastructure/): this repository's deployment root.

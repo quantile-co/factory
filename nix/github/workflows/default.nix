@@ -14,7 +14,7 @@ let
   '';
 in
 {
-  options.quantile.github.workflows = {
+  options.quantile-co.factory.github.workflows = {
     check.configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../../etc/github/workflows/check.yaml;
@@ -41,8 +41,8 @@ in
         default = pkgs.writeShellApplication {
           name = "github-workflow-plan";
           runtimeInputs = [
-            config.quantile.gcloud.package
-            config.quantile.opentofu.package
+            config.quantile-co.factory.gcloud.package
+            config.quantile-co.factory.opentofu.package
             pkgs.coreutils
           ];
           text = ''
@@ -101,8 +101,8 @@ in
         default = pkgs.writeShellApplication {
           name = "github-workflow-apply";
           runtimeInputs = [
-            config.quantile.gcloud.package
-            config.quantile.opentofu.package
+            config.quantile-co.factory.gcloud.package
+            config.quantile-co.factory.opentofu.package
             pkgs.coreutils
           ];
           text = ''

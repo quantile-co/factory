@@ -25,30 +25,32 @@ After cloning, allow direnv to load the development environment:
 direnv allow
 ```
 
-The devenv shell provides all other project tools.
+The pinned flake shell provides the project tools. Direnv materializes native
+configuration as regular files. Checks reject copied files that differ from their
+sources, including committed copies repaired on entry.
 
 ## Development
 
 ### Install
 
 ```sh
-devenv tasks run --show-output install:git:hooks
+pnpm install --frozen-lockfile
 ```
 
 ### Checks
 
 ```sh
 # Check source without rewriting it.
-devenv tasks run --show-output check:all
+pnpm run check
 
 # Apply safe source fixes explicitly.
-devenv tasks run --show-output fix:all
+pnpm run fix
 ```
 
 ### Tests
 
 ```sh
-devenv tasks run --show-output --mode single test:all
+pnpm test
 ```
 
 ## Skills

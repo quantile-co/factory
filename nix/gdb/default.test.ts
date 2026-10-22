@@ -12,8 +12,8 @@ it("runs GDB from Nix and permits a consumer package override", () => {
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       evaluate = override: (pkgs.lib.evalModules {
         modules = [ f.nixModules.gdb override ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.gdb.package;
-    in [ (evaluate {}).out (evaluate { quantile.gdb.package = pkgs.hello; }).out ]`;
+      }).config.quantile-co.factory.gdb.package;
+    in [ (evaluate {}).out (evaluate { quantile-co.factory.gdb.package = pkgs.hello; }).out ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

@@ -19,7 +19,7 @@ it("checks scoped tracked and untracked prose using native vocabulary and exclus
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.typos ]; specialArgs = { inherit pkgs; }; }).config.quantile.typos.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.typos ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.typos.check.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

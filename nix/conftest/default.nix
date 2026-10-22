@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.quantile.conftest;
+  cfg = config.quantile-co.factory.conftest;
   prepare = import ../opa/policy.nix;
 in
 {
-  options.quantile.conftest = {
+  options.quantile-co.factory.conftest = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.conftest;

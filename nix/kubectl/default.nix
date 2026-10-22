@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.kubectl;
+  cfg = config.quantile-co.factory.kubectl;
 in
 {
-  options.quantile.kubectl = {
+  options.quantile-co.factory.kubectl = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.kubectl;

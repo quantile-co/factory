@@ -4,20 +4,27 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
-it("materializes protected native workflows without callable references", () => {
+it("keeps protected local workflows on pinned direnv without callable references", () => {
+  const envrc = readFileSync(
+    new URL("../../../.envrc", import.meta.url),
+    "utf8",
+  );
+  expect(envrc).toContain(
+    "extra-substituters = https://quantile-co.cachix.org",
+  );
+  expect(envrc).toContain("https://pre-commit-hooks.cachix.org");
+  expect(envrc).toContain("extra-trusted-public-keys = ");
   for (const name of ["check", "test", "plan", "apply"]) {
     const source = readFileSync(
       new URL(`../../../.github/workflows/${name}.yaml`, import.meta.url),
       "utf8",
     );
-    const template = readFileSync(
-      new URL(`../../../etc/github/workflows/${name}.yaml`, import.meta.url),
-      "utf8",
-    );
-    expect(source).toBe(template);
     expect(source).not.toMatch(/^ {2}workflow_call:/m);
-    expect(source).toContain("  NIX_CONFIG: |\n    require-sigs = true\n");
-    expect(source).not.toContain("extra_nix_config:");
+    expect(source).not.toContain("extra-substituters = ");
+    expect(source).toContain("extra_nix_config: require-sigs = true");
+    expect(source).toContain("nix build --no-link --print-out-paths .#direnv");
+    expect(source).toContain('"$direnv" allow .');
+    expect(source).toContain('"$direnv" exec .');
   }
   for (const name of ["plan", "apply"]) {
     const source = readFileSync(
@@ -42,7 +49,7 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
       config = (pkgs.lib.evalModules {
         specialArgs = { inherit pkgs; };
         modules = [ f.nixModules.github f.nixModules.opentofu ({ lib, ... }: {
-          config.quantile.opentofu.package = pkgs.writeShellScriptBin "tofu" ''
+          config.quantile-co.factory.opentofu.package = pkgs.writeShellScriptBin "tofu" ''
             set -euo pipefail
             printf '%s\\n' "$*" >> "$FAKE_TOFU_CALLS"
             echo provider-private-diagnostic
@@ -63,7 +70,7 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
               exit 81
             fi
           '';
-          options.quantile.gcloud.package = lib.mkOption {
+          options.quantile-co.factory.gcloud.package = lib.mkOption {
             type = lib.types.package;
             default = pkgs.writeShellApplication {
               name = "gcloud";
@@ -91,7 +98,7 @@ it("CI-only scripts transfer reviewed saved bytes and keep provider logs private
       }).config;
     in pkgs.symlinkJoin {
       name = "factory-workflow-gcs-test";
-      paths = [ config.quantile.github.workflows.plan.package config.quantile.github.workflows.apply.package ];
+      paths = [ config.quantile-co.factory.github.workflows.plan.package config.quantile-co.factory.github.workflows.apply.package ];
     }`;
     const build = spawnSync(
       "nix",

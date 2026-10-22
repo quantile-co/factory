@@ -19,11 +19,11 @@ it("checks selected nested TypeScript with a hoisted project compiler and no emi
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       config = (pkgs.lib.evalModules { modules = [ f.nixModules.typescript ]; specialArgs = { inherit pkgs; }; }).config;
-      rendered = config.quantile.typescript.withOverrides {
+      rendered = config.quantile-co.factory.typescript.withOverrides {
         compilerOptions = { composite = true; incremental = true; outDir = "dist"; tsBuildInfoFile = "build info.tsbuildinfo"; };
         include = [ "source with spaces/*.ts" ];
       };
-    in [ config.quantile.typescript.check.package pkgs.typescript rendered ]`;
+    in [ config.quantile-co.factory.typescript.check.package pkgs.typescript rendered ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

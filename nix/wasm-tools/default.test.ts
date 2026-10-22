@@ -17,7 +17,7 @@ it("validates selected WASM binaries without executing or rewriting them", () =>
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in [ (pkgs.lib.evalModules { modules = [ f.nixModules.wasm-tools ]; specialArgs = { inherit pkgs; }; }).config.quantile.wasm-tools.check.package pkgs.wabt ]`;
+    in [ (pkgs.lib.evalModules { modules = [ f.nixModules.wasm-tools ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.wasm-tools.check.package pkgs.wabt ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

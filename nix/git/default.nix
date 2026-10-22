@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.quantile.git;
+  cfg = config.quantile-co.factory.git;
 in
 {
   imports = [ ../prek ];
-  options.quantile.git = {
+  options.quantile-co.factory.git = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.git;
@@ -28,7 +28,7 @@ in
           runtimeInputs = [
             cfg.package
             cfg.lfs.package
-            config.quantile.prek.check.package
+            config.quantile-co.factory.prek.check.package
             pkgs.coreutils
           ];
           text = ''

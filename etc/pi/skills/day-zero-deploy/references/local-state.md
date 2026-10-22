@@ -9,8 +9,8 @@ adopt its state rather than bootstrap again.
 
 ## 1. Identity and inputs
 
-Use the pinned direnv shell and the credential-free default SecretSpec profile.
-Do not select `plan`/`apply` while bootstrapping: their CI inputs are not ready.
+Use the pinned direnv shell; ordinary entry is credential-free.
+Do not run protected Plan/Apply while bootstrapping: their CI inputs are not ready.
 Keep credentials in the process environment, not Nix attributes or shell history.
 Google CLI login, ADC, the operator's GitHub login and the provider PAT are distinct.
 

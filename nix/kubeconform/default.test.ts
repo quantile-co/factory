@@ -86,7 +86,7 @@ it("validates selected Kubernetes manifests using only local schemas and ignores
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
         tools = (pkgs.lib.evalModules {
           modules = [ f.nixModules.kubeconform f.nixModules.kubectl ]; specialArgs = { inherit pkgs; };
-        }).config.quantile;
+        }).config.quantile-co.factory;
       in ${expr}`;
       const result = spawnSync(
         "nix",

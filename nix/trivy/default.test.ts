@@ -17,7 +17,7 @@ it("scans source with native offline policy, skips build output, and reports a r
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.trivy ]; specialArgs = { inherit pkgs; }; }).config.quantile.trivy.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.trivy ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.trivy.check.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

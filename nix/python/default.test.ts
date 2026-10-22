@@ -6,9 +6,9 @@ it("lets a consumer select the Python interpreter independently of Ruff and mypy
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
-    modules = [ f.nixModules.python { quantile.python.package = pkgs.python312; } ];
+    modules = [ f.nixModules.python { quantile-co.factory.python.package = pkgs.python312; } ];
     specialArgs = { inherit pkgs; };
-  }).config.quantile.python.package.pythonVersion`;
+  }).config.quantile-co.factory.python.package.pythonVersion`;
   const result = spawnSync(
     "nix",
     ["eval", "--raw", "--impure", "--expr", expr],

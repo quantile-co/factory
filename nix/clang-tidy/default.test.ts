@@ -24,7 +24,7 @@ it("requires a local compilation database for a standalone clang-tidy check", ()
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.clang-tidy ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.clang-tidy.check.package`;
+    }).config.quantile-co.factory.clang-tidy.check.package`;
     const built = run("nix", [
       "build",
       "--no-link",

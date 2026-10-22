@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.markdownlint-cli2;
+  cfg = config.quantile-co.factory.markdownlint-cli2;
 in
 {
-  options.quantile.markdownlint-cli2 = {
+  options.quantile-co.factory.markdownlint-cli2 = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.markdownlint-cli2;

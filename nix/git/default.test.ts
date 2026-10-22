@@ -27,7 +27,7 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.git ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.${tool}.${selector ? `${selector}.` : ""}package`;
+      }).config.quantile-co.factory.${tool}.${selector ? `${selector}.` : ""}package`;
       const result = spawnSync(
         "nix",
         [
@@ -195,7 +195,7 @@ it("replaces the pre-push hook once for all worktrees without installing other h
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.git ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.git.prePush.install.package`;
+    }).config.quantile-co.factory.git.prePush.install.package`;
     const built = spawnSync(
       "nix",
       [
@@ -440,7 +440,7 @@ it("generates an opt-in pre-push config without enabling fixes or changing other
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.prek ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.prek.withPrePush [ ${ids.map((id) => JSON.stringify(id)).join(" ")} ]`;
+    }).config.quantile-co.factory.prek.withPrePush [ ${ids.map((id) => JSON.stringify(id)).join(" ")} ]`;
     const result = spawnSync(
       "nix",
       [

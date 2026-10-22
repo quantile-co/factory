@@ -5,7 +5,7 @@ it("provides the Nix CLI without selecting a formatter or starting an input upda
   const root = new URL("../../", import.meta.url);
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-  in (pkgs.lib.evalModules { modules = [ f.nixModules.nix ]; specialArgs = { inherit pkgs; }; }).config.quantile.nix.package.out`;
+  in (pkgs.lib.evalModules { modules = [ f.nixModules.nix ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.nix.package.out`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

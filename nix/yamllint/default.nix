@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.yamllint;
+  cfg = config.quantile-co.factory.yamllint;
 in
 {
-  options.quantile.yamllint = {
+  options.quantile-co.factory.yamllint = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.yamllint;

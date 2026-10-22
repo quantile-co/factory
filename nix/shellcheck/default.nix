@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.shellcheck;
+  cfg = config.quantile-co.factory.shellcheck;
 in
 {
-  options.quantile.shellcheck = {
+  options.quantile-co.factory.shellcheck = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.shellcheck;

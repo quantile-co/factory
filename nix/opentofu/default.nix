@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.quantile.opentofu;
+  cfg = config.quantile-co.factory.opentofu;
   tofu = cfg.package;
 in
 {
-  options.quantile.opentofu = {
+  options.quantile-co.factory.opentofu = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.opentofu;
@@ -36,7 +36,7 @@ in
           # Isolate each root from its production .terraform backend metadata and
           # from other roots. The caller's TF_DATA_DIR must never redirect checks.
           hash=$(printf '%s' "$root" | sha256sum | cut -d ' ' -f1)
-          state="''${DEVENV_STATE:-$git_dir/factory}"
+          state="''${QUANTILE_CO_FACTORY_STATE_DIR:-$git_dir/factory}"
           export TF_DATA_DIR="$state/tofu-check/$hash"
           mkdir -p "$TF_DATA_DIR"
           for name in "''${!TF_CLI_ARGS@}" "''${!TF_LOG@}"; do unset "$name"; done

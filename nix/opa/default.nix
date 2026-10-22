@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.quantile.opa;
+  cfg = config.quantile-co.factory.opa;
   prepare = import ./policy.nix;
 in
 {
-  options.quantile.opa = {
+  options.quantile-co.factory.opa = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.open-policy-agent;

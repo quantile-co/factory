@@ -7,7 +7,7 @@ it("provides NSS certutil from the tools output without initializing a database"
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
     modules = [ f.nixModules.nss ]; specialArgs = { inherit pkgs; };
-  }).config.quantile.nss.package.tools`;
+  }).config.quantile-co.factory.nss.package.tools`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

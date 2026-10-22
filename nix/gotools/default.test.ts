@@ -9,8 +9,8 @@ it("provides overridable gotools and formats Go on stdin without writing files",
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.gotools override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.gotools.package.out;
-  in [ (pkg {}) (pkg { quantile.gotools.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.gotools.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.gotools.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

@@ -18,7 +18,7 @@ it("checks Go formatting without mutation and fixes selected tracked files", () 
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = (pkgs.lib.evalModules {
       modules = [ f.nixModules.gofumpt ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.gofumpt;
+    }).config.quantile-co.factory.gofumpt;
   in [ cfg.package.out cfg.check.package.out cfg.fix.package.out ]`;
   const built = spawnSync(
     "nix",

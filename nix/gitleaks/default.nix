@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.gitleaks;
+  cfg = config.quantile-co.factory.gitleaks;
 in
 {
-  options.quantile.gitleaks = {
+  options.quantile-co.factory.gitleaks = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.gitleaks;

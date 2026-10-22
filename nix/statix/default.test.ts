@@ -24,7 +24,7 @@ it("reports an empty Nix pattern without rewriting tracked source", () => {
     const root = new URL("../../", import.meta.url);
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.statix ]; specialArgs = { inherit pkgs; }; }).config.quantile.statix.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.statix ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.statix.check.package`;
     const built = run("nix", [
       "build",
       "--no-link",

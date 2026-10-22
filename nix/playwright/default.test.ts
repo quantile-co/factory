@@ -9,7 +9,7 @@ it("renders with the pinned headless browser without host tools or browser cache
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.playwright ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile.playwright.withVersion "1.63.0"`;
+    in cfg.config.quantile-co.factory.playwright.withVersion "1.63.0"`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
@@ -57,10 +57,10 @@ it("checks the selected browser version, including consumer overrides", () => {
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       browser = (pkgs.writeShellScriptBin "browser" "exit 0") // { playwrightVersion = "custom"; };
       cfg = pkgs.lib.evalModules {
-        modules = [ f.nixModules.playwright { quantile.playwright.package = browser; } ];
+        modules = [ f.nixModules.playwright { quantile-co.factory.playwright.package = browser; } ];
         specialArgs = { inherit pkgs; };
       };
-      selected = cfg.config.quantile.playwright.withVersion ${JSON.stringify(version)};
+      selected = cfg.config.quantile-co.factory.playwright.withVersion ${JSON.stringify(version)};
       in if selected.outPath == browser.outPath then "selected" else "wrong package"`,
       ],
       { encoding: "utf8", timeout: 60_000 },

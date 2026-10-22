@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.nixfmt;
+  cfg = config.quantile-co.factory.nixfmt;
   source =
     name: includeUntracked: command:
     pkgs.writeShellApplication {
@@ -32,7 +32,7 @@ let
     };
 in
 {
-  options.quantile.nixfmt = {
+  options.quantile-co.factory.nixfmt = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.nixfmt;

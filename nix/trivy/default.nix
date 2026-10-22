@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.trivy;
+  cfg = config.quantile-co.factory.trivy;
 in
 {
-  options.quantile.trivy = {
+  options.quantile-co.factory.trivy = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.trivy;

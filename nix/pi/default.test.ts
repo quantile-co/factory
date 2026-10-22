@@ -26,18 +26,17 @@ it("exposes readable native Pi settings and shared skills to a consumer", () => 
   pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.pi ]; specialArgs = { inherit pkgs; }; }).config;
 in builtins.toJSON {
-  settings = builtins.readFile cfg.quantile.pi.settingsFile;
+  settings = builtins.readFile cfg.quantile-co.factory.pi.settingsFile;
   skills = {
-    devenv-tasks = builtins.readFile (cfg.quantile.pi.skillsDir + "/devenv-tasks/SKILL.md");
-    deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/deploy/SKILL.md");
-    day-zero-deploy = builtins.readFile (cfg.quantile.pi.skillsDir + "/day-zero-deploy/SKILL.md");
-    marimo-pair = builtins.readFile (cfg.quantile.pi.skillsDir + "/marimo-pair/SKILL.md");
-    nvim-pair = builtins.readFile (cfg.quantile.pi.skillsDir + "/nvim-pair/SKILL.md");
-    seo-audit = builtins.readFile (cfg.quantile.pi.skillsDir + "/seo-audit/SKILL.md");
-    web-design-guidelines = builtins.readFile (cfg.quantile.pi.skillsDir + "/web-design-guidelines/SKILL.md");
-    web-perf = builtins.readFile (cfg.quantile.pi.skillsDir + "/web-perf/SKILL.md");
-    web-quality-audit = builtins.readFile (cfg.quantile.pi.skillsDir + "/web-quality-audit/SKILL.md");
-    webapp-testing = builtins.readFile (cfg.quantile.pi.skillsDir + "/webapp-testing/SKILL.md");
+    deploy = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/deploy/SKILL.md");
+    day-zero-deploy = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/day-zero-deploy/SKILL.md");
+    marimo-pair = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/marimo-pair/SKILL.md");
+    nvim-pair = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/nvim-pair/SKILL.md");
+    seo-audit = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/seo-audit/SKILL.md");
+    web-design-guidelines = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/web-design-guidelines/SKILL.md");
+    web-perf = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/web-perf/SKILL.md");
+    web-quality-audit = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/web-quality-audit/SKILL.md");
+    webapp-testing = builtins.readFile (cfg.quantile-co.factory.pi.skillsDir + "/webapp-testing/SKILL.md");
   };
 }`,
     ],
@@ -61,7 +60,6 @@ in builtins.toJSON {
     "./skills/day-zero-deploy",
   ]);
   for (const name of [
-    "devenv-tasks",
     "deploy",
     "day-zero-deploy",
     "marimo-pair",
@@ -73,9 +71,7 @@ in builtins.toJSON {
     "webapp-testing",
   ]) {
     const skill = resolved.skills[name];
-    if (
-      ["devenv-tasks", "deploy", "day-zero-deploy", "nvim-pair"].includes(name)
-    ) {
+    if (["deploy", "day-zero-deploy", "nvim-pair"].includes(name)) {
       expect(skill).toBe(
         readFileSync(
           new URL(`../../etc/pi/skills/${name}/SKILL.md`, import.meta.url),
@@ -104,7 +100,7 @@ it("ships opt-in skill scripts without touching unrelated local state", () => {
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.pi ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.pi.skillsDir`,
+    }).config.quantile-co.factory.pi.skillsDir`,
     ],
     { encoding: "utf8", timeout: 120_000 },
   );

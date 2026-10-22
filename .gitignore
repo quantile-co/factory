@@ -1,7 +1,9 @@
+# Never expose legacy local state from existing worktrees.
 .devenv/
 .devenv.flake.nix
 .direnv/
 /node_modules/
+/.husky/_/
 /tsconfig.json
 .envrc.local
 /.editorconfig
@@ -22,7 +24,6 @@ gha-creds-*.json
 .pi/npm/
 /.pi/settings.json
 /.pi/skills/deploy
-/.pi/skills/devenv-tasks
 /.pi/skills/day-zero-deploy
 result
 result-*
@@ -42,7 +43,7 @@ crash.log
 /.pi/memory/SCRATCHPAD.md
 /.pi/memory/recovery/
 
-# QMD's Nix-managed config link and writable search index stay worktree-local.
+# QMD's managed config copy and writable search index stay worktree-local.
 /.qmd/index.yml
 /.qmd/index.sqlite*
 /.qmd/.qmd-embed.lock

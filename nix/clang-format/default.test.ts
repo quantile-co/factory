@@ -55,7 +55,7 @@ it("checks C/C++ source without rewriting, requires real compile flags, and fixe
         tools = (pkgs.lib.evalModules {
           modules = [ factory.nixModules.clang-format factory.nixModules.clang-tidy ];
           specialArgs = { inherit pkgs; };
-        }).config.quantile;
+        }).config.quantile-co.factory;
     `;
     const expression = `${prelude} in {
         formatCheck = tools.clang-format.check.package.outPath;

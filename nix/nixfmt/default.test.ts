@@ -43,7 +43,7 @@ it("checks Git-selected Nix source without mutation and formats only tracked reg
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.${tool} ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.${tool}.${selector}.package`;
+      }).config.quantile-co.factory.${tool}.${selector}.package`;
       const result = spawnSync(
         "nix",
         [

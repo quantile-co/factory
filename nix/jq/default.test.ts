@@ -7,7 +7,7 @@ it("provides jq without activating Prek or its hooks", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
     modules = [ f.nixModules.jq ]; specialArgs = { inherit pkgs; };
-  }).config.quantile.jq.package`;
+  }).config.quantile-co.factory.jq.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

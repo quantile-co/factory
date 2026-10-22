@@ -18,7 +18,7 @@ it("checks goimports output and fixes only tracked regular Go files", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = (pkgs.lib.evalModules {
       modules = [ f.nixModules.goimports ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.goimports;
+    }).config.quantile-co.factory.goimports;
   in [ cfg.package.out cfg.check.package.out cfg.fix.package.out ]`;
   const built = spawnSync(
     "nix",

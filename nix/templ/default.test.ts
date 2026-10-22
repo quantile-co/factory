@@ -9,8 +9,8 @@ it("provides overridable templ without generating sources", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.templ override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.templ.package.out;
-  in [ (pkg {}) (pkg { quantile.templ.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.templ.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.templ.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

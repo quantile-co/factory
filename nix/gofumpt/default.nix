@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.gofumpt;
+  cfg = config.quantile-co.factory.gofumpt;
   source =
     name: check:
     pkgs.writeShellApplication {
@@ -44,7 +44,7 @@ let
     };
 in
 {
-  options.quantile.gofumpt = {
+  options.quantile-co.factory.gofumpt = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.gofumpt;

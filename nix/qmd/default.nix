@@ -8,7 +8,7 @@ let
   bun2nixLib = (llmAgents.inputs.bun2nix.overlays.default upstreamPkgs upstreamPkgs).bun2nix;
 in
 {
-  options.quantile.qmd = {
+  options.quantile-co.factory.qmd = {
     package = lib.mkOption {
       type = lib.types.package;
       # External fetchurl builders exec before downloading, avoiding the

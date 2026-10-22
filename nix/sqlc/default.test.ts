@@ -9,8 +9,8 @@ it("provides overridable sqlc without running code generation", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.sqlc override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.sqlc.package.out;
-  in [ (pkg {}) (pkg { quantile.sqlc.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.sqlc.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.sqlc.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

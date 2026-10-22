@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.emscripten;
+  cfg = config.quantile-co.factory.emscripten;
 in
 {
-  options.quantile.emscripten = {
+  options.quantile-co.factory.emscripten = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.emscripten;
@@ -24,16 +24,16 @@ in
           pkgs.coreutils
         ];
         text = ''
-          if [ -z "''${DEVENV_STATE:-}" ] || [ "$#" -eq 0 ]; then
-            echo 'Set DEVENV_STATE and pass an explicit Emscripten command' >&2
+          if [ -z "''${EMSCRIPTEN_STATE_DIR:-}" ] || [ "$#" -eq 0 ]; then
+            echo 'Set EMSCRIPTEN_STATE_DIR and pass an explicit Emscripten command' >&2
             exit 1
           fi
-          export EM_CACHE="$DEVENV_STATE/emscripten-cache"
+          export EM_CACHE="$EMSCRIPTEN_STATE_DIR/emscripten-cache"
           mkdir -p "$EM_CACHE"
           exec "$@"
         '';
       };
-      description = "Opt-in command runner with a writable Emscripten cache under DEVENV_STATE.";
+      description = "Opt-in command runner with a writable Emscripten cache under EMSCRIPTEN_STATE_DIR.";
     };
   };
 }

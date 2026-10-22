@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.shfmt;
+  cfg = config.quantile-co.factory.shfmt;
   selected =
     name: includeUntracked: mode:
     pkgs.writeShellApplication {
@@ -46,7 +46,7 @@ let
     };
 in
 {
-  options.quantile.shfmt = {
+  options.quantile-co.factory.shfmt = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.shfmt;

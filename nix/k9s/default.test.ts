@@ -10,8 +10,8 @@ it("exposes overridable k9s without connecting to a cluster", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.k9s override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.k9s.package.out;
-  in [ (pkg {}) (pkg { quantile.k9s.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.k9s.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.k9s.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

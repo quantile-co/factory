@@ -61,7 +61,7 @@ let
     };
 in
 {
-  options.quantile.prettier = {
+  options.quantile-co.factory.prettier = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.prettier;

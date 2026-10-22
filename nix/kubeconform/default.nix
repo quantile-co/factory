@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.quantile.kubeconform;
+  cfg = config.quantile-co.factory.kubeconform;
 in
 {
   imports = [ ../kubectl ];
-  options.quantile.kubeconform = {
+  options.quantile-co.factory.kubeconform = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.kubeconform;
@@ -22,7 +22,7 @@ in
         runtimeInputs = [ cfg.package ];
         text = ''
           schemas=()
-          version=${lib.escapeShellArg config.quantile.kubectl.package.version}
+          version=${lib.escapeShellArg config.quantile-co.factory.kubectl.package.version}
           while (( $# )); do
             case "$1" in
               -schema-location)

@@ -63,7 +63,7 @@ it("composes standalone Ruff and mypy tools, checking without writes and fixing 
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.ruff f.nixModules.mypy ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.${selector}.package`;
+      }).config.quantile-co.factory.${selector}.package`;
       const result = run(
         "nix",
         [

@@ -17,7 +17,7 @@ it("exports a usable Commitizen CLI and its native configuration independently o
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
     modules = [ f.nixModules.commitizen ]; specialArgs = { inherit pkgs; };
-  }).config.quantile.commitizen.package`;
+  }).config.quantile-co.factory.commitizen.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
@@ -52,7 +52,7 @@ it("checks newly pushed commit messages, not commit-time hooks or old history", 
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
     modules = [ f.nixModules.commitizen ]; specialArgs = { inherit pkgs; };
-  }).config.quantile.commitizen.prePush.package`;
+  }).config.quantile-co.factory.commitizen.prePush.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

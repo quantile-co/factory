@@ -37,18 +37,18 @@ let
   fonts = pkgs.makeFontsConf { fontDirectories = [ pkgs.dejavu_fonts ]; };
 in
 {
-  options.quantile.playwright.withVersion = lib.mkOption {
+  options.quantile-co.factory.playwright.withVersion = lib.mkOption {
     type = lib.types.functionTo lib.types.package;
     default =
       version:
       assert lib.assertMsg (
-        config.quantile.playwright.package.playwrightVersion == version
+        config.quantile-co.factory.playwright.package.playwrightVersion == version
       ) "The npm Playwright version must match Factory's pinned browser.";
-      config.quantile.playwright.package;
+      config.quantile-co.factory.playwright.package;
     description = "Select the configured browser after checking an exact client version.";
   };
 
-  options.quantile.playwright.package = lib.mkOption {
+  options.quantile-co.factory.playwright.package = lib.mkOption {
     type = lib.types.package;
     default =
       pkgs.runCommand "playwright-chromium-${browserVersion}"

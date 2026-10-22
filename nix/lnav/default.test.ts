@@ -23,7 +23,7 @@ it("makes the pinned lnav CLI available without opening a log", () => {
         in (pkgs.lib.evalModules {
           modules = [ f.nixModules.lnav ];
           specialArgs = { inherit pkgs; };
-        }).config.quantile.lnav.package.out`,
+        }).config.quantile-co.factory.lnav.package.out`,
       ],
       { encoding: "utf8", timeout: 120_000 },
     );

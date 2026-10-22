@@ -11,8 +11,8 @@ it("exposes overridable age and encrypts synthetic data offline", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.age override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.age.package.out;
-  in [ (pkg {}) (pkg { quantile.age.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.age.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.age.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

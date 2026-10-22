@@ -20,7 +20,7 @@ it("uses native EditorConfig for read-only checks and tracked-only shell fixes",
     mkdirSync(repo);
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-      cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.shfmt ]; specialArgs = { inherit pkgs; }; }).config.quantile.shfmt;
+      cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.shfmt ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.shfmt;
     in [ cfg.check.package cfg.fix.package ]`;
     const build = spawnSync(
       "nix",

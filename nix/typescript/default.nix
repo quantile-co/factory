@@ -7,7 +7,7 @@
 {
   imports = [ ../nodejs ];
 
-  options.quantile.typescript = {
+  options.quantile-co.factory.typescript = {
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/typescript/tsconfig.base.json;
@@ -19,7 +19,7 @@
       default =
         overrides:
         let
-          base = builtins.fromJSON (builtins.readFile config.quantile.typescript.configFile);
+          base = builtins.fromJSON (builtins.readFile config.quantile-co.factory.typescript.configFile);
           source = pkgs.writeText "tsconfig.json" (builtins.toJSON (lib.recursiveUpdate base overrides));
         in
         pkgs.runCommand "tsconfig.json" { nativeBuildInputs = [ pkgs.biome ]; } ''
@@ -33,7 +33,7 @@
       default = pkgs.writeShellApplication {
         name = "check-typescript";
         runtimeInputs = [
-          config.quantile.nodejs.package
+          config.quantile-co.factory.nodejs.package
           pkgs.git
           pkgs.coreutils
           pkgs.gnugrep

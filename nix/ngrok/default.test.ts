@@ -10,7 +10,7 @@ it("provides ngrok offline after explicit consumer license permission", () => {
     pkgs = import f.inputs.nixpkgs { system = builtins.currentSystem;
       config.allowUnfreePredicate = p: (p.pname or "") == "ngrok"; };
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.ngrok ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile.ngrok.package`;
+    in cfg.config.quantile-co.factory.ngrok.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

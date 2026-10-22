@@ -1,13 +1,13 @@
 # Plan and Apply
 
 Read the caller's current workflows, the pinned Factory reusable workflows,
-`devenv.nix`, `tf/infrastructure/`, its declared Factory Terraform module
+the consumer's shell and task scripts, `tf/infrastructure/`, its declared Factory Terraform module
 sources and `nix/github/workflows/default.nix` from the pinned Factory revision.
 Use the pinned direnv shell. Ordinary production changes use protected workflows,
 not local Apply. Validate source without backend access:
 
 ```sh
-devenv tasks run --show-output check:all
+pnpm run check
 ```
 
 ## Layout changes on an existing installation
@@ -24,8 +24,8 @@ run automatically.
 ## Local OpenTofu (exceptional, separately authorized)
 
 Ordinary production Plan/Apply must use protected workflows. If an operator
-explicitly authorizes a local exception, enter the pinned shell with the
-appropriate runtime SecretSpec profile and provider inputs. Set
+explicitly authorizes a local exception, enter the pinned shell and supply
+provider credentials at runtime from an approved source. Set
 `TF_PLAN_FILE` to an absolute private path outside Git and the Nix store;
 keep its bytes restricted for review. Use the existing bucket and prefix:
 
@@ -81,7 +81,7 @@ gh run list -R "$REPO" --limit 10 \
 Check may have run on the source branch before fast-forwarding main. Confirm its
 exact SHA, not just the branch label. Inspect current production activity; never
 cancel another operator's job. Verify main/maintainer/prod protection, WIF,
-the effective state bucket and backend prefix, including caller inputs and task
+the effective state bucket and backend prefix, including caller inputs and runtime
 environment overrides. Factory defaults to `repository/prod`; consumers may retain
 another existing prefix. Check the called workflow's `factory-production`
 concurrency and any caller guard.

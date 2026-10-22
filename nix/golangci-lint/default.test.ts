@@ -73,7 +73,7 @@ it("checks Go lint without mutation and scopes fixes to tracked sources", () => 
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.golangci-lint ${override} ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.golangci-lint.${selector}.package`;
+      }).config.quantile-co.factory.golangci-lint.${selector}.package`;
       const result = spawnSync(
         "nix",
         [
@@ -129,7 +129,7 @@ it("checks Go lint without mutation and scopes fixes to tracked sources", () => 
     expect(exec(check, roots).status).toBe(0);
 
     const fakeLint =
-      '{ quantile.golangci-lint.package = pkgs.writeShellScriptBin "golangci-lint" "printf changed > go.sum"; }';
+      '{ quantile-co.factory.golangci-lint.package = pkgs.writeShellScriptBin "golangci-lint" "printf changed > go.sum"; }';
     const guardedFix = join(build("fix", fakeLint), "bin/fix-golangci-lint");
     writeFileSync(source, badlyFormatted);
     const blocked = exec(guardedFix, roots);

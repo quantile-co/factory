@@ -31,7 +31,7 @@ it("scans history and Git-selected working files, rejecting shallow history", ()
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.gitleaks ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.gitleaks.check.package`;
+    }).config.quantile-co.factory.gitleaks.check.package`;
     const built = run("nix", [
       "build",
       "--no-link",

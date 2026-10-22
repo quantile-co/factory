@@ -14,7 +14,7 @@ it("runs an in-memory DuckDB query without creating a database and permits packa
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.duckdb ${override} ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.duckdb.package`;
+      }).config.quantile-co.factory.duckdb.package`;
       const result = spawnSync(
         "nix",
         [
@@ -47,7 +47,7 @@ it("runs an in-memory DuckDB query without creating a database and permits packa
     expect(readdirSync(work)).toEqual([]);
 
     const overridden = join(
-      build("{ quantile.duckdb.package = pkgs.hello; }"),
+      build("{ quantile-co.factory.duckdb.package = pkgs.hello; }"),
       "bin/hello",
     );
     const hello = spawnSync(overridden, [], { encoding: "utf8" });

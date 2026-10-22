@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.quantile.actionlint;
+  cfg = config.quantile-co.factory.actionlint;
 in
 {
   imports = [ ../shellcheck ];
-  options.quantile.actionlint = {
+  options.quantile-co.factory.actionlint = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.actionlint;
@@ -26,7 +26,7 @@ in
         name = "check-actionlint";
         runtimeInputs = [
           cfg.package
-          config.quantile.shellcheck.package
+          config.quantile-co.factory.shellcheck.package
           pkgs.findutils
           pkgs.git
         ];
@@ -38,7 +38,7 @@ in
             config_args=(-config-file "$ACTIONLINT_CONFIG_FILE")
           fi
           git ls-files --cached --others --exclude-standard -z -- '.github/workflows/*.yaml' '.github/workflows/*.yml' |
-            xargs -0 -r actionlint -shellcheck ${lib.getExe config.quantile.shellcheck.package} -pyflakes "" "''${config_args[@]}" --
+            xargs -0 -r actionlint -shellcheck ${lib.getExe config.quantile-co.factory.shellcheck.package} -pyflakes "" "''${config_args[@]}" --
         '';
       };
       description = "Read-only Git-scoped GitHub Actions check with ShellCheck for embedded scripts.";

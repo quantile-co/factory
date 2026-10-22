@@ -85,7 +85,7 @@ it("checks native Prettier rules and ignores without mutation, then fixes only s
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.prettier ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.prettier.${selector}`;
+      }).config.quantile-co.factory.prettier.${selector}`;
       const built = run(
         "nix",
         [

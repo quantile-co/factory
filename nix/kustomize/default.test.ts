@@ -10,8 +10,8 @@ it("exposes overridable Kustomize without generating manifests", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.kustomize override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.kustomize.package.out;
-  in [ (pkg {}) (pkg { quantile.kustomize.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.kustomize.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.kustomize.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

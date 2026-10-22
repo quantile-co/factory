@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.mypy;
+  cfg = config.quantile-co.factory.mypy;
   selected =
     name: package: command:
     pkgs.writeShellApplication {
@@ -36,7 +36,7 @@ let
 in
 {
   imports = [ ../python ];
-  options.quantile.mypy = {
+  options.quantile-co.factory.mypy = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.mypy;
@@ -52,7 +52,7 @@ in
       default = selected "check-python-mypy" cfg.package ''
         config="''${MYPY_CONFIG_FILE:-mypy.ini}"
         test -f "$config" || { echo "Missing native mypy config: $config" >&2; exit 1; }
-        version="''${MYPY_PYTHON_VERSION:-${config.quantile.python.package.pythonVersion}}"
+        version="''${MYPY_PYTHON_VERSION:-${config.quantile-co.factory.python.package.pythonVersion}}"
         export MYPY_CACHE_DIR="$scratch/mypy-cache"
         status=0
         for file in "''${files[@]}"; do

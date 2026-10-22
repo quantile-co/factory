@@ -14,7 +14,7 @@ it("runs the Google Cloud CLI without credentials and allows package overrides",
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.gcloud ${override} ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.gcloud.package`;
+      }).config.quantile-co.factory.gcloud.package`;
       const result = spawnSync(
         "nix",
         [
@@ -57,7 +57,10 @@ it("runs the Google Cloud CLI without credentials and allows package overrides",
     ).toBe(false);
 
     const hello = spawnSync(
-      join(build("{ quantile.gcloud.package = pkgs.hello; }"), "bin/hello"),
+      join(
+        build("{ quantile-co.factory.gcloud.package = pkgs.hello; }"),
+        "bin/hello",
+      ),
       [],
       { encoding: "utf8" },
     );

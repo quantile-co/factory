@@ -23,7 +23,7 @@ it("detects an unused Nix binding without modifying an untracked source file", (
     const root = new URL("../../", import.meta.url);
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.deadnix ]; specialArgs = { inherit pkgs; }; }).config.quantile.deadnix.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.deadnix ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.deadnix.check.package`;
     const built = run("nix", [
       "build",
       "--no-link",

@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.clang-tidy;
+  cfg = config.quantile-co.factory.clang-tidy;
 in
 {
-  options.quantile.clang-tidy = {
+  options.quantile-co.factory.clang-tidy = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.clang-tools;

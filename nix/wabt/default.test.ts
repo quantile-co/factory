@@ -18,7 +18,7 @@ it("parses selected WAT text without emitting binaries or following symlinks", (
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.wabt ]; specialArgs = { inherit pkgs; }; }).config.quantile.wabt.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.wabt ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.wabt.check.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

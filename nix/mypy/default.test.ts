@@ -36,7 +36,7 @@ it("checks a consumer with mypy alone, without rewriting source", () => {
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
       modules = [ f.nixModules.mypy ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.mypy.check.package`;
+    }).config.quantile-co.factory.mypy.check.package`;
     const built = run("nix", [
       "build",
       "--no-link",

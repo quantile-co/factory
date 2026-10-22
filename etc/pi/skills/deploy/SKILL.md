@@ -8,7 +8,7 @@ description: Plan, privately review, apply or troubleshoot existing Factory-modu
 Read [the full Plan and Apply procedure](references/plan-apply.md). Work from
 the consuming repository root in its pinned direnv shell. Read `AGENTS.md`,
 `.pi/memory/MEMORY.md`, current `tf/infrastructure/`, its Factory module
-references, `devenv.nix`, and the pinned caller **and** called workflows.
+references, the consumer's shell and task scripts, and the pinned caller **and** called workflows.
 
 Skill invocation, a source merge, a green Check or a successful Plan is not
 authorization to Apply. Obtain separate approval for each dispatch, credential

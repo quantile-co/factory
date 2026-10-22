@@ -13,7 +13,7 @@ it("exposes PostgreSQL and NSS tools without creating a database or certificate 
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.${tool} ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.${tool}.package.${output}`;
+      }).config.quantile-co.factory.${tool}.package.${output}`;
       const result = spawnSync(
         "nix",
         [

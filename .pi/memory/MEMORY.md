@@ -15,22 +15,21 @@ Private consumer guidance belongs in the private repository, never here.
 ## Architecture and consumer conventions
 
 #decision [[factory-config-layout]] [[factory-native-config]]
-Factory is a shared Nix flake, not a shared Devenv configuration. Use tool-owned
+Factory is a shared Nix flake, not a shared shell-task framework. Use tool-owned
 `nix/<tool>/default.nix` modules with meaningful colocated tests and native assets
-under `etc/`. Named tool-module imports do not install tools/hooks or register
-tasks; `nixModules.default` includes Devenv file handling and is for Devenv
-consumers. Standalone consumers import named modules. Consumers select packages,
-native configuration and task orchestration explicitly.
+under `etc/`. All exported Nix options live under `config.quantile-co.factory`;
+`nixModules.default` combines named modules without installing tools or hooks.
+Consumers select packages, native configuration and task orchestration explicitly.
 Keep configuration native rather than inventing Nix settings registries or tool
 bundles. Reusable executables read consumer configuration at runtime and remain
-independent of Devenv and CI. Keep Terraform native under `tf/`.
+independent of shell and CI orchestration. Keep Terraform native under `tf/`.
 
 #decision [[shared-typescript-config]] [[release-source-provenance]]
 TypeScript, Knip and Firebase defaults are native Factory assets. Consumers
-materialize project overrides through Devenv files. Public source releases are
-created from a reviewed Git commit plus that commit's pinned Devenv-generated
-regular files in an isolated checkout; downstream builders receive a complete
-archive without Devenv. Never package mutable operator working-tree files.
+materialize project overrides as regular files. Public source releases are
+created from a reviewed Git commit plus that commit's pinned generated regular
+files in an isolated checkout; downstream builders receive a complete archive.
+Never package mutable operator working-tree files.
 Bind the resulting archive and deny-all Rules to the immutable release digest.
 
 #preference [[factory-consumer-migrations]]
@@ -42,11 +41,13 @@ descriptions match the GitHub description and README byline.
 Use existing modules and workflows as-is rather than preserving obsolete policies.
 Remove migration scaffolding after successful adoption and prove convergence.
 
-#decision [[devenv-local-flake-input]]
-Name each repository's explicit Devenv `git+file:.` input `this`, with follows
-from `this/*`, and import exported modules through `inputs.this.nixModules.default`.
-Devenv reserves `self` for its generated shell flake. Keep relative module
-imports inside the local flake, not in `devenv.nix`. Q0 remains independent.
+#decision [[factory-flake-direnv]] [[factory-managed-files]]
+Factory uses a locked flake shell and the same `.envrc` through direnv locally and
+in CI. Pnpm owns task entry points; protected Plan/Apply remain workflow-only.
+The direnv entry materializes declared files as regular copies or seeds (never
+symlinks); Check compares copied contents with their source and checks tracked
+copies in the Git index so entry cannot hide committed drift. Seeded files keep
+local edits. Q0 remains Factory-independent.
 
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
@@ -56,27 +57,25 @@ assertions or skip coverage to conceal missing dependencies.
 Keep comments about current behavior, not historical migration narratives.
 `AGENTS.md` stays a navigation index. README edits require explicit approval.
 
-Checks are read-only; fixes and hook installation are explicit. Git's checked
-pre-push entry point runs checks and optional legacy handling before LFS upload.
-Installation uses the common Git hooks directory so linked worktrees inherit it;
-no commit-time hook or implicit shell-entry installation is intended.
+Checks are read-only; fixes and hook installation are explicit. Husky's tracked
+pre-push entry point runs direnv checks and optional legacy handling before LFS
+upload. No commit-time hook or implicit shell-entry installation is intended.
 
 ## Dependencies, credentials and caches
 
 #decision [[factory-moving-flake-refs]]
-Keep flake and Devenv locks aligned, including committed/indexed data. Dependabot
-does not update `devenv.lock` automatically. Generated Dependabot configuration
-must be a committed native file, not an ignored link. Consumers resolve Factory
-through the committed flake lock; Terraform module refs may lag a compatible
-flake revision. Existing checks and tests provide behavioral coverage without
-a dedicated version-alignment gate.
+Moving flake refs resolve through the committed `flake.lock`. Generated Dependabot
+configuration must be a committed native file, not an ignored link. Consumers
+resolve Factory through the committed flake lock; Terraform module refs may lag
+a compatible flake revision. Existing checks and tests provide behavioral
+coverage without a dedicated version-alignment gate.
 
-#security [[factory-production-flake-source]] [[factory-secretspec]]
+#security [[factory-production-flake-source]]
 Use Git-aware flake references, never `path:.` for a checkout containing runtime
-credentials or infrastructure data. SecretSpec resolves values only at runtime,
-not during Nix evaluation. Bare task invocation does not run `enterShell`;
-credentialed workflows enter the shell and reject empty required values.
-Forward named secrets explicitly; do not use `secrets: inherit`.
+credentials or infrastructure data. Credentialed workflows enter the same direnv
+shell as local development, then pass credentials to process environment only;
+never put resolved values in Nix outputs. Keep backend coordinates and exact
+saved-plan identity checks. Forward named secrets explicitly, not `secrets: inherit`.
 
 #decision [[factory-cachix-policy]]
 Check is credential-free and never publishes caches. Credentialed main workflows
@@ -86,8 +85,9 @@ never be uploaded to a public cache. Cache credentials never enter source, state
 or Nix outputs. Preserve signatures and repository/profile cache isolation.
 Namespace caches are best-effort; a cache-action message does not prove a hit.
 Do not dispatch production workflows just to warm caches. Keep public cache
-additions in workflow `NIX_CONFIG`: Cachix's user-level configuration otherwise
-overrides the installer's system-level additions. Preserve authenticated caller
+additions in `.envrc`'s `NIX_CONFIG` for both CI and local use; Cachix's user-level
+configuration can override install-time additions. Keep `require-sigs = true` in
+the Nix install action before entering direnv. Preserve authenticated caller
 cache reads alongside every approved public cache.
 
 ## Infrastructure and production
@@ -108,11 +108,11 @@ actor checks, protected environments, WIF, backend locks and non-cancelling
 concurrency. Workflow reuse is file-based: Factory maintains native YAML under
 `etc/github/workflows/` and one Nix module with CI transport scripts at
 `nix/github/workflows/default.nix`. Consumers other than independent Q0 materialize the
-files with Devenv `files` and own their task-specific input validation, release
+the files explicitly and own their task-specific input validation, release
 logic and post-Apply checks. Do not add downstream-application-specific logic
 to shared templates. For Terraform-only infrastructure, the shared workflow
 scripts call OpenTofu directly; local exceptional commands live in deploy skills,
-not Devenv Plan/Apply tasks. A merge or green Check is not deployment approval.
+not local Plan/Apply tasks. A merge or green Check is not deployment approval.
 Plan writes a local saved file and private log; workflows use `gcloud storage cp` to persist
 these in private GCS, then download the operator-selected exact plan generation
 for Apply without replanning. There are no GitHub artifacts, producer-run checks
@@ -144,13 +144,10 @@ separate authorization for creation or exact-name removal. Never bulk-delete lie
   to a curated pack. Cache redistribution/licensing review remains deferred.
 - QMD uses external fetch builders to avoid the known builtin-fetcher route to
   Nix's fork-inherited mutex stall (NixOS/nix#16581). This is not a global fix;
-  do not introduce a maintained Nix fork or assume a standalone CLI update fixes
-  Devenv's embedded library.
+  do not introduce a maintained Nix fork as a workaround.
 - Taplo may lose asynchronous diagnostics on exit; tests assert validation
   semantics and exit status rather than unstable diagnostic text.
-- Retain the explicit managed-directory-link workaround until pinned Devenv fixes
-  that behavior. Do not replace directory links with per-fixture Semgrep links.
-- SecretSpec file-valued lifetime handling remains deferred.
+- Do not replace copied Semgrep rule directories with per-fixture links.
 - Intentional nonports: terraform-docs, ESLint, Gitignore snippet assets,
   scaffold/IDE/OS modules, old GitLab orchestration and the old CI cache image.
 

@@ -7,7 +7,7 @@ it("selects a usable Go toolchain without running a project build", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   in (pkgs.lib.evalModules {
     modules = [ f.nixModules.go ]; specialArgs = { inherit pkgs; };
-  }).config.quantile.go.package`;
+  }).config.quantile-co.factory.go.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

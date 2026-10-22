@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.statix;
+  cfg = config.quantile-co.factory.statix;
 in
 {
-  options.quantile.statix = {
+  options.quantile-co.factory.statix = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.statix;

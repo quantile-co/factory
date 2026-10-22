@@ -35,7 +35,7 @@ it("runs standalone Conftest policy checks without changing the selected workloa
     const root = new URL("../../", import.meta.url);
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.conftest ]; specialArgs = { inherit pkgs; }; }).config.quantile.conftest.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.conftest ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.conftest.check.package`;
     const built = run("nix", [
       "build",
       "--no-link",

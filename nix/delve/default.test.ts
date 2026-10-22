@@ -9,8 +9,8 @@ it("provides overridable Delve without starting a debugger", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.delve override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.delve.package.out;
-  in [ (pkg {}) (pkg { quantile.delve.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.delve.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.delve.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

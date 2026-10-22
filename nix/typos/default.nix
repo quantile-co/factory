@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.typos;
+  cfg = config.quantile-co.factory.typos;
 in
 {
-  options.quantile.typos = {
+  options.quantile-co.factory.typos = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.typos;

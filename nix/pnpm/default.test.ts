@@ -5,7 +5,7 @@ it("selects pnpm without installing consumer dependencies", () => {
   const root = new URL("../../", import.meta.url);
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-  in (pkgs.lib.evalModules { modules = [ f.nixModules.pnpm ]; specialArgs = { inherit pkgs; }; }).config.quantile.pnpm.package`;
+  in (pkgs.lib.evalModules { modules = [ f.nixModules.pnpm ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.pnpm.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

@@ -1,6 +1,5 @@
 { inputs }:
 let
-  devenv = import ./devenv { inherit inputs; };
   modules = {
     actionlint = ./actionlint;
     age = ./age;
@@ -71,7 +70,6 @@ let
     qmd = import ./qmd { llmAgents = inputs.llm-agents; };
     resend-cli = ./resend-cli;
     ruff = ./ruff;
-    secretspec = import ./secretspec { devenvCli = inputs.devenv-cli; };
     semgrep = import ./semgrep { rulesSource = inputs.semgrep-rules; };
     shellcheck = ./shellcheck;
     shfmt = ./shfmt;
@@ -97,10 +95,8 @@ in
 {
   flakeInputs = inputs;
   nixModules = modules // {
-    inherit (devenv.nixModules) devenv;
     default = { ... }: {
-      imports = builtins.attrValues modules ++ [ devenv.nixModules.devenv.files ];
+      imports = builtins.attrValues modules;
     };
   };
-  inherit (devenv) packages;
 }

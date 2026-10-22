@@ -22,7 +22,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.editorconfig ${override} ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.editorconfig.${selector}.package`;
+      }).config.quantile-co.factory.editorconfig.${selector}.package`;
       const result = spawnSync(
         "nix",
         [
@@ -84,7 +84,11 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
     writeFileSync(source, "first\n  second\n");
     writeFileSync(cpp, "int main() {\n  return 0;\n}\n");
     writeFileSync(excluded, "excluded without newline");
-    writeFileSync(join(work, "devenv.lock"), "lock without newline");
+    mkdirSync(join(work, ".pi/memory"), { recursive: true });
+    writeFileSync(
+      join(work, ".pi/memory/fixture.txt"),
+      "memory without newline",
+    );
     writeFileSync(binary, Buffer.from([0, 1, 2]));
     writeFileSync(external, "external without newline");
     symlinkSync(external, join(work, "linked.txt"));
@@ -96,7 +100,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
       "source with spaces/example.txt",
       "example.cpp",
       "excluded/example.txt",
-      "devenv.lock",
+      ".pi/memory/fixture.txt",
       "binary.bin",
       "linked.txt",
     ]);
@@ -165,7 +169,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
         excluded,
         external,
         join(work, "untracked.txt"),
-        join(work, "devenv.lock"),
+        join(work, ".pi/memory/fixture.txt"),
       ]) {
         expect(readFileSync(path, "utf8")).toContain("without newline");
       }
@@ -181,7 +185,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
       );
       const badFixer = build(
         "fix",
-        '{ quantile.editorconfig.fixer.package = pkgs.writeShellScriptBin "end-of-file-fixer" "echo FIXTURE_EOF_FAILURE >&2; exit 23"; }',
+        '{ quantile-co.factory.editorconfig.fixer.package = pkgs.writeShellScriptBin "end-of-file-fixer" "echo FIXTURE_EOF_FAILURE >&2; exit 23"; }',
       );
       const failedFix = run(join(badFixer, "bin/fix-editorconfig-eof"));
       expect(failedFix.status).toBe(23);

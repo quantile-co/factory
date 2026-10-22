@@ -10,8 +10,8 @@ it("exposes overridable Tilt without starting services", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.tilt override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.tilt.package.out;
-  in [ (pkg {}) (pkg { quantile.tilt.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.tilt.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.tilt.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

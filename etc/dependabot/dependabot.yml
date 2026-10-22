@@ -30,11 +30,5 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
-    # Best effort only: Check requires the CLI/module revisions and devenv.lock to agree.
-    groups:
-      devenv:
-        patterns:
-          - devenv
-          - devenv-cli
     commit-message:
       prefix: "chore(deps)"

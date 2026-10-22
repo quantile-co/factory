@@ -15,7 +15,7 @@ it("keeps the QMD output identity while substituting external fetchers", () => {
       `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
   pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
   cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.qmd ]; specialArgs = { inherit pkgs; }; }).config;
-in { selected = cfg.quantile.qmd.package.outPath;
+in { selected = cfg.quantile-co.factory.qmd.package.outPath;
   upstream = f.inputs.llm-agents.packages.\${builtins.currentSystem}.qmd.outPath; }`,
     ],
     { encoding: "utf8", timeout: 120_000 },

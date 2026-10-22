@@ -17,7 +17,7 @@ it("lints native-configured shell source and task bodies without executing or ed
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-      cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.shellcheck ]; specialArgs = { inherit pkgs; }; }).config.quantile.shellcheck;
+      cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.shellcheck ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.shellcheck;
     in [ cfg.check.package cfg.taskCheck.package ]`;
     const build = spawnSync(
       "nix",

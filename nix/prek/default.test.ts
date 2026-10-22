@@ -22,7 +22,7 @@ it("runs strict JSON checks from one consumer-owned Prek config without installi
       in (pkgs.lib.evalModules {
         modules = [ f.nixModules.${tool} ];
         specialArgs = { inherit pkgs; };
-      }).config.quantile.${tool}.${selector ? `${selector}.` : ""}package`;
+      }).config.quantile-co.factory.${tool}.${selector ? `${selector}.` : ""}package`;
       const result = spawnSync(
         "nix",
         [
@@ -127,7 +127,7 @@ it("offers read-only Clang hooks as explicit pre-push selections", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = (pkgs.lib.evalModules {
       modules = [ f.nixModules.prek ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.prek;
+    }).config.quantile-co.factory.prek;
     in cfg.withPrePush [ "clang-format" "clang-tidy" ]`;
   const built = spawnSync(
     "nix",

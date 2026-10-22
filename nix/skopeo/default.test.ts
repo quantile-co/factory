@@ -10,8 +10,8 @@ it("exposes overridable Skopeo without accessing a registry", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.skopeo override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.skopeo.package.out;
-  in [ (pkg {}) (pkg { quantile.skopeo.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.skopeo.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.skopeo.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

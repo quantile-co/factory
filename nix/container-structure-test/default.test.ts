@@ -10,8 +10,8 @@ it("exposes overridable container-structure-test without pulling an image", () =
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.container-structure-test override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.container-structure-test.package.out;
-  in [ (pkg {}) (pkg { quantile.container-structure-test.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.container-structure-test.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.container-structure-test.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

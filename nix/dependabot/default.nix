@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.dependabot;
+  cfg = config.quantile-co.factory.dependabot;
   ecosystems = [
     "github-actions"
     "npm"
@@ -14,7 +14,7 @@ let
   ];
 in
 {
-  options.quantile.dependabot = {
+  options.quantile-co.factory.dependabot = {
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/dependabot/dependabot.yml;

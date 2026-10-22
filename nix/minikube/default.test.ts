@@ -10,8 +10,8 @@ it("exposes overridable Minikube without starting a cluster", () => {
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.minikube override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.minikube.package.out;
-  in [ (pkg {}) (pkg { quantile.minikube.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.minikube.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.minikube.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

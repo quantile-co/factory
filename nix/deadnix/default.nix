@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.deadnix;
+  cfg = config.quantile-co.factory.deadnix;
 in
 {
-  options.quantile.deadnix = {
+  options.quantile-co.factory.deadnix = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.deadnix;

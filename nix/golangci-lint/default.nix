@@ -5,13 +5,13 @@
   ...
 }:
 let
-  cfg = config.quantile.golangci-lint;
+  cfg = config.quantile-co.factory.golangci-lint;
   run =
     fix:
     pkgs.writeShellApplication {
       name = if fix then "fix-golangci-lint" else "check-golangci-lint";
       runtimeInputs = [
-        config.quantile.go.package
+        config.quantile-co.factory.go.package
         cfg.package
         pkgs.coreutils
         pkgs.findutils
@@ -135,7 +135,7 @@ let
 in
 {
   imports = [ ../go ];
-  options.quantile.golangci-lint = {
+  options.quantile-co.factory.golangci-lint = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.golangci-lint;

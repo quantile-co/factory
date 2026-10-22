@@ -12,8 +12,8 @@ it("runs CMake from Nix and permits a consumer package override", () => {
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       evaluate = override: (pkgs.lib.evalModules {
         modules = [ f.nixModules.cmake override ]; specialArgs = { inherit pkgs; };
-      }).config.quantile.cmake.package;
-    in [ (evaluate {}).out (evaluate { quantile.cmake.package = pkgs.hello; }).out ]`;
+      }).config.quantile-co.factory.cmake.package;
+    in [ (evaluate {}).out (evaluate { quantile-co.factory.cmake.package = pkgs.hello; }).out ]`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.prek;
+  cfg = config.quantile-co.factory.prek;
   permalinks = pkgs.writeShellApplication {
     name = "check-github-permalinks";
     runtimeInputs = [ pkgs.gnugrep ];
@@ -31,7 +31,7 @@ in
     ../commitizen
     ../gitleaks
   ];
-  options.quantile.prek = {
+  options.quantile-co.factory.prek = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.prek;
@@ -88,10 +88,10 @@ in
         name = "git-hook-tools";
         paths = [
           pkgs.python3Packages.pre-commit-hooks
-          config.quantile.commitizen.package
-          config.quantile.commitizen.prePush.package
+          config.quantile-co.factory.commitizen.package
+          config.quantile-co.factory.commitizen.prePush.package
           permalinks
-          config.quantile.gitleaks.check.package
+          config.quantile-co.factory.gitleaks.check.package
         ];
       };
       description = "Executables referenced by the native Prek hook template.";

@@ -8,7 +8,6 @@ extend-ignore-re = [
 # Git selects tracked and nonignored untracked files, including hidden source.
 extend-exclude = [
   "*.lock",
-  "devenv.lock",
   "pnpm-lock.yaml",
   "package-lock.json",
   # Factory's agent instructions, negative-rule fixtures, and vendored prose styles.

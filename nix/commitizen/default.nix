@@ -5,7 +5,7 @@
   ...
 }:
 {
-  options.quantile.commitizen = {
+  options.quantile-co.factory.commitizen = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.commitizen;
@@ -21,7 +21,7 @@
       default = pkgs.writeShellApplication {
         name = "check-commitizen-push";
         runtimeInputs = [
-          config.quantile.commitizen.package
+          config.quantile-co.factory.commitizen.package
           pkgs.git
           pkgs.coreutils
         ];

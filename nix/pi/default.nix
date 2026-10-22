@@ -42,7 +42,7 @@ let
   };
 in
 {
-  options.quantile.pi = {
+  options.quantile-co.factory.pi = {
     package = lib.mkOption {
       type = lib.types.package;
       default = llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.pi;
@@ -67,7 +67,6 @@ in
       # upstream licenses and are not repository lint targets.
       default = pkgs.linkFarm "pi-skills" (
         lib.mapAttrsToList (name: path: { inherit name path; }) {
-          devenv-tasks = ../../etc/pi/skills/devenv-tasks;
           deploy = ../../etc/pi/skills/deploy;
           day-zero-deploy = ../../etc/pi/skills/day-zero-deploy;
           nvim-pair = ../../etc/pi/skills/nvim-pair;

@@ -5,7 +5,7 @@ it("selects a working Node.js runtime without installing project dependencies", 
   const root = new URL("../../", import.meta.url);
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-  in (pkgs.lib.evalModules { modules = [ f.nixModules.nodejs ]; specialArgs = { inherit pkgs; }; }).config.quantile.nodejs.package`;
+  in (pkgs.lib.evalModules { modules = [ f.nixModules.nodejs ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.nodejs.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

@@ -60,7 +60,7 @@ it("checks without editing and safely fixes consumer files using the store-backe
             modules = [ factory.nixModules.biome ];
             specialArgs = { inherit pkgs; };
           }).config;
-        in "\${config.quantile.biome.configFile}"
+        in "\${config.quantile-co.factory.biome.configFile}"
       `,
     ]);
     expect(config).toMatch(/^\/nix\/store\//);
@@ -98,13 +98,13 @@ it("checks without editing and safely fixes consumer files using the store-backe
     const source = join(work, "nix", "probe.test.ts");
     const original = "export const answer=42\n";
     writeFileSync(source, original);
-    expect(run("pnpm", ["run", "check"], false)).toContain("format");
+    expect(run("pnpm", ["run", "check:code"], false)).toContain("format");
     expect(readFileSync(source, "utf8")).toBe(original);
-    run("pnpm", ["run", "fix"]);
+    run("pnpm", ["run", "fix:code"]);
     const fixed = readFileSync(source, "utf8");
     expect(fixed).not.toBe(original);
-    run("pnpm", ["run", "check"]);
-    run("pnpm", ["run", "fix"]);
+    run("pnpm", ["run", "check:code"]);
+    run("pnpm", ["run", "fix:code"]);
     expect(readFileSync(source, "utf8")).toBe(fixed);
     for (const file of untouched) {
       expect(readFileSync(join(work, file), "utf8")).toBe(
@@ -113,7 +113,9 @@ it("checks without editing and safely fixes consumer files using the store-backe
     }
     // A formatted, type-correct lint violation must still fail the read-only command.
     writeFileSync(source, "export const answer: any = 42;\n");
-    expect(run("pnpm", ["run", "check"], false)).toContain("noExplicitAny");
+    expect(run("pnpm", ["run", "check:code"], false)).toContain(
+      "noExplicitAny",
+    );
     expect(readFileSync(source, "utf8")).toBe(
       "export const answer: any = 42;\n",
     );

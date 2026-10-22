@@ -5,7 +5,7 @@
   ...
 }:
 {
-  options.quantile.firebase = {
+  options.quantile-co.factory.firebase = {
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/firebase/firebase.json;
@@ -23,7 +23,7 @@
       default =
         overrides:
         let
-          base = builtins.fromJSON (builtins.readFile config.quantile.firebase.configFile);
+          base = builtins.fromJSON (builtins.readFile config.quantile-co.factory.firebase.configFile);
           source = pkgs.writeText "firebase.json" (builtins.toJSON (lib.recursiveUpdate base overrides));
         in
         pkgs.runCommand "firebase.json" { nativeBuildInputs = [ pkgs.biome ]; } ''

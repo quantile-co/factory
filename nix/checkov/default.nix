@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.quantile.checkov;
+  cfg = config.quantile-co.factory.checkov;
   # Isolate Checkov from the main package set: its current package has an
   # insecure ecdsa dependency. Do not allow insecure packages globally.
   isolatedPackages =
@@ -20,7 +20,7 @@ let
       };
 in
 {
-  options.quantile.checkov = {
+  options.quantile-co.factory.checkov = {
     package = lib.mkOption {
       type = lib.types.package;
       default = isolatedPackages.checkov;

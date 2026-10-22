@@ -19,7 +19,7 @@ it("checks YAML with native policy, Git selection, and read-only duplicate-key r
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in (pkgs.lib.evalModules { modules = [ f.nixModules.yamllint ]; specialArgs = { inherit pkgs; }; }).config.quantile.yamllint.check.package`;
+    in (pkgs.lib.evalModules { modules = [ f.nixModules.yamllint ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.yamllint.check.package`;
     const built = spawnSync(
       "nix",
       ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

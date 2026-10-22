@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.vale;
+  cfg = config.quantile-co.factory.vale;
 in
 {
-  options.quantile.vale = {
+  options.quantile-co.factory.vale = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.vale;

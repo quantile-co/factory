@@ -1,6 +1,6 @@
 { lib, pkgs, ... }:
 {
-  options.quantile.resend-cli.package = lib.mkOption {
+  options.quantile-co.factory.resend-cli.package = lib.mkOption {
     type = lib.types.package;
     default = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
       pname = "resend-cli";

@@ -5,10 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.wabt;
+  cfg = config.quantile-co.factory.wabt;
 in
 {
-  options.quantile.wabt = {
+  options.quantile-co.factory.wabt = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.wabt;

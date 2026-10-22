@@ -5,8 +5,10 @@
   ...
 }:
 let
-  cfg = config.quantile.ruff;
-  target = "py${lib.replaceStrings [ "." ] [ "" ] config.quantile.python.package.pythonVersion}";
+  cfg = config.quantile-co.factory.ruff;
+  target = "py${
+    lib.replaceStrings [ "." ] [ "" ] config.quantile-co.factory.python.package.pythonVersion
+  }";
   selected =
     name: includeUntracked: includeStubs: package: command:
     pkgs.writeShellApplication {
@@ -44,7 +46,7 @@ let
 in
 {
   imports = [ ../python ];
-  options.quantile.ruff = {
+  options.quantile-co.factory.ruff = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.ruff;

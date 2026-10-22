@@ -9,7 +9,7 @@ it("provides Stripe's listener CLI without host tools or credentials", () => {
   const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     cfg = pkgs.lib.evalModules { modules = [ f.nixModules.stripe-cli ]; specialArgs = { inherit pkgs; }; };
-    in cfg.config.quantile.stripe-cli.package`;
+    in cfg.config.quantile-co.factory.stripe-cli.package`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],

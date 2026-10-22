@@ -10,8 +10,8 @@ it("exposes overridable Docker and Buildx CLIs without contacting a daemon", () 
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     pkg = override: (pkgs.lib.evalModules {
       modules = [ f.nixModules.docker-client override ]; specialArgs = { inherit pkgs; };
-    }).config.quantile.docker-client.package.out;
-  in [ (pkg {}) (pkg { quantile.docker-client.package = pkgs.hello; }) ]`;
+    }).config.quantile-co.factory.docker-client.package.out;
+  in [ (pkg {}) (pkg { quantile-co.factory.docker-client.package = pkgs.hello; }) ]`;
   const built = spawnSync(
     "nix",
     ["build", "--no-link", "--print-out-paths", "--impure", "--expr", expr],
