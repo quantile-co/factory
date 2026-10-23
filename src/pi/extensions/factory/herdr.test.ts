@@ -288,7 +288,11 @@ test("waits past early terminal readiness for Pi's session-start report", async 
     });
   const herdr = createHerdr({ git: metadata, request });
   const signal = new AbortController().signal;
-  await herdr.waitForSession("worker", signal);
+  const confirm = vi.fn(() => true);
+  expect(await herdr.waitForSession("worker", confirm, signal)).toBe(
+    "/sessions/child.jsonl",
+  );
+  expect(confirm).toHaveBeenCalledExactlyOnceWith("/sessions/child.jsonl");
   expect(request).toHaveBeenCalledTimes(2);
   expect(request).toHaveBeenCalledWith(["agent", "get", "worker"], signal);
 });
@@ -301,7 +305,7 @@ test.each([
 ])("refuses unsafe readiness: %j", async (agent) => {
   const request = vi.fn(async () => ({ agent }));
   const herdr = createHerdr({ git: metadata, request });
-  await expect(herdr.waitForSession("worker")).rejects.toThrow();
+  await expect(herdr.waitForSession("worker", () => true)).rejects.toThrow();
   expect(request).toHaveBeenCalledOnce();
 });
 
@@ -316,8 +320,8 @@ test("readiness is bounded and cancellable, never a reason to send anyway", asyn
     .mockReturnValueOnce(0)
     .mockReturnValue(30000);
   try {
-    await expect(herdr.waitForSession("worker")).rejects.toThrow(
-      /no task prompt was sent/,
+    await expect(herdr.waitForSession("worker", () => false)).rejects.toThrow(
+      /No task prompt was sent/,
     );
     expect(request).toHaveBeenCalledOnce();
   } finally {
@@ -325,7 +329,7 @@ test("readiness is bounded and cancellable, never a reason to send anyway", asyn
   }
   request.mockClear();
   await expect(
-    herdr.waitForSession("worker", AbortSignal.abort()),
+    herdr.waitForSession("worker", () => true, AbortSignal.abort()),
   ).rejects.toThrow();
   expect(request).not.toHaveBeenCalled();
 });

@@ -66,6 +66,17 @@ function dependencies(): Dependencies {
     throw new Error("Unexpected dependency call");
   };
   return {
+    selectChild: vi.fn(async () => ({
+      provider: "openai-codex",
+      model: "gpt-6.1-sol",
+      thinking: "high",
+      api: "openai-codex-responses",
+      contextWindow: 500000,
+      authSource: "stored",
+      oauth: true,
+      disposition: "inherit",
+      reason: "test",
+    })),
     git: repositories,
     direnv: { trust: vi.fn(async () => {}) },
     terminal: { run: unexpected },
@@ -83,7 +94,7 @@ function dependencies(): Dependencies {
     },
   };
 }
-function adapter(deps: Dependencies) {
+function adapter(deps: Dependencies, flag?: string, manager?: SessionManager) {
   const events = new Map<
     string,
     (event: unknown, ctx: ExtensionContext) => unknown
@@ -92,11 +103,32 @@ function adapter(deps: Dependencies) {
   registerPi(
     {
       on: (name: string, callback: never) => events.set(name, callback),
+      registerFlag: vi.fn(),
+      getFlag: () => flag,
+      appendEntry: (type: string, data: unknown) =>
+        manager?.appendCustomEntry(type, data),
       registerTool: (tool: ToolDefinition) => tools.set(tool.name, tool),
     } as unknown as ExtensionAPI,
     deps,
   );
   return { events, tools };
+}
+
+async function startup(args: string[], cwd: string, deps = dependencies()) {
+  const session = args.includes("--session")
+    ? SessionManager.open(args[args.indexOf("--session") + 1])
+    : SessionManager.create(cwd, join(base, "child-sessions"), {
+        id: args[args.indexOf("--session-id") + 1],
+      });
+  const receipt = args[args.indexOf("--factory-child-receipt") + 1];
+  const { events } = adapter(deps, receipt, session);
+  await events.get("session_start")?.({ reason: "startup" }, {
+    cwd,
+    mode: "tui",
+    sessionManager: session,
+    ui: { notify: vi.fn() },
+  } as unknown as ExtensionContext);
+  return session.getSessionFile() as string;
 }
 
 it("gates owned tools without prompting for verified syncs and pauses on drift", async () => {
@@ -205,18 +237,23 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
     return "child";
   };
   deps.herdr.inspectWorkspace = async () => ({ pane: "child:p1", occupied });
-  deps.herdr.startAgent = vi.fn(async () => {
+  let reported = "";
+  deps.herdr.startAgent = vi.fn(async ({ args }) => {
     occupied = true;
+    const file = args[args.indexOf("--session") + 1];
+    reported = await startup(args, SessionManager.open(file).getCwd());
   });
   let ready = false;
-  deps.herdr.waitForSession = vi.fn(async () => {
+  deps.herdr.waitForSession = vi.fn(async (_name, confirm) => {
     expect(occupied).toBe(true);
     expect(deps.direnv.trust).toHaveBeenCalledWith(
       primary,
       expect.any(String),
       undefined,
     );
-    ready = true;
+    ready = confirm(reported);
+    expect(ready).toBe(true);
+    return reported;
   });
   deps.herdr.promptAgent = vi.fn(async () => {
     expect(ready).toBe(true);
@@ -238,6 +275,10 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
   expect(git(primary, "branch", "--show-current")).toBe("main");
   const fork = SessionManager.open(result.session as string);
   expect(fork.getCwd()).toBe(result.path);
+  expect(fork.buildSessionContext()).toMatchObject({
+    model: { provider: "openai-codex", modelId: "gpt-6.1-sol" },
+    thinkingLevel: "high",
+  });
   expect(
     fork
       .getBranch()
@@ -249,7 +290,18 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
   expect(deps.herdr.startAgent).toHaveBeenCalledWith(
     expect.objectContaining({
       kind: "pi",
-      args: ["--session", result.session],
+      args: [
+        "--session",
+        result.session,
+        "--provider",
+        "openai-codex",
+        "--model",
+        "gpt-6.1-sol",
+        "--thinking",
+        "high",
+        "--factory-child-receipt",
+        expect.any(String),
+      ],
     }),
     undefined,
   );
@@ -264,6 +316,7 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
     ).started,
   ).toBe(false);
   expect(deps.herdr.startAgent).toHaveBeenCalledOnce();
+  expect(deps.selectChild).toHaveBeenCalledOnce();
   expect(deps.direnv.trust).toHaveBeenCalledOnce();
   expect(deps.herdr.waitForSession).toHaveBeenCalledOnce();
   expect(deps.herdr.promptAgent).toHaveBeenCalledOnce();
@@ -339,7 +392,18 @@ it("refuses concurrent launches and preserves partial results on startup failure
   expect(deps.herdr.startAgent).toHaveBeenCalledWith(
     expect.objectContaining({
       kind: "pi",
-      args: ["--session-id", expect.any(String)],
+      args: [
+        "--session-id",
+        expect.any(String),
+        "--provider",
+        "openai-codex",
+        "--model",
+        "gpt-6.1-sol",
+        "--thinking",
+        "high",
+        "--factory-child-receipt",
+        expect.any(String),
+      ],
     }),
     undefined,
   );
@@ -360,11 +424,15 @@ it.each(["readiness", "submission"])(
       pane: "existing:p1",
       occupied,
     });
-    deps.herdr.startAgent = vi.fn(async () => {
+    let reported = "";
+    deps.herdr.startAgent = vi.fn(async ({ args }) => {
       occupied = true;
+      reported = await startup(args, child);
     });
-    deps.herdr.waitForSession = vi.fn(async () => {
+    deps.herdr.waitForSession = vi.fn(async (_name, confirm) => {
       if (failure === "readiness") throw new Error("session startup timed out");
+      expect(confirm(reported)).toBe(true);
+      return reported;
     });
     deps.herdr.promptAgent = vi.fn(async () => {
       throw new Error("agent_prompt_stalled");
@@ -394,6 +462,255 @@ it.each(["readiness", "submission"])(
     );
   },
 );
+
+it.each([
+  "match",
+  "model",
+  "thinking",
+  "authSource",
+  "unavailable",
+  "old-child",
+  "session",
+])(
+  "verifies fresh child runtime before task delivery: %s",
+  async (caseName) => {
+    const deps = dependencies();
+    const childDeps = dependencies();
+    const actual = await childDeps.selectChild({}, {} as ExtensionContext);
+    if (["model", "thinking", "authSource"].includes(caseName))
+      Object.assign(actual, { [caseName]: "different" });
+    childDeps.selectChild = vi.fn(async () => {
+      if (caseName === "unavailable")
+        throw new Error("private error must not leak");
+      return actual;
+    });
+    deps.herdr.openWorktree = async () => "existing";
+    deps.herdr.inspectWorkspace = async () => ({
+      pane: "existing:p1",
+      occupied: false,
+    });
+    let reported = "/missing/old-session.jsonl";
+    let receipt = "";
+    deps.herdr.startAgent = vi.fn(async ({ args }) => {
+      receipt = args[args.indexOf("--factory-child-receipt") + 1];
+      if (caseName !== "old-child") {
+        reported = await startup(args, child, childDeps);
+        // A fresh native session has no conversation yet; verification must not need one.
+        expect(existsSync(reported)).toBe(false);
+        expect(readFileSync(receipt, "utf8")).not.toContain("private error");
+      }
+    });
+    deps.herdr.waitForSession = vi.fn(async (_name, confirm) => {
+      if (
+        !confirm(caseName === "session" ? "/different/session.jsonl" : reported)
+      )
+        throw new Error(
+          "Child must load compatible Factory startup verification; no task prompt was sent.",
+        );
+      return reported;
+    });
+    deps.herdr.promptAgent = vi.fn(async () => {});
+    const run = startWorktree(
+      {
+        branch: "task",
+        task: "Safe bounded task instructions",
+        context: "fresh",
+      },
+      { cwd: primary, mode: "tui" } as ExtensionContext,
+      "launch",
+      deps,
+    );
+    if (caseName === "match")
+      expect(await run).toMatchObject({ started: true, selection: actual });
+    else await expect(run).rejects.toThrow(/no task prompt was sent/);
+    expect(deps.herdr.promptAgent).toHaveBeenCalledTimes(
+      caseName === "match" ? 1 : 0,
+    );
+    expect(existsSync(receipt)).toBe(false);
+    expect(existsSync(join(primary, ".git/pi-herdr-worktree.lock"))).toBe(
+      false,
+    );
+  },
+);
+
+it("late startup cannot put its receipt in a subsequent launch's lock", async () => {
+  const deps = dependencies();
+  const ctx = { cwd: primary, mode: "tui" } as ExtensionContext;
+  let cwd = child;
+  let oldArgs: string[] = [];
+  let reported = "";
+  deps.herdr.openWorktree = async ({ path, branch, existing }) => {
+    cwd = path;
+    if (!existing) git(primary, "worktree", "add", "-qb", branch, path);
+    return "workspace";
+  };
+  deps.herdr.inspectWorkspace = async () => ({
+    pane: "workspace:p1",
+    occupied: false,
+  });
+  deps.herdr.startAgent = vi.fn(async ({ args }) => {
+    if (!oldArgs.length) {
+      oldArgs = args;
+      return;
+    }
+    await expect(startup(oldArgs, child)).rejects.toThrow(/ENOENT/);
+    reported = await startup(args, cwd);
+  });
+  deps.herdr.waitForSession = vi.fn(async (_name, confirm) => {
+    if (!reported) throw new Error("startup timed out");
+    expect(confirm(reported)).toBe(true);
+    return reported;
+  });
+  deps.herdr.promptAgent = vi.fn(async () => {});
+  await expect(
+    startWorktree(
+      { branch: "task", task: "Test", context: "fresh" },
+      ctx,
+      "first",
+      deps,
+    ),
+  ).rejects.toThrow(/timed out/);
+  expect(
+    (
+      await startWorktree(
+        { branch: "other-task", task: "Test", context: "fresh" },
+        ctx,
+        "second",
+        deps,
+      )
+    ).started,
+  ).toBe(true);
+  expect(deps.herdr.promptAgent).toHaveBeenCalledOnce();
+  expect(existsSync(join(primary, ".git/pi-herdr-worktree.lock"))).toBe(false);
+});
+
+it("selection failures and cancellation abort spawning, while reconciliation never selects", async () => {
+  const deps = dependencies();
+  deps.herdr.openWorktree = async () => "existing";
+  deps.herdr.inspectWorkspace = async () => ({
+    pane: "existing:p1",
+    occupied: false,
+  });
+  deps.herdr.startAgent = vi.fn();
+  deps.herdr.promptAgent = vi.fn();
+  const selection = await deps.selectChild({}, {} as ExtensionContext);
+  const controller = new AbortController();
+  deps.selectChild = vi.fn(async () => {
+    throw new Error("Unavailable explicit model");
+  });
+  const ctx = { cwd: primary, mode: "tui" } as ExtensionContext;
+  const options = { branch: "task", task: "Test", context: "fresh" as const };
+  await expect(startWorktree(options, ctx, "invalid", deps)).rejects.toThrow(
+    /Unavailable explicit model/,
+  );
+  deps.selectChild = vi.fn(async () => {
+    controller.abort();
+    return selection;
+  });
+  await expect(
+    startWorktree(
+      options,
+      { ...ctx, signal: controller.signal },
+      "cancel",
+      deps,
+    ),
+  ).rejects.toThrow(/abort/i);
+  expect(deps.herdr.startAgent).not.toHaveBeenCalled();
+  expect(deps.herdr.promptAgent).not.toHaveBeenCalled();
+  expect(existsSync(join(primary, ".git/pi-herdr-worktree.lock"))).toBe(false);
+  deps.selectChild = vi.fn();
+  deps.herdr.reconcile = vi.fn(async () => ({
+    repos: 1,
+    opened: 0,
+    closed: 0,
+    skipped: 0,
+    failed: 0,
+  }));
+  const { tools } = adapter(deps);
+  await tools
+    .get("herdr_worktree")
+    ?.execute(
+      "reconcile",
+      { action: "reconcile" },
+      undefined,
+      undefined,
+      ctx as ExtensionToolContext,
+    );
+  expect(deps.selectChild).not.toHaveBeenCalled();
+});
+
+it("returns classifier usage through native tool results even on launch failure, and deduplicates roster warnings", async () => {
+  const deps = dependencies();
+  const selection = await deps.selectChild({}, {} as ExtensionContext);
+  const usage = {
+    input: 5,
+    output: 1,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 6,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  };
+  deps.selectChild = vi.fn(async () => ({
+    ...selection,
+    usage,
+    warning: "Review changed routing roster",
+  }));
+  deps.herdr.openWorktree = async () => "existing";
+  deps.herdr.inspectWorkspace = async () => ({
+    pane: "existing:p1",
+    occupied: false,
+  });
+  let reported = "";
+  deps.herdr.startAgent = vi.fn(async ({ args }) => {
+    reported = await startup(args, child);
+  });
+  deps.herdr.waitForSession = vi.fn(async (_name, confirm) => {
+    expect(confirm(reported)).toBe(true);
+    return reported;
+  });
+  deps.herdr.promptAgent = vi.fn(async () => {});
+  const { tools } = adapter(deps);
+  const tool = tools.get("herdr_worktree") as ToolDefinition;
+  const notify = vi.fn();
+  const ctx = {
+    cwd: primary,
+    mode: "tui",
+    ui: { notify },
+  } as unknown as ExtensionToolContext;
+  const params = {
+    action: "start",
+    branch: "task",
+    task: "Test",
+    context: "fresh",
+  };
+  for (let i = 0; i < 2; i++) {
+    const result = await tool.execute(
+      "launch",
+      params,
+      undefined,
+      undefined,
+      ctx,
+    );
+    expect(result).toMatchObject({
+      usage,
+      details: { selection: { ...selection, usage } },
+    });
+  }
+  expect(notify).toHaveBeenCalledExactlyOnceWith(
+    "Review changed routing roster",
+    "warning",
+  );
+  deps.herdr.startAgent = vi.fn(async () => {
+    throw new Error("startup failed");
+  });
+  expect(
+    await tool.execute("launch", params, undefined, undefined, ctx),
+  ).toMatchObject({
+    isError: true,
+    usage,
+    details: { selection: { ...selection, usage } },
+  });
+});
 
 it("adapts the injected terminal to Pi and refuses handoff outside TUI or after cancellation", async () => {
   const deps = dependencies();

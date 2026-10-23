@@ -3,11 +3,16 @@ import {
   chmodSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
+  readFileSync,
   realpathSync,
+  renameSync,
   rmdirSync,
+  rmSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { Type } from "@earendil-works/pi-ai";
+import { Type, type Usage } from "@earendil-works/pi-ai";
 import {
   type ExtensionAPI,
   type ExtensionContext,
@@ -29,7 +34,26 @@ interface ForegroundResult {
   error?: string;
 }
 
+interface Selection {
+  provider: string;
+  model: string;
+  thinking: string;
+  api: string;
+  contextWindow: number;
+  authSource: string;
+  oauth: boolean;
+  disposition: string;
+  reason: string;
+  usage?: Usage;
+  warning?: string;
+}
+
 export interface Dependencies {
+  selectChild(
+    options: StartOptions,
+    ctx: ExtensionContext,
+    signal?: AbortSignal,
+  ): Promise<Selection>;
   git: {
     repository(path: string): Promise<Repository | undefined>;
     primaryDrift(repo: Repository): string | undefined;
@@ -79,7 +103,11 @@ export interface Dependencies {
       options: { name: string; kind: string; pane: string; args: string[] },
       signal?: AbortSignal,
     ): Promise<void>;
-    waitForSession(name: string, signal?: AbortSignal): Promise<void>;
+    waitForSession(
+      name: string,
+      confirm: (session: string) => boolean,
+      signal?: AbortSignal,
+    ): Promise<string>;
     promptAgent(
       name: string,
       prompt: string,
@@ -110,6 +138,8 @@ export interface StartOptions {
   base?: string;
   task?: string;
   context?: "fork" | "fresh";
+  model?: string;
+  thinking?: string;
 }
 
 function ancestorGuides(checkout: string): string[] {
@@ -134,6 +164,7 @@ function forkSession(
   ctx: ExtensionContext,
   cwd: string,
   toolCallId: string,
+  selection: Selection,
 ): string {
   const source = ctx.sessionManager.getSessionFile();
   if (!source || !existsSync(source))
@@ -160,6 +191,9 @@ function forkSession(
   else child.resetLeaf();
   // Persist the chosen branch without carrying the in-flight tool batch into it.
   child.appendCustomEntry("herdr-worktree-parent", { session: source });
+  child.appendModelChange(selection.provider, selection.model);
+  child.appendThinkingLevelChange(selection.thinking);
+  child.appendCustomEntry("herdr-worktree-selection", selection);
   const path = child.getSessionFile();
   if (!path) throw new Error("Pi did not create a child session.");
   chmodSync(path, 0o600);
@@ -170,9 +204,19 @@ export async function startWorktree(
   options: StartOptions,
   ctx: ExtensionContext,
   toolCallId: string,
-  { git, herdr, direnv }: Pick<Dependencies, "git" | "herdr" | "direnv">,
+  {
+    git,
+    herdr,
+    direnv,
+    selectChild,
+  }: Pick<Dependencies, "git" | "herdr" | "direnv" | "selectChild">,
   signal?: AbortSignal,
 ) {
+  signal =
+    signal && ctx.signal
+      ? AbortSignal.any([signal, ctx.signal])
+      : (signal ?? ctx.signal);
+  signal?.throwIfAborted();
   if (ctx.mode !== "tui" || !herdr.available())
     throw new Error(
       "Starting a child Pi requires an interactive Pi inside Herdr on this host. The Git guard remains active without Herdr.",
@@ -198,7 +242,7 @@ export async function startWorktree(
 
   const lock = join(repo.common, "pi-herdr-worktree.lock");
   try {
-    mkdirSync(lock);
+    mkdirSync(lock, { mode: 0o700 });
   } catch (error) {
     throw new Error(
       `Another worktree launch may be active. Inspect ${lock} before retrying; locks are never stolen automatically.`,
@@ -207,7 +251,11 @@ export async function startWorktree(
   }
   let workspace: string | undefined;
   let path: string | undefined;
+  let selection: Selection | undefined;
+  let receiptDir: string | undefined;
   try {
+    receiptDir = mkdtempSync(join(lock, "launch-"));
+    const receipt = join(receiptDir, "selection.json");
     // Re-read under the shared Git-directory lock; different Pi processes share it.
     const current = await git.repository(repo.primary);
     if (!current) throw new Error("Repository disappeared.");
@@ -255,21 +303,71 @@ export async function startWorktree(
           "An agent already occupies this worktree. It was not replaced or prompted.",
       };
     await direnv.trust(repo.primary, path, signal);
+    selection = await selectChild(options, ctx, signal);
+    signal?.throwIfAborted();
     const session =
       options.context === "fresh"
         ? undefined
-        : forkSession(ctx, path, toolCallId);
+        : forkSession(ctx, path, toolCallId, selection);
+    const sessionId = session
+      ? SessionManager.open(session).getSessionId()
+      : randomUUID();
     const name = `task-${createHash("sha256").update(`${repo.common}:${branch}`).digest("hex").slice(0, 12)}`;
     await herdr.startAgent(
       {
         name,
         kind: "pi",
         pane,
-        args: session ? ["--session", session] : ["--session-id", randomUUID()],
+        args: [
+          ...(session ? ["--session", session] : ["--session-id", sessionId]),
+          "--provider",
+          selection.provider,
+          "--model",
+          selection.model,
+          "--thinking",
+          selection.thinking,
+          "--factory-child-receipt",
+          receipt,
+        ],
       },
       signal,
     );
-    await herdr.waitForSession(name, signal);
+    const expected = selection;
+    const expectedCwd = realpathSync(path);
+    await herdr.waitForSession(
+      name,
+      (reportedSession) => {
+        if (!existsSync(receipt)) return false;
+        const actual = JSON.parse(readFileSync(receipt, "utf8"));
+        if (
+          actual.error ||
+          actual.session !== reportedSession ||
+          actual.id !== sessionId ||
+          actual.cwd !== expectedCwd ||
+          (session && reportedSession !== session)
+        )
+          throw new Error(
+            "Child startup identity/selection was not verified; no task prompt was sent.",
+          );
+        for (const key of [
+          "provider",
+          "model",
+          "thinking",
+          "api",
+          "contextWindow",
+          "authSource",
+          "oauth",
+        ] as const) {
+          if (actual.selection?.[key] !== expected[key])
+            throw new Error(
+              `Child startup ${key} differs from the requested selection; no task prompt was sent.`,
+            );
+        }
+        return true;
+      },
+      signal,
+    );
+    signal?.throwIfAborted();
     await herdr.promptAgent(
       name,
       `Work in this linked checkout: ${path}. The parent Pi session remains open. Do not switch the primary checkout or create another worktree for this same task.\n\n${task}`,
@@ -281,21 +379,34 @@ export async function startWorktree(
       pane,
       session,
       started: true,
+      selection,
       message:
-        "Child Pi accepted its task without changing parent focus or session. Uncommitted files were not copied.",
+        "Child Pi accepted its task after startup selection verification, without changing parent focus or session. Uncommitted files were not copied. Matching credential source does not prove account/billing or endpoint equivalence; no provider request was made to verify access.",
     };
   } catch (error) {
-    throw new Error(
-      `${error instanceof Error ? error.message : String(error)}${workspace ? ` Workspace ${workspace} at ${path} was preserved. Inspect it before retrying: startup or prompt delivery may already have happened.` : " No automatic cleanup or retry was attempted."}`,
-      { cause: error },
+    throw Object.assign(
+      new Error(
+        `${error instanceof Error ? error.message : String(error)}${workspace ? ` Workspace ${workspace} at ${path} was preserved. Inspect it before retrying: startup or prompt delivery may already have happened.` : " No automatic cleanup or retry was attempted."}`,
+        { cause: error },
+      ),
+      {
+        selection,
+        usage:
+          selection?.usage ??
+          (error instanceof Error && "usage" in error
+            ? error.usage
+            : undefined),
+      },
     );
   } finally {
+    if (receiptDir) rmSync(receiptDir, { recursive: true, force: true });
     rmdirSync(lock);
   }
 }
 
 export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
   const { git, herdr, terminal } = deps;
+  let lastRoutingWarning: string | undefined;
   const reporter = (ctx: ExtensionContext): Reporter => ({
     warn: (message) => ctx.ui.notify(message, "warning"),
   });
@@ -311,7 +422,39 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
     await checkBranch(ctx);
     await git.guardCommand(command, cwd);
   }
-  pi.on("session_start", async (_event, ctx) => {
+  pi.registerFlag("factory-child-receipt", {
+    type: "string",
+    description:
+      "Internal worktree startup receipt; contains no task or credentials.",
+  });
+  pi.on("session_start", async (event, ctx) => {
+    const receipt = pi.getFlag("factory-child-receipt");
+    if (event.reason === "startup" && typeof receipt === "string") {
+      // Fresh Pi sessions do not persist setup-only entries. A short-lived receipt
+      // in the launch lock also works before the first user message, without fabricating one.
+      let selection: Selection | undefined;
+      try {
+        selection = await deps.selectChild(
+          { model: "inherit", thinking: "inherit" },
+          ctx,
+        );
+      } catch {
+        // Never copy provider errors, credentials or task text into the receipt.
+      }
+      const report = {
+        session: ctx.sessionManager.getSessionFile(),
+        id: ctx.sessionManager.getSessionId(),
+        cwd: realpathSync(ctx.cwd),
+        selection,
+        error: !selection,
+      };
+      pi.appendEntry("herdr-worktree-startup", report);
+      writeFileSync(`${receipt}.tmp`, JSON.stringify(report), {
+        mode: 0o600,
+        flag: "wx",
+      });
+      renameSync(`${receipt}.tmp`, receipt);
+    }
     try {
       await checkBranch(ctx);
     } catch (error) {
@@ -384,7 +527,7 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
     name: "herdr_worktree",
     label: "Herdr worktree",
     description:
-      "Start Pi in a Git task worktree and native Herdr child workspace without replacing the parent session or focus. Existing occupied workspaces are not prompted again. Can also reconcile Herdr's worktree sidebar.",
+      "Start Pi in a Git task worktree and native Herdr child workspace without replacing the parent session or focus. Auto-select a model before spawning, or explicitly inherit/override. Verify the child runtime selection before sending the task. Occupied workspaces are not prompted. Can also reconcile Herdr's worktree sidebar.",
     promptSnippet:
       "Create/open a task worktree with a separate Pi session; preserve the primary checkout on main.",
     promptGuidelines: [
@@ -406,12 +549,24 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
       task: Type.Optional(
         Type.String({
           description:
-            "Task instructions for the child Pi. Required for start.",
+            "Task instructions for the child Pi. Required for start. Auto routing sends only this text to TypeSafe Jev; keep it free of code/secrets or use model: inherit.",
         }),
       ),
       base: Type.Optional(
         Type.String({
           description: "Starting Git ref for a new branch; defaults to main.",
+        }),
+      ),
+      model: Type.Optional(
+        Type.String({
+          description:
+            "Child model: auto (default; bounded task-only native TypeSafe Jev, same-provider Codex and parent scope), inherit, or exact provider/model ID. Auto uncertainty inherits current parent settings. Virtual models, extension providers and runtime API keys are unsupported. Child must load compatible Factory startup verification. No parent model change.",
+        }),
+      ),
+      thinking: Type.Optional(
+        Type.String({
+          description:
+            "Child thinking: auto by default with auto model routing; otherwise inherit. Accepts inherit, auto, or off/minimal/low/medium/high/xhigh/max. Deliberate choices take precedence; unsupported explicit choices fail, never clamp.",
         }),
       ),
       context: Type.Optional(
@@ -424,14 +579,31 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
     async execute(toolCallId, params, signal, _onUpdate, ctx) {
       if (params.action === "reconcile" && !inHerdr(ctx))
         throw new Error("Reconciliation requires interactive Pi inside Herdr.");
-      const result =
-        params.action === "reconcile"
-          ? await herdr.reconcile(reporter(ctx))
-          : await startWorktree(params, ctx, toolCallId, deps, signal);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result) }],
-        details: result,
-      };
+      try {
+        const result =
+          params.action === "reconcile"
+            ? await herdr.reconcile(reporter(ctx))
+            : await startWorktree(params, ctx, toolCallId, deps, signal);
+        const warning =
+          "selection" in result ? result.selection?.warning : undefined;
+        if (warning && warning !== lastRoutingWarning)
+          ctx.ui.notify(warning, "warning");
+        if ("selection" in result) lastRoutingWarning = warning;
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result,
+          usage: "selection" in result ? result.selection?.usage : undefined,
+        };
+      } catch (error) {
+        if (!(error instanceof Error) || !("usage" in error)) throw error;
+        return {
+          content: [{ type: "text", text: error.message }],
+          details:
+            "selection" in error ? { selection: error.selection } : undefined,
+          isError: true,
+          usage: error.usage as Usage | undefined,
+        };
+      }
     },
   });
 

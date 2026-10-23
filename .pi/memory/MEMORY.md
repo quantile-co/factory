@@ -126,7 +126,8 @@ Only `index.ts` imports sibling implementation modules: it wires plain dependenc
 objects into consumer-owned interfaces. `pi.ts` owns Pi registration, sessions and
 SDK UI integration; `git.ts` owns Git inspection and protections; `herdr.ts` owns
 Herdr workspaces, agents and reconciliation; `terminal.ts` owns foreground process
-execution and terminal restoration; `direnv.ts` owns worktree environment approval.
+execution and terminal restoration; `direnv.ts` owns worktree environment approval;
+`model.ts` owns the one-time child selection policy over native Pi registry APIs.
 Keep these boundary implementations independent of the Pi SDK. No dependency-injection framework, service registry or interface per helper.
 Tests inject boundary dependencies rather than mocking sibling modules, retaining
 real Git repositories and Pi session files where their behavior matters.
@@ -167,6 +168,72 @@ preflight never evaluates either environment or bypasses hooks.
 Failures preserve partial workspaces/sessions for inspection instead of retrying
 uncertain mutations. A Git-directory launch lock coordinates Pi processes;
 inspect an abandoned lock before removing it manually.
+
+#decision [[factory-child-routing]]
+Child model selection happens in the parent before spawning, using current API
+context, never environment model variables or restored session defaults. Omitted
+`model` means `auto`; `model: inherit` avoids classification. Exact physical
+`provider/model` and thinking overrides take precedence. Both fresh and fork
+launches carry explicit provider/model/thinking CLI arguments; forks also record
+native model/thinking entries. There is no virtual provider, per-turn switching,
+new permission policy or parent model change.
+
+Auto uses native `typesafe/jev-latest` with saved login, sending only the submitted
+task text, never session messages or files. Keep tasks free of code and secrets;
+the small local refusal heuristic is not a secret scanner. Insufficient or
+oversized tasks and obvious high-stakes work inherit without classification.
+Jev answers typed complexity and risk questions within five seconds. Finite label
+probabilities of at least 0.9 for a known complexity and at most 0.05 for risk
+permit routing; these are policy thresholds, not task-success estimates. Missing
+classifier/auth, errors, uncertainty or unsafe candidates inherit both current
+settings except deliberate overrides. Cancellation aborts launch. Returned
+classifier usage enters native tool accounting, including launch failures.
+
+Auto stays on `openai-codex` and intersects the available registry snapshot with
+any current parent scope. Scope is a cycling preference, not a security boundary;
+explicit model choices may intentionally go outside it. Conservative tier order:
+
+- Routine: GPT-6 Luna, then GPT-5.6 Luna; high thinking.
+- Standard: GPT-6.1 Sol, GPT-6 Sol, then GPT-5.6 Terra; medium thinking.
+- Hard: GPT-6 Astra, then GPT-5.6 Sol; high thinking.
+
+These roles follow [Codex model guidance](https://developers.openai.com/codex/models/),
+[model selection](https://developers.openai.com/api/docs/guides/model-selection),
+and the GPT-5.6 [Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol),
+[Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) and
+[Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) descriptions;
+they are starting policy, not cross-generation equivalence or subscription price
+claims. Native registry capabilities take precedence over API product limits.
+Validate effective thinking without silent clamping. Fork auto routing never
+shrinks the parent's declared context window, even if recent measured usage is
+small; use fresh context or a deliberate override when appropriate. Unknown
+parents/providers inherit. Unknown eligible Codex models or an entirely uncovered
+tier produce a tool-result warning and a deduplicated parent UI warning on launch;
+missing individual legacy versions do not. Review policy rather than silently
+expanding scope or selecting unknown models.
+
+Startup verification uses a native Factory CLI flag and `session_start` handler.
+The child records its actual available physical selection, API, context capacity,
+credential-source category and OAuth mode in a private atomic receipt in a unique
+launch directory under the Git lock. Fresh sessions need this receipt because
+native setup-only entries are not persisted before the first user message.
+Compare the snapshot and session ID/path/cwd with the requested launch and Herdr's
+session report before sending any task. Clean only the owned launch directory;
+a delayed old child cannot write into a newer launch's directory. Missing or older
+Factory handlers, declined project trust, mismatches and timeouts fail closed
+without prompting or replacing the child. Adopt compatible Factory copies before
+reloading a parent expected to launch into older consumer checkouts.
+
+Virtual selection inheritance, extension-registered providers and runtime API-key
+overrides are unsupported; require a usable physical alternative rather than
+calling an inaccessible router or copying credentials. A virtual parent also
+requires explicit physical thinking because router-defined levels are not
+necessarily physical reasoning efforts. Matching source category
+is not proof of the same account, billing source, endpoint, all model overrides or
+successful future authentication. Verification is a startup snapshot, not a
+sandbox against later user/extension changes. No credential resolution or provider
+inference is performed to prove access. Occupied children and reconciliation do
+no selection/classifier work.
 
 Worktree roots resolve from `PI_HERDR_WORKTREE_ROOT`, then repository-local Git
 config `pi.herdrWorktreeRoot`, then `.worktrees` beside the primary checkout.

@@ -559,7 +559,11 @@ export function createHerdr({
         signal,
       );
     },
-    async waitForSession(name: string, signal?: AbortSignal): Promise<void> {
+    async waitForSession(
+      name: string,
+      confirm: (session: string) => boolean,
+      signal?: AbortSignal,
+    ): Promise<string> {
       const deadline = Date.now() + 30000;
       while (Date.now() < deadline) {
         signal?.throwIfAborted();
@@ -584,13 +588,14 @@ export function createHerdr({
           session.agent === "pi" &&
           session.kind === "path" &&
           typeof session.value === "string" &&
-          session.value.length > 0
+          session.value.length > 0 &&
+          confirm(session.value)
         )
-          return;
+          return session.value;
         await delay(100, undefined, { signal });
       }
       throw new Error(
-        "Pi did not report its initialized session; no task prompt was sent.",
+        "Pi did not report its initialized session and verified selection. The child must load compatible Factory startup verification; check project trust or an older checkout. No task prompt was sent.",
       );
     },
     async promptAgent(
