@@ -296,41 +296,82 @@ it.each([
 });
 
 it.each([
-  "missing",
-  "auth",
-  "provider",
-  "risk",
-  "large",
-  "code",
-  "secrets",
-  "small",
-])("does no classifier work for %s preflight fallback", async (reason) => {
-  const { ctx, classify, available } = context();
-  let input = task;
-  if (reason === "missing") ctx.modelRegistry.findOfType = () => undefined;
-  if (reason === "auth")
-    ctx.modelRegistry.getProviderAuthStatus = (provider) => ({
-      configured: provider !== "typesafe",
-      source: "stored",
+  "security",
+  "IAM",
+  "permission",
+  "permissions",
+  "credential",
+  "credentials",
+  "migration",
+  "Terraform",
+  "state",
+  "production",
+  "payment",
+  "medical",
+  "legal",
+])("lets Jev assess %s topic risk before routing", async (topic) => {
+  const { ctx, classify } = context();
+  const input = `Correct a typo in the ${topic} documentation without changing behavior.`;
+  for (const risk of [0.01, 0.8]) {
+    const response = result("standard", 0.96, risk);
+    classify.mockClear().mockResolvedValue(response);
+    const finish = vi.fn();
+    expect(
+      await selectChild(
+        { task: input, context: "fresh" },
+        ctx,
+        undefined,
+        () => finish,
+      ),
+    ).toMatchObject({
+      model: risk === 0.01 ? "gpt-6.1-sol" : "gpt-6-astra",
+      thinking: risk === 0.01 ? "medium" : "high",
+      disposition: risk === 0.01 ? "auto" : "fallback",
+      usage,
     });
-  if (reason === "provider") {
-    ctx.model = { ...available[2], provider: "openai" };
-    available.push(ctx.model);
+    expect(classify).toHaveBeenCalledExactlyOnceWith(
+      { provider: "typesafe", id: "jev-latest" },
+      {
+        state: { task: input },
+        questions: {
+          complexity: expect.objectContaining({ type: "choice" }),
+          risk: expect.objectContaining({ type: "bool" }),
+        },
+      },
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(finish).toHaveBeenCalledExactlyOnceWith(response, undefined);
   }
-  if (reason === "risk")
-    input = "Change security IAM permissions and migrate production state";
-  if (reason === "large") input = "a".repeat(4001);
-  if (reason === "code")
-    input = `${task}\n\`\`\`typescript\nconst x = 1;\n\`\`\``;
-  if (reason === "secrets") input = `${task} api_key=private-value`;
-  if (reason === "small") input = "fix it";
-  expect(await selectChild({ task: input }, ctx)).toMatchObject({
-    model: "gpt-6-astra",
-    thinking: "high",
-    disposition: "fallback",
-  });
-  expect(classify).not.toHaveBeenCalled();
 });
+
+it.each(["missing", "auth", "provider", "large", "code", "secrets", "small"])(
+  "does no classifier work for %s preflight fallback",
+  async (reason) => {
+    const { ctx, classify, available } = context();
+    let input = task;
+    if (reason === "missing") ctx.modelRegistry.findOfType = () => undefined;
+    if (reason === "auth")
+      ctx.modelRegistry.getProviderAuthStatus = (provider) => ({
+        configured: provider !== "typesafe",
+        source: "stored",
+      });
+    if (reason === "provider") {
+      ctx.model = { ...available[2], provider: "openai" };
+      available.push(ctx.model);
+    }
+    if (reason === "large") input = "a".repeat(4001);
+    if (reason === "code")
+      input = `${task}\n\`\`\`typescript\nconst x = 1;\n\`\`\``;
+    if (reason === "secrets") input = `${task} api_key=private-value`;
+    if (reason === "small") input = "fix it";
+    expect(await selectChild({ task: input }, ctx)).toMatchObject({
+      model: "gpt-6-astra",
+      thinking: "high",
+      disposition: "fallback",
+    });
+    expect(classify).not.toHaveBeenCalled();
+  },
+);
 
 it("warns on material roster drift, but never expands scope or auto-selects unknown models", async () => {
   const { ctx, available, classify } = context();

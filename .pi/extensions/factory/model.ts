@@ -203,12 +203,6 @@ export async function selectChild(
         "Task is insufficient, oversized, or may contain code/secrets; not classified.",
       );
     else if (
-      /\b(?:security|iam|permissions?|credentials?|migration|terraform|state|production|payment|medical|legal)\b/i.test(
-        task,
-      )
-    )
-      fallback("Potential high-stakes work; not classified.");
-    else if (
       !jev ||
       !registry.getProviderAuthStatus("typesafe").configured ||
       registry.getProviderAuthStatus("typesafe").source !== "stored" ||

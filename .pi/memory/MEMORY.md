@@ -184,7 +184,8 @@ new permission policy or parent model change.
 Auto uses native `typesafe/jev-latest` with saved login, sending only the submitted
 task text, never session messages or files. Keep tasks free of code and secrets;
 the small local refusal heuristic is not a secret scanner. Insufficient or
-oversized tasks and obvious high-stakes work inherit without classification.
+oversized tasks inherit without classification. Topic keywords are not a local
+gate; risk is classifier-assessed.
 Jev answers typed complexity and risk questions within five seconds. Finite label
 probabilities of at least 0.9 for a known complexity and at most 0.05 for risk
 permit routing; these are policy thresholds, not task-success estimates. Missing
