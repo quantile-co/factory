@@ -82,8 +82,9 @@ comments and blank-line groupings. `lib.mkFlake` under `nix/flake/` handles only
 module evaluation, platform iteration and output wiring; do not hide repository
 policy in a shell module. `lib.mkFiles { inherit pkgs; }` accepts destination-to-source/mode
 declarations; local paths and derivation references are retained without a caller
-`sourceRoot` or manifest variable. Package-only modules are replaced by explicit
-`packages.<system>.<name>` exports using upstream names, including `nodejs_24`.
+`sourceRoot` or manifest variable. Prefer explicit `packages.<system>.<name>`
+exports using upstream names, including `nodejs_24`, over generic package-only
+modules. Explicitly selected tool modules may retain native package options.
 Factory-owned workflow outputs use `github-workflow-plan` and `github-workflow-apply`.
 Unsupported or broken exports are omitted for that platform. Factory enables
 unfree packages in its own Nixpkgs instance; host configuration is unchanged.
@@ -447,6 +448,20 @@ do not rename upstream-native configuration variables.
   `39919872065`, approved exact-generation Apply `39923368441`. Only module
   addresses and output names changed; cloud resources, IAM and backend identity
   were retained. Do not replay this completed migration.
+
+## Native CLI packages
+
+#decision [[factory-native-cli-packages]]
+`factory.amp.package` and `factory.hunk.package` select the native packages from
+the locked `llm-agents` input; `factory.tailscale.package` and
+`factory.clickhouse.package` select Nixpkgs packages. `factory.clickhousectl.package`
+packages the fixed-hash official release, retaining its Apache-2.0 license and
+`chctl` alias. ClickStack management is `clickhousectl cloud clickstack`, not a
+separate binary; native SQL access uses `clickhouse client` rather than ctl-managed
+downloads. Each has named/default module exports, a public package with the native
+tool name and explicit Factory shell selection. These modules only expose packages:
+authentication, telemetry preferences, agent/review operations, databases, daemon
+setup and tailnet/cloud changes remain operator-owned.
 
 ## Langfuse CLI
 

@@ -63,7 +63,12 @@
             inherit (pkgs) google-cloud-sdk ngrok;
             inherit (pkgs) nssTools stripe-cli;
             inherit (pkgs) duckdb postgresql;
+            amp = factory.amp.package;
+            clickhouse = factory.clickhouse.package;
+            clickhousectl = factory.clickhousectl.package;
+            hunk = factory.hunk.package;
             langfuse = factory.langfuse.package;
+            tailscale = factory.tailscale.package;
             github-workflow-plan = factory.github.workflows.plan.package;
             github-workflow-apply = factory.github.workflows.apply.package;
           };
@@ -99,7 +104,12 @@
               ])
               ++ [ herdr ]
               ++ (with factory; [
+                amp.package
+                clickhouse.package
+                clickhousectl.package
+                hunk.package
                 langfuse.package
+                tailscale.package
                 pi.package
                 qmd.package
                 prek.package

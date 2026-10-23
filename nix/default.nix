@@ -2,10 +2,13 @@
 let
   modules = {
     actionlint = ./actionlint;
+    amp = import ./amp { llmAgents = inputs.llm-agents; };
     biome = ./biome;
     checkov = ./checkov;
     clang-format = ./clang-format;
     clang-tidy = ./clang-tidy;
+    clickhouse = ./clickhouse;
+    clickhousectl = ./clickhousectl;
     commitizen = ./commitizen;
     conftest = ./conftest;
     deadnix = ./deadnix;
@@ -20,6 +23,7 @@ let
     gofumpt = ./gofumpt;
     goimports = ./goimports;
     golangci-lint = ./golangci-lint;
+    hunk = import ./hunk { llmAgents = inputs.llm-agents; };
     husky = ./husky;
     kubectl = ./kubectl;
     kubeconform = ./kubeconform;
@@ -45,6 +49,7 @@ let
     shellcheck = ./shellcheck;
     shfmt = ./shfmt;
     statix = ./statix;
+    tailscale = ./tailscale;
     taplo = ./taplo;
     tflint = ./tflint;
     trivy = ./trivy;
