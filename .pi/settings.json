@@ -1,4 +1,6 @@
 {
+  "defaultTools": ["+codemode", "+tool_search"],
+  "showCacheMissNotices": true,
   "packages": [
     "npm:pi-memory@0.4.2",
     "npm:pi-web-access@0.42.0",

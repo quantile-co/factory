@@ -136,7 +136,11 @@ Pi agent-state integration from the pinned Herdr package. Consumers explicitly
 copy this directory to `.pi/extensions` and select Pi, Herdr, Git and shfmt in
 their development shell. Shared Pi settings select pinned upstream memory,
 web-access and Langfuse packages; Pi installs those npm packages after project
-trust, not during the Nix build. Langfuse credentials and telemetry destinations
+trust, not during the Nix build. Enable native codemode and tool search additively
+through `defaultTools`, retaining ordinary tools and codemode's default `on` mode.
+Show cache-miss notices without changing cache warming. Codemode's nested tool
+calls retain Factory's checkout guards through Pi's native execution pipeline.
+Langfuse credentials and telemetry destinations
 remain operator-managed and outside Git/Nix outputs. Factory owns the
 foreground-terminal handoff tool alongside its worktree tools; hardware-cursor
 customization remains personal. Shared integration covers Pi built-ins,

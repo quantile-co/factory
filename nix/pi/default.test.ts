@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   chmodSync,
   mkdirSync,
@@ -10,11 +10,17 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 import {
+  createAgentSession,
+  createCodemodeExtension,
+  createToolSearchExtension,
   DefaultResourceLoader,
+  ModelRuntime,
+  SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 it("exposes readable native Pi settings and shared skills to a consumer", () => {
   const root = new URL("../../", import.meta.url);
@@ -59,6 +65,34 @@ in builtins.toJSON {
       ),
     ),
   );
+  const work = mkdtempSync(join(tmpdir(), "factory-pi-settings-"));
+  try {
+    const agentDir = join(work, "agent");
+    mkdirSync(agentDir);
+    mkdirSync(join(work, ".pi"));
+    writeFileSync(join(work, ".pi/settings.json"), resolved.settings);
+    expect(SettingsManager.create(work, agentDir).getDefaultTools()).toEqual([
+      "read",
+      "bash",
+      "edit",
+      "write",
+      "codemode",
+      "tool_search",
+    ]);
+    writeFileSync(
+      join(agentDir, "settings.json"),
+      JSON.stringify({ defaultTools: ["read", "grep"] }),
+    );
+    expect(SettingsManager.create(work, agentDir).getDefaultTools()).toEqual([
+      "read",
+      "grep",
+      "codemode",
+      "tool_search",
+    ]);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+  expect(settings.showCacheMissNotices).toBe(true);
   expect(settings.packages).toContain("npm:pi-web-access@0.42.0");
   expect(settings.packages).toContain(
     "npm:@langfuse/pi-observability-plugin@0.1.2",
@@ -94,7 +128,7 @@ in builtins.toJSON {
   }
 });
 
-it("loads one Factory entry point and upstream Herdr state with Pi, without shipping tests", async () => {
+it("loads packaged Factory guards for native codemode without shipping tests", async () => {
   const root = new URL("../../", import.meta.url);
   const built = spawnSync(
     "nix",
@@ -123,10 +157,50 @@ it("loads one Factory entry point and upstream Herdr state with Pi, without ship
   ).toBe(false);
   const work = mkdtempSync(join(tmpdir(), "factory-pi-load-"));
   try {
+    // The upstream integration captures these on import; tests must not report to a live pane.
+    for (const name of ["HERDR_ENV", "HERDR_SOCKET_PATH", "HERDR_PANE_ID"]) {
+      vi.stubEnv(name, "");
+    }
+    const primary = join(work, "primary");
+    const child = join(work, "child");
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", primary, ...args], {
+        encoding: "utf8",
+      }).trim();
+    mkdirSync(primary);
+    git("init", "-q", "-b", "main");
+    writeFileSync(join(primary, "file.txt"), "original\n");
+    git("add", "file.txt");
+    git(
+      "-c",
+      "user.name=Test",
+      "-c",
+      "user.email=test@example.invalid",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-qm",
+      "initial",
+    );
+    git("worktree", "add", "-qb", "task", child);
+    const agentDir = join(work, "agent");
+    const nativeSettings = JSON.parse(
+      readFileSync(
+        new URL("../../etc/pi/settings.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const settingsManager = SettingsManager.inMemory({
+      defaultTools: nativeSettings.defaultTools,
+    });
     const loader = new DefaultResourceLoader({
-      cwd: work,
-      agentDir: join(work, "agent"),
-      settingsManager: SettingsManager.inMemory(),
+      cwd: child,
+      agentDir,
+      settingsManager,
+      extensionFactories: [
+        createCodemodeExtension(),
+        createToolSearchExtension(),
+      ],
       noExtensions: true,
       noSkills: true,
       noThemes: true,
@@ -140,11 +214,81 @@ it("loads one Factory entry point and upstream Herdr state with Pi, without ship
     await loader.reload();
     const { extensions, errors } = loader.getExtensions();
     expect(errors).toEqual([]);
-    expect(extensions).toHaveLength(2);
+    expect(extensions).toHaveLength(4);
     const factory = extensions.find((item) => item.tools.has("herdr_worktree"));
     expect(factory?.tools.has("foreground_terminal")).toBe(true);
     expect(extensions.every((item) => item.commands.size === 0)).toBe(true);
+    const modelRuntime = await ModelRuntime.create({
+      authPath: join(agentDir, "auth.json"),
+      modelsPath: null,
+      refreshOnCreate: false,
+    });
+    const sessionManager = SessionManager.inMemory(child);
+    sessionManager.appendMessage(
+      fauxAssistantMessage([fauxToolCall("codemode", {}, { id: "probe" })], {
+        stopReason: "toolUse",
+      }),
+    );
+    const { session } = await createAgentSession({
+      cwd: child,
+      agentDir,
+      modelRuntime,
+      model: modelRuntime.getModels()[0],
+      resourceLoader: loader,
+      settingsManager,
+      sessionManager,
+    });
+    try {
+      await session.bindExtensions({});
+      expect(session.getActiveToolNames()).toEqual(
+        expect.arrayContaining([
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "codemode",
+          "tool_search",
+          "herdr_worktree",
+          "foreground_terminal",
+        ]),
+      );
+      const tools = session.agent.state.tools;
+      expect(tools.find((tool) => tool.name === "read")?.description).toContain(
+        "Codemode:",
+      );
+      const codemode = tools.find((tool) => tool.name === "codemode");
+      if (!codemode) throw new Error("Native codemode was not activated");
+      const result = await codemode.execute("probe", {
+        code: `
+          const primary = ${JSON.stringify(primary)};
+          text(await tools.read({ path: primary + "/file.txt" }));
+          await tools.write({ path: "file.txt", content: "child edit\\n" });
+          const attempts = await Promise.allSettled([
+            tools.write({ path: primary + "/file.txt", content: "blocked" }),
+            tools.edit({ path: primary + "/file.txt", edits: [{ oldText: "original", newText: "blocked" }] }),
+            tools.bash({ command: "git -C '" + primary + "' switch -c blocked" }),
+          ]);
+          return "guarded: " + attempts.filter((attempt) => attempt.status === "rejected" && String(attempt.reason).includes("primary checkout")).length;
+        `,
+      });
+      const text = result.content
+        .map((item) => (item.type === "text" ? item.text : ""))
+        .join("\n");
+      expect(text).toContain("Script completed");
+      expect(text).toContain("original");
+      expect(text).toContain("guarded: 3");
+      expect(readFileSync(join(primary, "file.txt"), "utf8")).toBe(
+        "original\n",
+      );
+      expect(readFileSync(join(child, "file.txt"), "utf8")).toBe(
+        "child edit\n",
+      );
+      expect(git("branch", "--show-current")).toBe("main");
+    } finally {
+      session.dispose();
+    }
   } finally {
+    vi.unstubAllEnvs();
     rmSync(work, { recursive: true, force: true });
   }
 }, 120_000);
