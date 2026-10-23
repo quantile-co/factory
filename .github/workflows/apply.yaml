@@ -22,8 +22,8 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      contains(fromJSON(vars.GH_MAINTAINERS), github.actor) &&
-      contains(fromJSON(vars.GH_MAINTAINERS), github.triggering_actor)
+      contains(fromJSON(vars.PROJECT_OWNERS || '[]').*.gh_username, github.actor) &&
+      contains(fromJSON(vars.PROJECT_OWNERS || '[]').*.gh_username, github.triggering_actor)
     runs-on: namespace-profile-quantile-4x8
     environment: prod
     timeout-minutes: 120
@@ -31,11 +31,9 @@ jobs:
       TF_IN_AUTOMATION: "true"
       GCP_TF_STATE_BUCKET: ${{ vars.GCP_TF_STATE_BUCKET }}
       TF_BACKEND_PREFIX: repository/prod
-      TF_VAR_gcp_billing_account: ${{ vars.GCP_BILLING_ACCOUNT }}
-      TF_VAR_gcp_folder_id: ${{ vars.GCP_FOLDER_ID }}
-      TF_VAR_gcp_maintainers: ${{ vars.GCP_MAINTAINERS }}
       TF_VAR_gcp_wif_pool: ${{ vars.GCP_WIF_POOL }}
-      TF_VAR_gh_maintainers: ${{ vars.GH_MAINTAINERS }}
+      TF_VAR_project_owners: ${{ vars.PROJECT_OWNERS }}
+      TF_VAR_project_members: ${{ vars.PROJECT_MEMBERS || '[]' }}
 
     steps:
       - name: Check out repository

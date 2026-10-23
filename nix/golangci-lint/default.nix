@@ -35,7 +35,7 @@ let
         export GOTOOLCHAIN=local GOFLAGS="''${GOFLAGS:-} -mod=readonly -buildvcs=false"
         checkout=$(git rev-parse --show-toplevel)
         cd "$checkout"
-        config="''${GO_LINT_CONFIG:-.golangci.yml}"
+        config="''${GOLANGCI_LINT_CONFIG_FILE:-.golangci.yml}"
         test -f "$config" || { echo "Missing native golangci-lint config: $config" >&2; exit 1; }
         config=$(realpath -- "$config")
         tmp=$(mktemp -d)

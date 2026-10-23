@@ -1,13 +1,13 @@
 # The caller configures providers. Only one instance owns a repository's settings.
 # Adopt an existing repository by importing it rather than creating another.
 data "github_user" "maintainer" {
-  for_each = var.maintainers
+  for_each = var.owners
 
   username = each.value
 }
 
 resource "github_repository" "self" {
-  name        = var.repository_name
+  name        = var.repo_name
   description = var.description
   visibility  = var.visibility
 
@@ -26,6 +26,14 @@ resource "github_repository" "self" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+resource "github_repository_collaborator" "member" {
+  for_each = var.members
+
+  repository = github_repository.self.name
+  username   = each.value
+  permission = "push"
 }
 
 resource "github_actions_repository_permissions" "self" {

@@ -25,14 +25,14 @@ module "${name}" {
   source = ${JSON.stringify(moduleDir)}
   project_prefix = "fixture-${name.replaceAll("_", "-")}"
   folder_id = "123456789"
-  maintainers = ["operator@example.com"]
+  owners = ["operator@example.com"]
   billing_account = "AAAAAA-BBBBBB-CCCCCC"
   wif_pool = "projects/123456789/locations/global/workloadIdentityPools/fixture"
-  repository_id = "123456789"
-  repository_maintainer_ids = { fixture-operator = "987654321" }
+  gh_repo_id = "123456789"
+  gh_owner_ids = { fixture-operator = "987654321" }
 }
 output "${name}_project_number" {
-  value = module.${name}.tf_state_project_number
+  value = module.${name}.project_number
 }
 `,
         )
@@ -42,6 +42,58 @@ output "${name}_project_number" {
     copyFileSync(
       resolve(moduleDir, "../../../infrastructure/.terraform.lock.hcl"),
       join(work, ".terraform.lock.hcl"),
+    );
+    mkdirSync(join(work, "tests"));
+    writeFileSync(
+      join(work, "tests/owners.tftest.hcl"),
+      `
+mock_provider "google" {}
+mock_provider "random" {
+  mock_resource "random_id" {
+    defaults = { hex = "abcd" }
+  }
+}
+run "owners_with_members" {
+  command = plan
+  module { source = ${JSON.stringify(moduleDir)} }
+  variables {
+    project_prefix = "fixture"
+    folder_id = "123456789"
+    owners = ["operator@example.com"]
+    members = ["member@example.com"]
+    billing_account = "AAAAAA-BBBBBB-CCCCCC"
+    wif_pool = "projects/123456789/locations/global/workloadIdentityPools/fixture"
+    gh_repo_id = "123456789"
+    gh_owner_ids = { fixture-operator = "987654321" }
+  }
+  assert {
+    condition = (
+      toset(keys(google_storage_bucket_iam_member.plan_reader)) == toset(["operator@example.com"]) &&
+      google_storage_bucket_iam_member.plan_reader["operator@example.com"].member == "user:operator@example.com" &&
+      google_storage_bucket_iam_member.plan_reader["operator@example.com"].role == "roles/storage.objectViewer" &&
+      toset(keys(google_project_iam_member.pipeline_owner)) == toset(["fixture-operator"]) &&
+      google_project_iam_member.pipeline_owner["fixture-operator"].role == "roles/owner" &&
+      google_project_iam_member.pipeline_owner["fixture-operator"].member == "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/fixture/attribute.main_branch_repository_actor_id/123456789_987654321"
+    )
+    error_message = "Members must not change owner-only plan readers or main/repository/actor WIF grants."
+  }
+}
+run "overlapping_roles" {
+  command = plan
+  module { source = ${JSON.stringify(moduleDir)} }
+  variables {
+    project_prefix = "fixture"
+    folder_id = "123456789"
+    owners = ["operator@example.com"]
+    members = ["Operator@Example.com"]
+    billing_account = "AAAAAA-BBBBBB-CCCCCC"
+    wif_pool = "projects/123456789/locations/global/workloadIdentityPools/fixture"
+    gh_repo_id = "123456789"
+    gh_owner_ids = { fixture-operator = "987654321" }
+  }
+  expect_failures = [var.members]
+}
+`,
     );
     mkdirSync(join(work, "providers"));
     const env: NodeJS.ProcessEnv = {
@@ -71,6 +123,11 @@ output "${name}_project_number" {
       env,
       encoding: "utf8",
       timeout: 120_000,
+    });
+    execFileSync("tofu", [`-chdir=${work}`, "test", "-no-color"], {
+      env,
+      timeout: 120_000,
+      stdio: "pipe",
     });
     expect(providers).not.toContain("integrations/github");
     expect(providers.toLowerCase()).not.toContain("mastercard/restapi");

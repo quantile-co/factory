@@ -13,8 +13,18 @@ Use the pinned direnv shell; ordinary entry is credential-free.
 Do not run protected Plan/Apply while bootstrapping: their CI inputs are not ready.
 Keep credentials in the process environment, not Nix attributes or shell history.
 Google CLI login, ADC, the operator's GitHub login and the provider PAT are distinct.
+Read the approved billing account, parent folder and bucket location from the
+concrete Terraform root. Verify access to those exact resources; do not substitute
+Factory's values for a different installation. Reusable modules still accept
+caller-selected values, but shared workflows do not supply billing/folder overrides.
 Export `TF_DIR` to the root selected by the repository's workflow scripts:
 `tf/infrastructure` for Factory, or `tf` for a single-root consumer.
+Supply `PROJECT_OWNERS` as a JSON list of `{gcp_email, gh_username}` records,
+not separate platform lists. Confirm each pair with its owner. The root passes
+email lists to GCP and username lists to GitHub. Optional `PROJECT_MEMBERS`
+uses the same record shape and defaults to `[]`. Members receive repository
+write access only, not GCP access or protected Plan/Apply eligibility. Names
+describe project roles, not direct GCP Owner grants. See the [configuration contract](../../deploy/references/configuration.md).
 
 ```sh
 set -euo pipefail
@@ -33,26 +43,22 @@ umask 077
 : "${TF_DIR:?set the reviewed repository Terraform root}"
 gcloud auth login
 gcloud auth application-default login # select the same Google account
-: "${GCP_BILLING_ACCOUNT:?set the authorized billing account}"
-: "${GCP_FOLDER_ID:?set the quantile-co parent folder ID}"
-: "${GCP_MAINTAINERS:?set a JSON array of Google account emails for plan review}"
+: "${PROJECT_OWNERS:?set the reviewed JSON list of paired owner identities}"
 : "${GCP_WIF_POOL:?set the Q0 GitHub WIF pool resource path}"
 : "${GCP_WIF_PROVIDER:?set the Q0 quantile-co GitHub WIF provider path}"
-: "${GH_MAINTAINERS:?set a JSON array of GitHub usernames}"
 : "${GH_REPO_TOKEN:?load a repository-scoped token from a secure local source}"
 
 # Map public names to Terraform inputs; keep the GitHub token out of TF_VAR_*.
-export TF_VAR_gcp_billing_account="$GCP_BILLING_ACCOUNT"
-export TF_VAR_gcp_folder_id="$GCP_FOLDER_ID"
-export TF_VAR_gcp_maintainers="$GCP_MAINTAINERS"
 export TF_VAR_gcp_wif_pool="$GCP_WIF_POOL"
-export TF_VAR_gh_maintainers="$GH_MAINTAINERS"
+export TF_VAR_project_owners="$PROJECT_OWNERS"
+export TF_VAR_project_members="${PROJECT_MEMBERS:-[]}"
 
 gh auth status # operator's GitHub CLI login, not the provider token
-: "${GH_REPOSITORY:?set the intended owner/repository from an approved secure context}"
-test "$GH_REPOSITORY" = "$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
-REPOSITORY_NAME=$(gh repo view --json name --jq .name)
-test "$GH_REPOSITORY" = "${GH_REPOSITORY%/*}/$REPOSITORY_NAME"
+: "${GH_REPO:?set the intended owner/repo from an approved secure context}"
+# Ignore the selector when verifying the checkout's own repository.
+repo=$(env -u GH_REPO gh repo view --json nameWithOwner --jq .nameWithOwner)
+test "$GH_REPO" = "$repo"
+REPO_NAME=${repo#*/}
 export GITHUB_TOKEN="$GH_REPO_TOKEN" # provider credential only for local Terraform
 export REST_API_BEARER="$GH_REPO_TOKEN" # REST provider uses the same runtime token
 # Verify the existing pool maps main_branch_repository_actor_id and the
@@ -75,7 +81,7 @@ printf 'terraform {\n  backend "local" {}\n}\n' > "$TF_DIR/backend_override.tf"
 tofu -chdir="$TF_DIR" init -input=false -lockfile=readonly
 
 # The repository already exists. Import it ONLY when it has no state address.
-tofu -chdir="$TF_DIR" import module.github.github_repository.self "$REPOSITORY_NAME"
+tofu -chdir="$TF_DIR" import module.gh.github_repository.self "$REPO_NAME"
 tofu -chdir="$TF_DIR" plan
 
 # Review existing repo settings, the observed required Check context, and all changes.
@@ -108,7 +114,7 @@ The read, credential choice, creation, and verification are separately approved
 operations; do not run this block as one automated script.
 
 ```sh
-GCP_PROJECT_ID=$(tofu -chdir="$TF_DIR" output -raw gcp_tf_state_project_id)
+GCP_PROJECT_ID=$(tofu -chdir="$TF_DIR" output -raw gcp_project_id)
 : "${GCP_PROJECT_ID:?verify the new state project ID}"
 gcloud config get-value account
 # After read-only inspection is approved:
@@ -142,7 +148,7 @@ an existing backend. Stop if the post-migration plan is not clean.
 ```sh
 # Move that same local state to its new, versioned GCS bucket.
 GCP_TF_STATE_BUCKET=$(tofu -chdir="$TF_DIR" output -raw gcp_tf_state_bucket)
-GCP_PROJECT_ID=$(tofu -chdir="$TF_DIR" output -raw gcp_tf_state_project_id)
+GCP_PROJECT_ID=$(tofu -chdir="$TF_DIR" output -raw gcp_project_id)
 cp "$TF_DIR/terraform.tfstate" "$TF_DIR/terraform.tfstate.pre-gcs"
 rm "$TF_DIR/backend_override.tf"
 tofu -chdir="$TF_DIR" init -migrate-state -lockfile=readonly \
@@ -156,29 +162,23 @@ unset REST_API_BEARER
 
 ## 4. CI configuration
 
-Verify the main/maintainer/prod/WIF guards and the existing Namespace runner.
+Verify the main/owner/prod/WIF guards and the existing Namespace runner.
 Confirm `CACHIX_AUTH_TOKEN` is available to the protected workflow steps; do not
 print or recreate existing secrets. Approve variable and secret changes before
 running the following commands.
 
 ```sh
 # Provision nonsecret repository variables for CI.
-: "${GH_REPOSITORY:?use the same verified owner/repository as the local seed}"
-gh variable set GCP_BILLING_ACCOUNT --repo "$GH_REPOSITORY" --body "$GCP_BILLING_ACCOUNT"
-gh variable set GCP_FOLDER_ID --repo "$GH_REPOSITORY" --body "$GCP_FOLDER_ID"
-# Also populate the compatibility alias used by some Factory-based callers.
-gh variable set GCP_QUANTILE_CO_FOLDER_ID --repo "$GH_REPOSITORY" --body "$GCP_FOLDER_ID"
-gh variable set GCP_MAINTAINERS --repo "$GH_REPOSITORY" --body "$GCP_MAINTAINERS"
-gh variable set GCP_WIF_POOL --repo "$GH_REPOSITORY" --body "$GCP_WIF_POOL"
-gh variable set GCP_WIF_PROVIDER --repo "$GH_REPOSITORY" --body "$GCP_WIF_PROVIDER"
-gh variable set GH_MAINTAINERS --repo "$GH_REPOSITORY" --body "$GH_MAINTAINERS"
-gh variable set GCP_PROJECT_ID --repo "$GH_REPOSITORY" --body "$GCP_PROJECT_ID"
-gh variable set GCP_TF_STATE_BUCKET --repo "$GH_REPOSITORY" --body "$GCP_TF_STATE_BUCKET"
-# Alias for callers that pass TF_STATE_BUCKET as the state-bucket input.
-gh variable set TF_STATE_BUCKET --repo "$GH_REPOSITORY" --body "$GCP_TF_STATE_BUCKET"
+: "${GH_REPO:?use the same verified owner/repo as the local seed}"
+gh variable set PROJECT_OWNERS --repo "$GH_REPO" --body "$PROJECT_OWNERS"
+gh variable set PROJECT_MEMBERS --repo "$GH_REPO" --body "${PROJECT_MEMBERS:-[]}"
+gh variable set GCP_WIF_POOL --repo "$GH_REPO" --body "$GCP_WIF_POOL"
+gh variable set GCP_WIF_PROVIDER --repo "$GH_REPO" --body "$GCP_WIF_PROVIDER"
+gh variable set GCP_PROJECT_ID --repo "$GH_REPO" --body "$GCP_PROJECT_ID"
+gh variable set GCP_TF_STATE_BUCKET --repo "$GH_REPO" --body "$GCP_TF_STATE_BUCKET"
 
 # Verify prod permits ONLY main, not tags, before adding secrets.
-printf '%s' "$GH_REPO_TOKEN" | gh secret set GH_REPO_TOKEN --repo "$GH_REPOSITORY" --env prod
+printf '%s' "$GH_REPO_TOKEN" | gh secret set GH_REPO_TOKEN --repo "$GH_REPO" --env prod
 
 ```
 
@@ -192,14 +192,14 @@ again. It forwards workflow inputs so Apply can select its Plan artifact.
 # Both workflows are published but manual-only. Dispatch only after prod is
 # protected, populated, and the remote-state plan above is clean.
 run_and_verify() {
-  output=$(gh workflow run "$@" --repo "$GH_REPOSITORY" --ref main 2>&1)
+  output=$(gh workflow run "$@" --repo "$GH_REPO" --ref main 2>&1)
   printf '%s\n' "$output"
   url=$(printf '%s\n' "$output" |
     grep -Eo 'https://github.com/[^[:space:]]+/actions/runs/[0-9]+' | head -1) || true
   : "${url:?GitHub did not return a run URL; inspect the dispatched run manually}"
   run_id=${url##*/}
-  gh run watch "$run_id" --repo "$GH_REPOSITORY" --exit-status
-  test "$(gh run view "$run_id" --repo "$GH_REPOSITORY" \
+  gh run watch "$run_id" --repo "$GH_REPO" --exit-status
+  test "$(gh run view "$run_id" --repo "$GH_REPO" \
     --json conclusion --jq .conclusion)" = success
 }
 
@@ -207,24 +207,24 @@ run_and_verify() {
 run_and_verify plan.yaml
 ```
 
-Download and inspect the GCS plan using the deploy reference. Record its
-`RUN_ID/ATTEMPT/GENERATION` reference from the Plan summary, verify its exact
-producing attempt and obtain separate approval for Apply. A successful Plan is
-not Apply authorization.
+Download and inspect the GCS plan using the deploy reference. Set `PLAN_REF` to
+its complete `RUN_ID/ATTEMPT/GENERATION` value from the Plan summary, verify its
+exact producing attempt and obtain separate approval for Apply. Preserve the
+same reference after review. A successful Plan is not Apply authorization.
 
 ```sh
-: "${PLAN_RUN_ID:?select the Plan run ID}"
-: "${PLAN_ATTEMPT:?select the producing attempt}"
-: "${PLAN_GENERATION:?select the GCS plan generation}"
+: "${PLAN_REF:?select the exact reviewed run/attempt/generation}"
+[[ "$PLAN_REF" =~ ^[1-9][0-9]*/[1-9][0-9]*/[1-9][0-9]*$ ]]
 read -r -p 'Type APPLY after reviewing the successful CI Plan: ' answer </dev/tty
 test "$answer" = APPLY
-run_and_verify apply.yaml -f "plan_ref=$PLAN_RUN_ID/$PLAN_ATTEMPT/$PLAN_GENERATION"
+run_and_verify apply.yaml -f "plan_ref=$PLAN_REF"
 ```
 
 ## 6. Remove bootstrap access
 
 After successful CI handoff, verify WIF and Q0-admin recovery access, and the
-Terraform-managed plan-reader bindings for `gcp_maintainers`. These grant object
+Terraform-managed plan-reader bindings derived from `project_owners[].gcp_email`.
+These grant object
 read access only under `plans/`, not state access or Owner. Verify the operator's
 Google account is included before removing bootstrap access. If read access is
 missing, stop for a separately approved Terraform change; do not retain or

@@ -18,7 +18,7 @@ let
       ];
       text = ''
         cd "$(git rev-parse --show-toplevel)"
-        config="''${GIT_HOOKS_CONFIG:-.pre-commit-config.yaml}"
+        config="''${PREK_CONFIG_FILE:-.pre-commit-config.yaml}"
         test -f "$config" || { echo "Missing native Prek config: $config" >&2; exit 1; }
         # Prek can report a skipped hook as success. Require the selected native stage.
         if ! yq -e '.repos[].hooks[] | select(.id == "${

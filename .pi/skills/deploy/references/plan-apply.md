@@ -73,28 +73,31 @@ set -euo pipefail
 set +x
 umask 077
 : "${TF_DIR:?Set the reviewed Terraform root}"
-: "${REPO:?Set and verify the intended owner/repository before any dispatch}"
-test "$REPO" = "$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+: "${GH_REPO:?Set and verify the intended owner/repo before any dispatch}"
+repo=$(env -u GH_REPO gh repo view --json nameWithOwner --jq .nameWithOwner)
+test "$GH_REPO" = "$repo"
 SHA=$(git rev-parse HEAD)
 test -z "$(git status --porcelain)"
-test "$SHA" = "$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
-gh run list -R "$REPO" -w check.yaml -c "$SHA" \
+test "$SHA" = "$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)"
+gh run list -R "$GH_REPO" -w check.yaml -c "$SHA" \
   --json databaseId,headSha,status,conclusion,url
-gh run list -R "$REPO" --limit 10 \
+gh run list -R "$GH_REPO" --limit 10 \
   --json databaseId,workflowName,headSha,status,conclusion,url
 ```
 
 Check may have run on the source branch before fast-forwarding main. Confirm its
 exact SHA, not just the branch label. Inspect current production activity; never
-cancel another operator's job. Verify main/maintainer/prod protection, WIF,
+cancel another operator's job. Verify main/owner/prod protection, WIF,
 the effective state bucket and backend prefix, including caller inputs and runtime
 environment overrides. Factory defaults to `repository/prod`; consumers may retain
 another existing prefix. Check the called workflow's `factory-production`
 concurrency and any caller guard.
-`TF_VAR_gcp_maintainers` is an explicit JSON array of Google account emails,
-distinct from GitHub usernames. Where configured, Terraform grants these users
-object-read access only under the bucket's `plans/` prefix; an empty array
-grants **no** plan-read access.
+`PROJECT_OWNERS` is the reviewed JSON list of paired `gcp_email` and
+`gh_username` identities. Workflow gates use the usernames; Terraform derives
+plan-reader emails and immutable deployment actor IDs from the same records.
+The GCP module grants humans object-read access only under `plans/`, not direct
+project Owner access. Members must not be substituted into owner gates or grants.
+See the [configuration contract](configuration.md) before migrating existing lists.
 The operator's GitHub CLI login is separate from the provider PAT;
 do not let `GITHUB_TOKEN` or `GH_TOKEN` select the wrong credential.
 
@@ -106,35 +109,39 @@ Never copy those values into Terraform inputs, artifacts, source or Nix values.
 After approval for this dispatch only:
 
 ```sh
-gh workflow run plan.yaml -R "$REPO" --ref main
+gh workflow run plan.yaml -R "$GH_REPO" --ref main
 ```
 
 Capture its run ID and attempt from the result; an ambiguous dispatch is not
 permission to dispatch again. Watch that exact run and require success, including
-post-steps. Copy `RUN_ID/ATTEMPT/GENERATION` from the Plan step summary.
+post-steps. Set `PLAN_REF` to the complete `RUN_ID/ATTEMPT/GENERATION` value
+from the Plan step summary; do not reconstruct it from separately chosen parts.
 
 No plan or diagnostic is uploaded to GitHub. The saved plan and its private
 Plan log stay in GCS under `plans/REPOSITORY_ID/RUN_ID/ATTEMPT/saved-plan/`.
 An authorized reader needs access to those objects independently of CI's WIF
-identity. Manage missing read access through `gcp_maintainers` and a separately
-approved Terraform Apply, not a manual IAM grant, Owner access or public upload.
+identity. Manage missing read access through the reviewed project role policy and
+a separately approved Terraform Apply, not a manual IAM grant, Owner access or
+public upload. Do not promote someone to a project owner solely to enable review.
 An existing authorized reader must inspect the initial access-grant plan; setting
 the input alone grants nothing.
 
 ## 3. Inspect the plan privately
 
-Follow [the saved-plan review procedure](saved-plan-review.md) in full. Set
-`PLAN_RUN_ID`, `PLAN_ATTEMPT` and `PLAN_GENERATION` from the selected Plan
-reference and verify its source and effective bucket. Preserve those exact
-identifiers for the separately approved Apply; review does not authorize it.
+Follow [the saved-plan review procedure](saved-plan-review.md) in full using
+`PLAN_REF`. It parses the components internally and verifies the producing
+attempt; confirm its source and effective bucket before reviewing the plan.
+Preserve that exact reference for the separately approved Apply; review does
+not authorize it.
 
 ## 4. Apply
 
 After separate approval for this exact run/attempt/generation:
 
 ```sh
-gh workflow run apply.yaml -R "$REPO" --ref main \
-  -f "plan_ref=$PLAN_RUN_ID/$PLAN_ATTEMPT/$PLAN_GENERATION"
+: "${PLAN_REF:?Set the exact reviewed run/attempt/generation}"
+[[ "$PLAN_REF" =~ ^[1-9][0-9]*/[1-9][0-9]*/[1-9][0-9]*$ ]]
+gh workflow run apply.yaml -R "$GH_REPO" --ref main -f "plan_ref=$PLAN_REF"
 ```
 
 Apply downloads that exact GCS plan generation into a local file, then runs

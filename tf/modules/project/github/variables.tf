@@ -39,18 +39,33 @@ variable "main_branch" {
   nullable    = false
 }
 
-variable "maintainers" {
-  description = "GitHub usernames whose immutable IDs are available for caller-managed access."
+variable "members" {
+  description = "Repository writers, excluding owners; no protected deployment eligibility."
+  type        = set(string)
+  default     = []
+  nullable    = false
+
+  validation {
+    condition = alltrue([for name in var.members :
+      can(regex("^[A-Za-z0-9][A-Za-z0-9-]*$", name)) &&
+      !contains([for owner in var.owners : lower(owner)], lower(name))
+    ])
+    error_message = "Supply valid GitHub member usernames distinct from owners, ignoring case."
+  }
+}
+
+variable "owners" {
+  description = "Project owner usernames whose immutable IDs are available for caller-managed access."
   type        = set(string)
   nullable    = false
 
   validation {
-    condition     = length(var.maintainers) > 0 && alltrue([for name in var.maintainers : can(regex("^[A-Za-z0-9][A-Za-z0-9-]*$", name))])
-    error_message = "Supply at least one valid GitHub maintainer username."
+    condition     = length(var.owners) > 0 && alltrue([for name in var.owners : can(regex("^[A-Za-z0-9][A-Za-z0-9-]*$", name))])
+    error_message = "Supply at least one valid GitHub owner username."
   }
 }
 
-variable "repository_name" {
+variable "repo_name" {
   description = "Repository name without its owner; the caller configures the provider owner."
   type        = string
   nullable    = false

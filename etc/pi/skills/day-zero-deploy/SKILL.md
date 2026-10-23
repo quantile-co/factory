@@ -19,8 +19,9 @@ state migration, IAM change, workflow dispatch or retry needs separate approval.
 The code examples are a phase-by-phase procedure, not permission to run all of
 them end-to-end or evidence that every consumer has been bootstrapped.
 
-Supply the verified owner/repository, billing, folder, WIF, maintainers and
-provider token from approved sources at runtime. Never hardcode a Factory
+Review the concrete root's verified billing, folder and bucket-location values.
+Supply the verified `GH_REPO`, WIF, paired project owners and provider token from
+approved sources at runtime. Never hardcode a Factory
 repository identity into consumer source or expose token values through Nix,
 Terraform inputs, Git or public logs. Preserve WIF, locks, backups and recovery
 access. After CI handoff remove only the bootstrap human's direct Owner grant,

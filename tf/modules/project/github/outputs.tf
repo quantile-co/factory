@@ -8,17 +8,17 @@ output "environment_names" {
   value       = toset([for environment in github_repository_environment.main : environment.environment])
 }
 
-output "maintainer_ids" {
-  description = "GitHub usernames mapped to immutable actor IDs for reuse across GCP projects."
+output "owner_ids" {
+  description = "Project owner usernames mapped to immutable actor IDs for reuse across GCP projects."
   value       = { for name, maintainer in data.github_user.maintainer : name => maintainer.id }
 }
 
-output "repository_id" {
+output "repo_id" {
   description = "Immutable numeric repository ID used to scope WIF principals."
   value       = github_repository.self.repo_id
 }
 
-output "repository_name" {
+output "repo_name" {
   description = "Repository name in the configured GitHub provider owner."
   value       = github_repository.self.name
 }

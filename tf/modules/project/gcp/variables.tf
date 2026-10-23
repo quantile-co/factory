@@ -15,8 +15,22 @@ variable "folder_id" {
   }
 }
 
-variable "maintainers" {
-  description = "Google account emails allowed to read saved plans, not Terraform state."
+variable "members" {
+  description = "Member emails for the project roster; membership grants no GCP access."
+  type        = set(string)
+  default     = []
+  nullable    = false
+
+  validation {
+    condition = alltrue([for email in var.members :
+      !contains([for owner in var.owners : lower(owner)], lower(email))
+    ])
+    error_message = "Member emails must be distinct from owners, ignoring case."
+  }
+}
+
+variable "owners" {
+  description = "Project owner emails allowed to read saved plans, not Terraform state; no direct project Owner grant."
   type        = set(string)
   nullable    = false
 }
@@ -32,24 +46,24 @@ variable "project_prefix" {
   }
 }
 
-variable "repository_id" {
+variable "gh_repo_id" {
   description = "Immutable numeric ID of the GitHub repository allowed to administer this project."
   type        = string
   nullable    = false
 
   validation {
-    condition     = can(regex("^[0-9]+$", var.repository_id))
+    condition     = can(regex("^[0-9]+$", var.gh_repo_id))
     error_message = "Use a numeric GitHub repository ID."
   }
 }
 
-variable "repository_maintainer_ids" {
+variable "gh_owner_ids" {
   description = "GitHub usernames mapped to immutable numeric actor IDs for main-branch WIF access."
   type        = map(string)
   nullable    = false
 
   validation {
-    condition     = length(var.repository_maintainer_ids) > 0 && alltrue([for id in values(var.repository_maintainer_ids) : can(regex("^[0-9]+$", id))])
+    condition     = length(var.gh_owner_ids) > 0 && alltrue([for id in values(var.gh_owner_ids) : can(regex("^[0-9]+$", id))])
     error_message = "Supply at least one numeric GitHub actor ID."
   }
 }

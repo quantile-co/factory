@@ -79,10 +79,13 @@ it("scopes the public-repository scanner exception to its module invocation", ()
     expect(scan()).toEqual([]);
     writeFileSync(source, original.replace(exception, ""));
     expect(scan().map((item) => item.ID)).toContain("GIT-0001");
-    const githubCall = original.slice(0, original.indexOf('\nmodule "gcp"'));
+    const githubCall = original.slice(
+      original.indexOf(exception),
+      original.indexOf('\nmodule "gcp"'),
+    );
     writeFileSync(
       source,
-      `${original}\n${githubCall.replace('module "github"', 'module "other"').replace(exception, "")}`,
+      `${original}\n${githubCall.replace('module "gh"', 'module "other"').replace(exception, "")}`,
     );
     expect(
       scan().map((item) => [item.ID, item.CauseMetadata?.Resource]),

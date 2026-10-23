@@ -5,7 +5,8 @@ description: Plan, privately review, apply or troubleshoot existing Factory-modu
 
 # Deploy
 
-Read [the full Plan and Apply procedure](references/plan-apply.md). Work from
+Read [the configuration contract](references/configuration.md) and
+[the full Plan and Apply procedure](references/plan-apply.md). Work from
 the consuming repository root in its pinned direnv shell. Read `AGENTS.md`,
 `.pi/memory/MEMORY.md`, the current Terraform root, its Factory module
 references, the consumer's shell and task scripts, and the pinned caller **and** called workflows.
@@ -14,7 +15,7 @@ Use the root selected by those scripts as `TF_DIR`; Factory defaults to
 
 Skill invocation, a source merge, a green Check or a successful Plan is not
 authorization to Apply. Obtain separate approval for each dispatch, credential
-operation, state repair or retry. Preserve main/maintainer/prod guards, WIF,
+operation, state repair or retry. Preserve main/owner/prod guards, WIF,
 backend locks, shared production concurrency and deletion protection.
 
 Never reseed existing infrastructure or use local Apply to bypass CI. For a

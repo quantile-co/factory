@@ -9,9 +9,9 @@ let
   selectFiles = ''
     cd "$(git rev-parse --show-toplevel)"
     test -f .editorconfig || { echo 'Missing consumer .editorconfig' >&2; exit 1; }
-    checker_config="''${EDITORCONFIG_CHECKER_CONFIG:-.editorconfig-checker.json}"
+    checker_config="''${EDITORCONFIG_CHECKER_CONFIG_FILE:-.editorconfig-checker.json}"
     exclusions=()
-    if [ -n "''${EDITORCONFIG_CHECKER_CONFIG:-}" ] || [ -f "$checker_config" ]; then
+    if [ -n "''${EDITORCONFIG_CHECKER_CONFIG_FILE:-}" ] || [ -f "$checker_config" ]; then
       test -f "$checker_config" || { echo "Missing EditorConfig Checker config: $checker_config" >&2; exit 1; }
       jq -e '(.Exclude // []) | type == "array" and all(.[]; type == "string")' "$checker_config" > /dev/null
       mapfile -d "" -t exclusions < <(jq -rj '.Exclude[]? | ., "\u0000"' "$checker_config")
@@ -84,7 +84,7 @@ in
         ];
         text = selectFiles + ''
           config_args=()
-          if [ -n "''${EDITORCONFIG_CHECKER_CONFIG:-}" ] || [ -f "$checker_config" ]; then
+          if [ -n "''${EDITORCONFIG_CHECKER_CONFIG_FILE:-}" ] || [ -f "$checker_config" ]; then
             config_args=(-config "$checker_config")
           fi
           editorconfig-checker "''${config_args[@]}" -- "''${files[@]}"

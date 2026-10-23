@@ -44,6 +44,10 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
     const run = (binary: string, args: string[] = []) => {
       const result = spawnSync(binary, args, {
         cwd: work,
+        env: {
+          ...process.env,
+          EDITORCONFIG_CHECKER_CONFIG_FILE: "checker config.json",
+        },
         encoding: "utf8",
         timeout: 60_000,
       });
@@ -78,7 +82,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
     );
     checkerConfig.Exclude.push("^excluded/");
     writeFileSync(
-      join(work, ".editorconfig-checker.json"),
+      join(work, "checker config.json"),
       `${JSON.stringify(checkerConfig)}\n`,
     );
     writeFileSync(source, "first\n  second\n");
@@ -96,7 +100,7 @@ it("checks tracked text without mutation and fixes only eligible EOFs on demand"
     run("git", [
       "add",
       ".editorconfig",
-      ".editorconfig-checker.json",
+      "checker config.json",
       "source with spaces/example.txt",
       "example.cpp",
       "excluded/example.txt",

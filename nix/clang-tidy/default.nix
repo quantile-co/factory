@@ -69,18 +69,13 @@ in
             if [[ "$file" != /* ]]; then file="$directory/$file"; fi
             compiled["$(realpath -m -- "$file")"]=1
           done < "$tmp/entries"
-          config_args=()
-          if [ -n "''${CLANG_TIDY_CONFIG:-}" ]; then
-            test -f "$CLANG_TIDY_CONFIG"
-            config_args=("--config-file=$CLANG_TIDY_CONFIG")
-          fi
           for file in "''${files[@]}"; do
             source=$(realpath -- "$file")
             if [[ -z "''${compiled[$source]:-}" ]]; then
               echo "No compilation database entry for: $file" >&2
               exit 1
             fi
-            clang-tidy "''${config_args[@]}" -p "$database_dir" "$source"
+            clang-tidy -p "$database_dir" "$source"
           done
         '';
       };

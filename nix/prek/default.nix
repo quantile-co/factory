@@ -107,7 +107,7 @@ in
         ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
-          config="''${GIT_HOOKS_CONFIG:-.pre-commit-config.yaml}"
+          config="''${PREK_CONFIG_FILE:-.pre-commit-config.yaml}"
           test -f "$config" || { echo "Missing native Prek config: $config" >&2; exit 1; }
           prek --config "$config" run --all-files --hook-stage pre-push
         '';
@@ -125,7 +125,7 @@ in
         ];
         text = ''
           cd "$(git rev-parse --show-toplevel)"
-          config="''${GIT_HOOKS_CONFIG:-.pre-commit-config.yaml}"
+          config="''${PREK_CONFIG_FILE:-.pre-commit-config.yaml}"
           test -f "$config" || { echo "Missing native Prek config: $config" >&2; exit 1; }
           prek --config "$config" run check-json --all-files --hook-stage pre-push
         '';

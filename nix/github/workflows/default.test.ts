@@ -41,7 +41,22 @@ it("keeps protected local workflows on pinned direnv without callable references
     );
     expect(source).toContain("github.event_name == 'workflow_dispatch' &&");
     expect(source).toContain("github.ref == 'refs/heads/main' &&");
-    expect(source).toContain("github.triggering_actor");
+    for (const actor of ["github.actor", "github.triggering_actor"]) {
+      expect(source).toContain(
+        `contains(fromJSON(vars.PROJECT_OWNERS || '[]').*.gh_username, ${actor})`,
+      );
+    }
+    expect(source).toContain(
+      `TF_VAR_project_owners: \${{ vars.PROJECT_OWNERS }}`,
+    );
+    expect(source).toContain(
+      `TF_VAR_project_members: \${{ vars.PROJECT_MEMBERS || '[]' }}`,
+    );
+    expect(source).not.toMatch(/GH_MAINTAINERS|GCP_MAINTAINERS/);
+    expect(source).toContain(
+      `GCP_TF_STATE_BUCKET: \${{ vars.GCP_TF_STATE_BUCKET }}`,
+    );
+
     expect(source).toContain("environment: prod");
     expect(source).not.toContain("actions/upload-artifact@");
   }

@@ -5,7 +5,7 @@ import rego.v1
 # New resource kinds or additional declarations need an ownership/security review.
 valid_inventory if {
 	object.keys(input.resource) == {
-		"github_repository", "github_branch_protection", "github_actions_repository_permissions", "restapi_object",
+		"github_repository", "github_repository_collaborator", "github_branch_protection", "github_actions_repository_permissions", "restapi_object",
 		"github_repository_vulnerability_alerts", "github_repository_dependabot_security_updates",
 		"github_repository_environment", "github_repository_environment_deployment_policy",
 	}
@@ -16,8 +16,16 @@ valid_inventory if {
 		}
 	}
 	maintainer := input.data.github_user.maintainer[0]
-	maintainer.for_each == "${var.maintainers}"
+	maintainer.for_each == "${var.owners}"
 	maintainer.username == "${each.value}"
+}
+
+valid_members if {
+	member := input.resource.github_repository_collaborator.member[0]
+	member.for_each == "${var.members}"
+	member.repository == "${github_repository.self.name}"
+	member.username == "${each.value}"
+	member.permission == "push"
 }
 
 valid_protection if {
@@ -82,6 +90,8 @@ valid_fork_approval if {
 }
 
 deny contains "GitHub module must contain only repository resources and maintainer lookups" if not valid_inventory
+
+deny contains "Members must receive only repository write access" if not valid_members
 
 deny contains "Protection must retain strict checks, signatures and non-destructive branch rules" if not valid_protection
 

@@ -31,7 +31,7 @@ it("checks Go lint without mutation and scopes fixes to tracked sources", () => 
     mkdirSync(join(module, "nested"));
     copyFileSync(
       new URL("../../etc/golangci-lint/.golangci.yml", import.meta.url),
-      join(repo, ".golangci.yml"),
+      join(repo, "lint config.yml"),
     );
     writeFileSync(
       join(module, "go.mod"),
@@ -50,6 +50,7 @@ it("checks Go lint without mutation and scopes fixes to tracked sources", () => 
       HOME: work,
       GOPROXY: "off",
       GOSUMDB: "off",
+      GOLANGCI_LINT_CONFIG_FILE: "lint config.yml",
       GIT_CONFIG_GLOBAL: "/dev/null",
       GIT_CONFIG_NOSYSTEM: "1",
     };
@@ -121,7 +122,7 @@ it("checks Go lint without mutation and scopes fixes to tracked sources", () => 
       good.replace("// Value returns", "// FIXME: revisit\n// Value returns"),
     );
     expect(exec(check, roots).output).toContain("godox");
-    const config = join(repo, ".golangci.yml");
+    const config = join(repo, "lint config.yml");
     writeFileSync(
       config,
       readFileSync(config, "utf8").replace("    - godox\n", ""),

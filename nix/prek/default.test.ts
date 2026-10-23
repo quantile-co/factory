@@ -44,6 +44,7 @@ it("runs strict JSON checks from one consumer-owned Prek config without installi
     const run = (command: string, args: string[] = [], input?: string) => {
       const result = spawnSync(command, args, {
         cwd: repo,
+        env: { ...process.env, PREK_CONFIG_FILE: "hooks config.yaml" },
         input,
         encoding: "utf8",
         timeout: 60_000,
@@ -56,7 +57,7 @@ it("runs strict JSON checks from one consumer-owned Prek config without installi
       };
     };
     const source = join(repo, "source with spaces/settings.json");
-    const config = join(repo, ".pre-commit-config.yaml");
+    const config = join(repo, "hooks config.yaml");
     mkdirSync(join(repo, "source with spaces"));
     copyFileSync(
       new URL("../../etc/prek/.pre-commit-config.yaml", import.meta.url),

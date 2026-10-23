@@ -94,7 +94,7 @@ resource "google_storage_bucket" "state" {
 # Human plan review must work after bootstrap Owner access is removed.
 # The object-prefix condition excludes state and bucket-wide object listing.
 resource "google_storage_bucket_iam_member" "plan_reader" {
-  for_each = var.maintainers
+  for_each = var.owners
 
   bucket = google_storage_bucket.state.name
   role   = "roles/storage.objectViewer"
@@ -109,9 +109,9 @@ resource "google_storage_bucket_iam_member" "plan_reader" {
 # Routine administration is limited to main-branch repository/actor WIF principals.
 # Do not grant persistent project Owner access to the bootstrap human.
 resource "google_project_iam_member" "pipeline_owner" {
-  for_each = var.repository_maintainer_ids
+  for_each = var.gh_owner_ids
 
   project = google_project.state.project_id
   role    = "roles/owner"
-  member  = "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.main_branch_repository_actor_id/${var.repository_id}_${each.value}"
+  member  = "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.main_branch_repository_actor_id/${var.gh_repo_id}_${each.value}"
 }

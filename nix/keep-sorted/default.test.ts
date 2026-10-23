@@ -28,7 +28,7 @@ it("checks annotated blocks read-only and fixes only selected tracked text on re
     const excluded = join(repo, "excluded/list.txt");
     const external = join(work, "external.txt");
     const binary = join(repo, "binary.bin");
-    const config = join(repo, ".pre-commit-config.yaml");
+    const config = join(repo, "hooks config.yaml");
     writeFileSync(target, accepted);
     writeFileSync(excluded, unsorted);
     writeFileSync(external, unsorted);
@@ -46,6 +46,7 @@ it("checks annotated blocks read-only and fixes only selected tracked text on re
         cwd: repo,
         env: {
           ...process.env,
+          PREK_CONFIG_FILE: "hooks config.yaml",
           GIT_CONFIG_GLOBAL: "/dev/null",
           GIT_CONFIG_NOSYSTEM: "1",
         },

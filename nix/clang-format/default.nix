@@ -28,11 +28,6 @@ let
       if [ "$(file --brief --mime-encoding -- "$file")" = binary ]; then continue; fi
       files+=("$file")
     done
-    style=(--style=file)
-    if [ -n "''${CLANG_FORMAT_CONFIG:-}" ]; then
-      test -f "$CLANG_FORMAT_CONFIG"
-      style=("--style=file:$CLANG_FORMAT_CONFIG")
-    fi
   '';
   runner =
     name: action:
@@ -45,7 +40,7 @@ let
       ];
       text = selectFiles + ''
         for file in "''${files[@]}"; do
-          clang-format "''${style[@]}" ${action} -- "$file"
+          clang-format --style=file ${action} -- "$file"
         done
       '';
     };

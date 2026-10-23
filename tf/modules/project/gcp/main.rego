@@ -55,7 +55,7 @@ valid_audit_logging if {
 
 valid_readers if {
 	reader := input.resource.google_storage_bucket_iam_member.plan_reader[0]
-	reader.for_each == "${var.maintainers}"
+	reader.for_each == "${var.owners}"
 	reader.bucket == "${google_storage_bucket.state.name}"
 	reader.role == "roles/storage.objectViewer"
 	reader.member == "user:${each.value}"
@@ -64,10 +64,10 @@ valid_readers if {
 
 valid_federation if {
 	owner := input.resource.google_project_iam_member.pipeline_owner[0]
-	owner.for_each == "${var.repository_maintainer_ids}"
+	owner.for_each == "${var.gh_owner_ids}"
 	owner.project == "${google_project.state.project_id}"
 	owner.role == "roles/owner"
-	owner.member == "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.main_branch_repository_actor_id/${var.repository_id}_${each.value}"
+	owner.member == "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.main_branch_repository_actor_id/${var.gh_repo_id}_${each.value}"
 }
 
 deny contains "GCP module must contain only project, storage and scoped IAM resources" if not valid_inventory

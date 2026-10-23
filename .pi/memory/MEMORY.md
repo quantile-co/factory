@@ -104,7 +104,9 @@ Third-party Marimo skills are used unpatched.
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
 snapshots, tests of upstream behavior, unnecessary abstractions and repetitive
-validation. Declare runtime dependencies through pinned inputs/locks; never weaken
+validation. Minimize new files, directories and abstractions; add them only when
+required and list the additions at task completion. Declare runtime dependencies
+through pinned inputs/locks; never weaken
 assertions or skip coverage to conceal missing dependencies.
 Keep comments about current behavior, not historical migration narratives.
 `AGENTS.md` stays a navigation index. README edits require explicit approval.
@@ -361,6 +363,54 @@ values take precedence over environment overrides. Review intentional changes
 in Git; preserve existing custom values, memory, indexes and caches during adoption.
 QMD writes resolved model defaults and normalizes YAML even during collection
 listing, so keep the bootstrap seed canonical and verify startup on QMD updates.
+
+## Configuration contract source migration
+
+#decision [[configuration-contracts]] [[project-membership]]
+The [configuration contract](../skills/deploy/references/configuration.md) defines
+canonical names, platform namespaces and the coordinated consumer migration.
+Terraform roots own paired `project_owners` and `project_members` records and
+project emails/usernames directly into independent GCP/GitHub module inputs.
+Do not add an intermediary identity module or registry. Platform modules own
+permission logic. The approved member policy grants GitHub repository write
+access only, with no GCP grants or protected Plan/Apply eligibility. Members never
+enter the owner-ID map or actor gates. Existing owner views retain plans-only
+human reads and main/repository/actor-scoped WIF, not direct human project Owner
+grants. Review inherited permissions and trusted workflow source separately.
+
+Shared workflows use `PROJECT_OWNERS` for both actor guards and the internal
+Terraform adapter; optional `PROJECT_MEMBERS` defaults to an empty list. The old
+independently editable maintainer arrays and
+bucket/folder compatibility aliases are no longer the source contract. Native
+provider names remain boundary exceptions. The `module.github` to `module.gh`
+address move is pending deployment; it is not the completed module split below.
+No source change authorizes live variable updates, IAM changes, Plan or Apply.
+Factory's concrete root uses approved billing/folder literals, verified against
+Resource Manager and Billing metadata. Cloud Asset Inventory reports its existing
+state bucket in US in the expected project; direct Storage metadata access was
+unavailable to the reader. Shared workflows no longer forward billing/folder
+overrides. Verify each consumer's own deployment values before its migration;
+never copy private identifiers into public Factory. These IDs are not credentials,
+but publishing them reveals account/hierarchy metadata and does not replace IAM
+review. Owner identity pairings still require confirmation. Reusable module
+parameters remain configurable.
+
+Use `GH_REPO` for the repository selector and `GH_REPO_TOKEN` for the separate
+repository-scoped provider credential. The native `GH_REPO` selector must be
+unset for independent checkout verification; keep explicit targets on mutations.
+Owned Terraform names use `repo_name`, `repo_id` and cross-platform `gh_repo_id`;
+provider attributes and existing resource addresses retain native spellings.
+Project outputs use `module.gcp.project_id` / `project_number` and root
+`gcp_project_id`; retain `tf_state` on bucket names. Operators select one
+`PLAN_REF` (`RUN_ID/ATTEMPT/GENERATION`); review derives its components internally
+and Apply uses the same reference without replanning.
+
+Tool wrappers use native discovery for Actionlint and Clang configuration.
+Retained file selectors use `<TOOL>_CONFIG_FILE`, including
+`EDITORCONFIG_CHECKER_CONFIG_FILE`, `GOLANGCI_LINT_CONFIG_FILE` and
+`PREK_CONFIG_FILE`. The latter is shared by the Prek and keep-sorted adapters.
+Keep explicit paths where wrappers validate settings or change working roots;
+do not rename upstream-native configuration variables.
 
 ## Retained implementation decisions and open issues
 
