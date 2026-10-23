@@ -111,7 +111,10 @@ Keep comments about current behavior, not historical migration narratives.
 
 Checks are read-only; fixes and hook installation are explicit. Husky's tracked
 pre-push entry point runs direnv checks and optional legacy handling before LFS
-upload. No commit-time hook or implicit shell-entry installation is intended.
+upload. Run checks in a subshell with Git's repository-local hook environment
+cleared, so nested root lookups and module clones resolve their own checkouts.
+Keep the original push environment and refs for legacy hooks and LFS.
+No commit-time hook or implicit shell-entry installation is intended.
 
 ## Shared Pi extensions
 

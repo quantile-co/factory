@@ -4,7 +4,13 @@ set -euo pipefail
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 cat >"$work/refs"
-direnv exec . pnpm run check </dev/null
+(
+    # Hook-local Git routing breaks nested -C lookups and module clones.
+    # Isolate checks; legacy and LFS still receive the original push environment.
+    git_env=$(git rev-parse --local-env-vars)
+    while IFS= read -r name; do unset "$name"; done <<<"$git_env"
+    direnv exec . pnpm run check </dev/null
+)
 if [[ -n ${GIT_PRE_PUSH_LEGACY:-} ]]; then
     [[ -x $GIT_PRE_PUSH_LEGACY ]] || {
         echo "Additional pre-push hook is not executable" >&2

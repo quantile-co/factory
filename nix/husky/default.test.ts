@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -97,5 +97,105 @@ exit "$LEGACY_STATUS"
     expect(readdirSync(join(root, "tmp"))).toEqual([]);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("isolates check subprocesses from Git's real worktree hook environment, preserving legacy and LFS", () => {
+  const base = mkdtempSync(join(tmpdir(), "factory-hook-env-"));
+  const primary = join(base, "primary");
+  const child = join(base, "task");
+  const remote = join(base, "remote.git");
+  const git = (cwd: string, ...args: string[]) =>
+    execFileSync("git", ["-C", cwd, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  try {
+    mkdirSync(primary);
+    mkdirSync(join(base, "bin"));
+    git(primary, "init", "-q", "-b", "main");
+    writeFileSync(join(primary, "file"), "fixture\n");
+    git(primary, "add", "file");
+    git(
+      primary,
+      "-c",
+      "user.name=Test",
+      "-c",
+      "user.email=test@example.invalid",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-qm",
+      "initial",
+    );
+    git(base, "init", "--bare", "-q", "-b", "main", remote);
+    git(primary, "remote", "add", "origin", remote);
+    git(primary, "push", "origin", "main");
+    git(primary, "worktree", "add", "-qb", "task", child);
+    mkdirSync(join(child, "tf"));
+    const hook = fileURLToPath(
+      new URL("../../etc/husky/pre-push", import.meta.url),
+    );
+    writeFileSync(join(primary, ".git/hooks/pre-push"), readFileSync(hook), {
+      mode: 0o755,
+    });
+    writeFileSync(
+      join(base, "bin/direnv"),
+      `#!/usr/bin/env bash
+set -euo pipefail
+[[ "$1" == exec && "$2" == . ]]
+shift 2
+if [[ "$1" == pnpm ]]; then
+  [[ "$*" == 'pnpm run check' ]]
+  actual=$(git -C "$ROOT/tf" rev-parse --show-toplevel)
+  [[ "$actual" == "$ROOT" ]] || { printf 'Expected check root %s; got %s\\n' "$ROOT" "$actual" >&2; exit 1; }
+  git clone --quiet "$REMOTE" "$LOG/module"
+  [[ "$(git -C "$LOG/module" rev-parse --show-toplevel)" == "$LOG/module" ]]
+  printf 'check\\n' >> "$LOG/order"
+  exit 0
+fi
+[[ "$1 $2 $3" == 'git lfs pre-push' ]]
+printf '%s' "\${GIT_DIR:-missing}" > "$LOG/lfs.gitdir"
+printf 'lfs\\n' >> "$LOG/order"
+cat > "$LOG/lfs.refs"
+`,
+      { mode: 0o755 },
+    );
+    const legacy = join(base, "legacy");
+    writeFileSync(
+      legacy,
+      `#!/usr/bin/env bash
+printf '%s' "\${GIT_DIR:-missing}" > "$LOG/legacy.gitdir"
+printf 'legacy\\n' >> "$LOG/order"
+cat > "$LOG/legacy.refs"
+`,
+      { mode: 0o755 },
+    );
+    const result = spawnSync("git", ["-C", child, "push", "origin", "task"], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${join(base, "bin")}:${process.env.PATH}`,
+        ROOT: child,
+        LOG: base,
+        REMOTE: remote,
+        GIT_PRE_PUSH_LEGACY: legacy,
+      },
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(base, "order"), "utf8")).toBe(
+      "check\nlegacy\nlfs\n",
+    );
+    const metadata = git(child, "rev-parse", "--absolute-git-dir");
+    expect(readFileSync(join(base, "legacy.gitdir"), "utf8")).toBe(metadata);
+    expect(readFileSync(join(base, "lfs.gitdir"), "utf8")).toBe(metadata);
+    expect(readFileSync(join(base, "legacy.refs"), "utf8")).toBe(
+      readFileSync(join(base, "lfs.refs"), "utf8"),
+    );
+    expect(git(remote, "rev-parse", "refs/heads/task")).toBe(
+      git(child, "rev-parse", "HEAD"),
+    );
+  } finally {
+    rmSync(base, { recursive: true, force: true });
   }
 });
