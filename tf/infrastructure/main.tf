@@ -1,9 +1,3 @@
-# Keep deployed addresses while adopting the platform namespace.
-moved {
-  from = module.github
-  to   = module.gh
-}
-
 # One module owns repository settings; GCP projects reuse its identity outputs.
 # This repository is intentionally public; scope the scanner exception to this call.
 # trivy:ignore:AVD-GIT-0001

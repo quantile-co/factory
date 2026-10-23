@@ -365,7 +365,7 @@ in Git; preserve existing custom values, memory, indexes and caches during adopt
 QMD writes resolved model defaults and normalizes YAML even during collection
 listing, so keep the bootstrap seed canonical and verify startup on QMD updates.
 
-## Configuration contract source migration
+## Configuration contract
 
 #decision [[configuration-contracts]] [[project-membership]]
 The [configuration contract](../skills/deploy/references/configuration.md) defines
@@ -384,8 +384,9 @@ Terraform adapter; optional `PROJECT_MEMBERS` defaults to an empty list. The old
 independently editable maintainer arrays and
 bucket/folder compatibility aliases are no longer the source contract. Native
 provider names remain boundary exceptions. The `module.github` to `module.gh`
-address move is pending deployment; it is not the completed module split below.
-No source change authorizes live variable updates, IAM changes, Plan or Apply.
+address migration is complete; the temporary move is retired. Canonical owner and
+bucket settings were separately approved and activated. No source change
+authorizes live variable updates, IAM changes, Plan or Apply.
 Factory's concrete root uses approved billing/folder literals, verified against
 Resource Manager and Billing metadata. Cloud Asset Inventory reports its existing
 state bucket in US in the expected project; direct Storage metadata access was
@@ -393,8 +394,8 @@ unavailable to the reader. Shared workflows no longer forward billing/folder
 overrides. Verify each consumer's own deployment values before its migration;
 never copy private identifiers into public Factory. These IDs are not credentials,
 but publishing them reveals account/hierarchy metadata and does not replace IAM
-review. Owner identity pairings still require confirmation. Reusable module
-parameters remain configurable.
+review. Factory's owner pairing is confirmed; other installations must confirm
+their own rosters. Reusable module parameters remain configurable.
 
 Use `GH_REPO` for the repository selector and `GH_REPO_TOKEN` for the separate
 repository-scoped provider credential. The native `GH_REPO` selector must be
@@ -442,6 +443,10 @@ do not rename upstream-native configuration variables.
 - Storage audit rollout: source `99acec8`, Plan `39373527521`, receipt
   `12242591265`, approved Apply `39374387499`. All three log types were verified
   without exemptions. These are completed outcomes, not reusable approvals.
+- Configuration namespace and owner-contract migration: source `5088c9c`, Plan
+  `39919872065`, approved exact-generation Apply `39923368441`. Only module
+  addresses and output names changed; cloud resources, IAM and backend identity
+  were retained. Do not replay this completed migration.
 
 ## Langfuse CLI
 
