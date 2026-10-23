@@ -63,6 +63,7 @@
             inherit (pkgs) google-cloud-sdk ngrok;
             inherit (pkgs) nssTools stripe-cli;
             inherit (pkgs) duckdb postgresql;
+            langfuse = factory.langfuse.package;
             github-workflow-plan = factory.github.workflows.plan.package;
             github-workflow-apply = factory.github.workflows.apply.package;
           };
@@ -98,6 +99,7 @@
               ])
               ++ [ herdr ]
               ++ (with factory; [
+                langfuse.package
                 pi.package
                 qmd.package
                 prek.package

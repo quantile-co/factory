@@ -25,6 +25,7 @@ let
     kubeconform = ./kubeconform;
     keep-sorted = ./keep-sorted;
     knip = ./knip;
+    langfuse = ./langfuse;
     license = ./license;
     markdownlint-cli2 = ./markdownlint-cli2;
     mypy = ./mypy;

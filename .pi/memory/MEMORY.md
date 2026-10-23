@@ -441,3 +441,14 @@ do not rename upstream-native configuration variables.
 - Storage audit rollout: source `99acec8`, Plan `39373527521`, receipt
   `12242591265`, approved Apply `39374387499`. All three log types were verified
   without exemptions. These are completed outcomes, not reusable approvals.
+
+## Langfuse CLI
+
+#decision [[factory-langfuse-cli]]
+`factory.langfuse.package` is the opt-in module interface; `langfuse` is the
+public per-system package and native executable, explicitly selected in Factory's
+development shell. Package the fixed-hash official `@langfuse/cli` npm bundle with
+locked `nodejs_24`, retaining the MIT license and bundled API contract assets.
+The published bundle has no runtime npm dependencies. Native `LANGFUSE_*`
+configuration remains runtime-only and operator-owned; do not import credentials
+into Nix or manage user-global installations.
