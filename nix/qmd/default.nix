@@ -20,7 +20,7 @@ in
     configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/qmd/index.yml;
-      description = "Optional project-local QMD configuration template.";
+      description = "Canonical project-local QMD bootstrap seed; repositories own collections and models after creation.";
     };
   };
 }

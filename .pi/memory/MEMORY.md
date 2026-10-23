@@ -73,7 +73,7 @@ Prerequisites, Development and Skills presentation. Never infer a repository's
 license or replace its third-party notices. Commit `.envrc` copies for bootstrap;
 normal direnv approval remains required. Keep domain-specific deployment guidance
 in consumer references and share only applicable entry points/procedures. Q0 stays
-independent. QMD ownership is unchanged pending a separate copy-versus-seed decision.
+independent.
 
 #decision [[factory-declarative-flake]] [[factory-package-exports]]
 Keep repository-level inputs, systems, public `packages`, `devShell.packages`
@@ -337,6 +337,17 @@ Storage audit configuration enables ADMIN_READ, DATA_READ and DATA_WRITE without
 exemptions; inspect existing service configuration and inherited exemptions before
 rollout. Project-deletion liens stay manually managed outside Terraform, with
 separate authorization for creation or exact-name removal. Never bulk-delete liens.
+
+#decision [[factory-qmd-ownership]]
+Seed `.qmd/index.yml` as a checked-in, repository-owned native configuration,
+not a refreshed copy. Factory supplies canonical bootstrap collections and the
+pinned QMD built-in model defaults; ordinary Pi memory startup must not dirty it.
+After creation, each repository owns all collections, contexts and models:
+upstream seed changes do not replace existing configuration. Native YAML model
+values take precedence over environment overrides. Review intentional changes
+in Git; preserve existing custom values, memory, indexes and caches during adoption.
+QMD writes resolved model defaults and normalizes YAML even during collection
+listing, so keep the bootstrap seed canonical and verify startup on QMD updates.
 
 ## Retained implementation decisions and open issues
 
