@@ -123,8 +123,8 @@ Only `index.ts` imports sibling implementation modules: it wires plain dependenc
 objects into consumer-owned interfaces. `pi.ts` owns Pi registration, sessions and
 SDK UI integration; `git.ts` owns Git inspection and protections; `herdr.ts` owns
 Herdr workspaces, agents and reconciliation; `terminal.ts` owns foreground process
-execution and terminal restoration. Keep the latter three independent of the Pi
-SDK. No dependency-injection framework, service registry or interface per helper.
+execution and terminal restoration; `direnv.ts` owns worktree environment approval.
+Keep these boundary implementations independent of the Pi SDK. No dependency-injection framework, service registry or interface per helper.
 Tests inject boundary dependencies rather than mocking sibling modules, retaining
 real Git repositories and Pi session files where their behavior matters.
 Author code there, not in `etc/` or generated `.pi/` copies.
@@ -151,6 +151,12 @@ integration's session-start report before prompting. Require Herdr's observed
 activity gate before reporting task acceptance; a successful terminal write is
 not acceptance. Fail closed on blocked, missing or changed agents and never
 resend an uncertain prompt automatically.
+Before starting a child, reuse native direnv approval only when the primary's
+regular, committed `.envrc` is already approved and the worktree copy is identical.
+Do not inherit approval over a worktree `.envrc.local` or explicit direnv denial.
+An independently approved worktree remains usable; an unapproved primary needs
+one operator review and `direnv allow`, not a directory-wide whitelist. This
+preflight never evaluates either environment or bypasses hooks.
 Failures preserve partial workspaces/sessions for inspection instead of retrying
 uncertain mutations. A Git-directory launch lock coordinates Pi processes;
 inspect an abandoned lock before removing it manually.
@@ -165,7 +171,10 @@ not shared repository files. This does not impose a workstation directory layout
 
 The guard operates without Herdr, uses shfmt's Bash parser, and blocks primary
 checkout file edits and Git mutations, including switch/checkout and GitHub PR
-checkout. Fast-forward-only main maintenance requires interactive approval.
+checkout. Verified `--ff-only` pull/merge syncs of main's configured remote main
+branch do not require a second confirmation, including without a terminal UI.
+Other refs/options and missing upstreams remain blocked; Git rejects divergence
+and conflicting local edits without resetting or stashing.
 Branch drift and unresolved Git targets stop mutations; never automatically
 switch back, stash, reset or copy uncommitted files. Bash, foreground-terminal
 calls and Pi's user shell input are checked; PowerShell is unsupported. This is

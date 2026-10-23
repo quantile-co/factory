@@ -51,6 +51,9 @@ beforeEach(() => {
     "initial",
   );
   git(primary, "worktree", "add", "-qb", "task", child);
+  git(primary, "remote", "add", "origin", join(base, "remote.git"));
+  git(primary, "update-ref", "refs/remotes/origin/main", "HEAD");
+  git(primary, "branch", "--set-upstream-to=origin/main", "main");
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -64,6 +67,7 @@ function dependencies(): Dependencies {
   };
   return {
     git: repositories,
+    direnv: { trust: vi.fn(async () => {}) },
     terminal: { run: unexpected },
     herdr: {
       available: () => true,
@@ -95,7 +99,7 @@ function adapter(deps: Dependencies) {
   return { events, tools };
 }
 
-it("gates owned tools, requests approval and pauses on drift; routes only relevant lifecycle events", async () => {
+it("gates owned tools without prompting for verified syncs and pauses on drift", async () => {
   const deps = dependencies();
   const { events } = adapter(deps);
   const confirm = vi.fn().mockResolvedValue(false);
@@ -129,11 +133,21 @@ it("gates owned tools, requests approval and pauses on drift; routes only releva
   ).toMatchObject({ block: true });
   expect(
     await call("bash", { command: `git -C '${primary}' pull --ff-only` }),
-  ).toMatchObject({ block: true });
-  confirm.mockResolvedValueOnce(true);
-  expect(
-    await call("bash", { command: `git -C '${primary}' pull --ff-only` }),
   ).toBeUndefined();
+  expect(
+    await events.get("tool_call")?.(
+      {
+        toolName: "foreground_terminal",
+        input: { command: `git -C '${primary}' merge --ff-only origin/main` },
+      },
+      { ...ctx, mode: "rpc", hasUI: false },
+    ),
+  ).toBeUndefined();
+  await events.get("user_bash")?.(
+    { command: `git -C '${primary}' pull --ff-only origin main` },
+    ctx,
+  );
+  expect(confirm).not.toHaveBeenCalled();
   await events.get("tool_result")?.({ toolName: "personal.bash" }, ctx);
   expect(deps.herdr.changed).not.toHaveBeenCalled();
   await events.get("tool_result")?.({ toolName: "foreground_terminal" }, ctx);
@@ -197,6 +211,11 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
   let ready = false;
   deps.herdr.waitForSession = vi.fn(async () => {
     expect(occupied).toBe(true);
+    expect(deps.direnv.trust).toHaveBeenCalledWith(
+      primary,
+      expect.any(String),
+      undefined,
+    );
     ready = true;
   });
   deps.herdr.promptAgent = vi.fn(async () => {
@@ -245,6 +264,7 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
     ).started,
   ).toBe(false);
   expect(deps.herdr.startAgent).toHaveBeenCalledOnce();
+  expect(deps.direnv.trust).toHaveBeenCalledOnce();
   expect(deps.herdr.waitForSession).toHaveBeenCalledOnce();
   expect(deps.herdr.promptAgent).toHaveBeenCalledOnce();
   expect(existsSync(join(primary, ".git/pi-herdr-worktree.lock"))).toBe(false);
@@ -257,6 +277,32 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
       deps,
     ),
   ).rejects.toThrow(/loses local guidance/);
+});
+
+it("preserves a worktree without starting Pi when environment trust fails", async () => {
+  const deps = dependencies();
+  deps.herdr.openWorktree = async () => "unapproved";
+  deps.herdr.inspectWorkspace = async () => ({
+    pane: "unapproved:p1",
+    occupied: false,
+  });
+  deps.direnv.trust = vi.fn(async () => {
+    throw new Error("Approve primary environment first");
+  });
+  deps.herdr.startAgent = vi.fn(async () => {});
+  deps.herdr.promptAgent = vi.fn(async () => {});
+  await expect(
+    startWorktree(
+      { branch: "task", task: "Test", context: "fresh" },
+      { cwd: primary, mode: "tui" } as ExtensionContext,
+      "launch",
+      deps,
+    ),
+  ).rejects.toThrow(/Approve primary.*Workspace unapproved.*preserved/);
+  expect(deps.herdr.startAgent).not.toHaveBeenCalled();
+  expect(deps.herdr.promptAgent).not.toHaveBeenCalled();
+  expect(existsSync(child)).toBe(true);
+  expect(existsSync(join(primary, ".git/pi-herdr-worktree.lock"))).toBe(false);
 });
 
 it("refuses concurrent launches and preserves partial results on startup failure", async () => {

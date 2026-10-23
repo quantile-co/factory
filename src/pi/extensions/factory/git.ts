@@ -260,12 +260,10 @@ export async function guardFile(path: string): Promise<void> {
 export async function guardCommand(
   command: string,
   initialCwd: string,
-): Promise<string[]> {
+): Promise<void> {
   const tree = JSON.parse(
     await run("shfmt", ["-ln", "bash", "-tojson"], initialCwd, command),
   ) as Node;
-  const maintenance = new Set<string>();
-
   async function inspect(
     args: (string | undefined)[],
     cwd: string | undefined,
@@ -316,8 +314,7 @@ export async function guardCommand(
         const script = args[flag + 1];
         if (!script || !cwd)
           throw new Error("Cannot resolve nested shell command/cwd.");
-        for (const message of await guardCommand(script, cwd))
-          maintenance.add(message);
+        await guardCommand(script, cwd);
       }
       return;
     }
@@ -473,9 +470,66 @@ export async function guardCommand(
           ].includes(arg),
       )
     ) {
-      maintenance.add(
-        `Allow fast-forward maintenance on main at ${repo.primary}?\n${command}`,
+      const [remote, ref, tracking] = (
+        await git(
+          cwd,
+          "for-each-ref",
+          "--format=%(upstream:remotename)%00%(upstream:remoteref)%00%(upstream)",
+          "refs/heads/main",
+        )
+      )
+        .trim()
+        .split("\0");
+      const targets = staticArgs.slice(1).filter((arg) => !arg.startsWith("-"));
+      const matches =
+        subcommand === "pull"
+          ? targets.length === 0 ||
+            (targets[0] === remote &&
+              (targets.length === 1 ||
+                (targets.length === 2 &&
+                  ["main", "refs/heads/main"].includes(targets[1]))))
+          : targets.length === 0 ||
+            (targets.length === 1 &&
+              [tracking, `${remote}/main`, "@{upstream}", "@{u}"].includes(
+                targets[0],
+              ));
+      if (
+        !remote ||
+        remote === "." ||
+        ref !== "refs/heads/main" ||
+        tracking !== `refs/remotes/${remote}/main` ||
+        !matches
+      )
+        throw new Error(
+          "Fast-forward sync must target main's configured remote main branch.",
+        );
+      await git(cwd, "remote", "get-url", remote);
+      if (
+        subcommand === "merge" &&
+        targets.length === 1 &&
+        (
+          await git(
+            cwd,
+            "rev-parse",
+            "--symbolic-full-name",
+            "--verify",
+            "--end-of-options",
+            targets[0],
+          )
+        ).trim() !== tracking
+      )
+        throw new Error(
+          "Fast-forward sync target is ambiguous; use the full remote-tracking main ref.",
+        );
+      await git(
+        cwd,
+        "rev-parse",
+        "--verify",
+        "--end-of-options",
+        `${tracking}^{commit}`,
       );
+      // Git's --ff-only and normal worktree checks reject divergence and
+      // overlapping local edits; no reset, stash or second approval is needed.
       return;
     }
     throw new Error(
@@ -549,5 +603,4 @@ export async function guardCommand(
     }
   }
   await walk(tree, initialCwd);
-  return [...maintenance];
 }

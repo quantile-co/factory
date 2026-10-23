@@ -40,7 +40,14 @@ export interface Dependencies {
     ): Promise<void>;
     destination(repo: Repository, branch: string): Promise<string>;
     guardFile(path: string): Promise<void>;
-    guardCommand(command: string, cwd: string): Promise<string[]>;
+    guardCommand(command: string, cwd: string): Promise<void>;
+  };
+  direnv: {
+    trust(
+      primary: string,
+      checkout: string,
+      signal?: AbortSignal,
+    ): Promise<void>;
   };
   herdr: {
     available(): boolean;
@@ -163,7 +170,7 @@ export async function startWorktree(
   options: StartOptions,
   ctx: ExtensionContext,
   toolCallId: string,
-  { git, herdr }: Pick<Dependencies, "git" | "herdr">,
+  { git, herdr, direnv }: Pick<Dependencies, "git" | "herdr" | "direnv">,
   signal?: AbortSignal,
 ) {
   if (ctx.mode !== "tui" || !herdr.available())
@@ -247,6 +254,7 @@ export async function startWorktree(
         message:
           "An agent already occupies this worktree. It was not replaced or prompted.",
       };
+    await direnv.trust(repo.primary, path, signal);
     const session =
       options.context === "fresh"
         ? undefined
@@ -301,15 +309,7 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
   }
   async function shell(command: string, cwd: string, ctx: ExtensionContext) {
     await checkBranch(ctx);
-    for (const question of await git.guardCommand(command, cwd)) {
-      if (
-        !ctx.hasUI ||
-        !(await ctx.ui.confirm("Primary checkout maintenance", question))
-      )
-        throw new Error(
-          "Main maintenance was not approved. Use a linked task checkout.",
-        );
-    }
+    await git.guardCommand(command, cwd);
   }
   pi.on("session_start", async (_event, ctx) => {
     try {
