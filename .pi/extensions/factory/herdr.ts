@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
 interface Context {
@@ -558,12 +559,71 @@ export function createHerdr({
         signal,
       );
     },
+    async waitForSession(name: string, signal?: AbortSignal): Promise<void> {
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        signal?.throwIfAborted();
+        const { agent } = await herdr(["agent", "get", name], signal);
+        if (agent.agent !== "pi" || agent.name !== name)
+          throw new Error(
+            "The launched Pi agent changed before task submission.",
+          );
+        if (agent.agent_status === "blocked")
+          throw new Error(
+            "Pi is blocked during startup; no task prompt was sent.",
+          );
+        if (agent.agent_status === "working")
+          throw new Error("Pi is already working; no task prompt was sent.");
+        // Pi advertises terminal readiness before enabling normal submission.
+        // Its bundled Herdr integration reports the session from session_start,
+        // after the editor's startup-only submission handler has been replaced.
+        const session = agent.agent_session;
+        if (
+          ["idle", "done"].includes(agent.agent_status) &&
+          session?.source === "herdr:pi" &&
+          session.agent === "pi" &&
+          session.kind === "path" &&
+          typeof session.value === "string" &&
+          session.value.length > 0
+        )
+          return;
+        await delay(100, undefined, { signal });
+      }
+      throw new Error(
+        "Pi did not report its initialized session; no task prompt was sent.",
+      );
+    },
     async promptAgent(
       name: string,
       prompt: string,
       signal?: AbortSignal,
     ): Promise<void> {
-      await herdr(["agent", "prompt", name, prompt], signal);
+      // Herdr's activity gate distinguishes accepted work from a successful PTY
+      // write. Include settled states so a fast response is also acknowledged.
+      const { agent } = await herdr(
+        [
+          "agent",
+          "prompt",
+          name,
+          prompt,
+          "--wait",
+          "--until",
+          "working",
+          "--until",
+          "done",
+          "--until",
+          "idle",
+          "--until",
+          "blocked",
+          "--timeout",
+          "10000",
+        ],
+        signal,
+      );
+      if (!["working", "done", "idle"].includes(agent?.agent_status))
+        throw new Error(
+          "Task acceptance was not confirmed; inspect the child before retrying.",
+        );
     },
   };
 }

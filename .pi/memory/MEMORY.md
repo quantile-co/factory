@@ -146,6 +146,11 @@ slash commands. Start uses native Herdr worktree and agent commands, preserves
 parent focus and session, and forks the conversation with Pi's SessionManager
 unless `context: fresh` is requested. In-flight tool batches are excluded from
 the child context. Existing occupied workspaces are not replaced or prompted.
+Native terminal readiness is not Pi input readiness: wait for the bundled Herdr
+integration's session-start report before prompting. Require Herdr's observed
+activity gate before reporting task acceptance; a successful terminal write is
+not acceptance. Fail closed on blocked, missing or changed agents and never
+resend an uncertain prompt automatically.
 Failures preserve partial workspaces/sessions for inspection instead of retrying
 uncertain mutations. A Git-directory launch lock coordinates Pi processes;
 inspect an abandoned lock before removing it manually.

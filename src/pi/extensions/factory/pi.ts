@@ -72,6 +72,7 @@ export interface Dependencies {
       options: { name: string; kind: string; pane: string; args: string[] },
       signal?: AbortSignal,
     ): Promise<void>;
+    waitForSession(name: string, signal?: AbortSignal): Promise<void>;
     promptAgent(
       name: string,
       prompt: string,
@@ -260,6 +261,7 @@ export async function startWorktree(
       },
       signal,
     );
+    await herdr.waitForSession(name, signal);
     await herdr.promptAgent(
       name,
       `Work in this linked checkout: ${path}. The parent Pi session remains open. Do not switch the primary checkout or create another worktree for this same task.\n\n${task}`,
@@ -272,7 +274,7 @@ export async function startWorktree(
       session,
       started: true,
       message:
-        "Child Pi started without changing parent focus or session. Uncommitted files were not copied.",
+        "Child Pi accepted its task without changing parent focus or session. Uncommitted files were not copied.",
     };
   } catch (error) {
     throw new Error(

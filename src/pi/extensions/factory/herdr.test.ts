@@ -165,7 +165,9 @@ test("creates/opens workspaces without focus and uses agent-agnostic start/promp
           : [],
       };
     if (action === "pane list") return { panes };
-    if (action === "agent start" || action === "agent prompt") return {};
+    if (action === "agent start") return {};
+    if (action === "agent prompt")
+      return { agent: { agent_status: "working" } };
     throw new Error(`Unexpected Herdr operation: ${action}`);
   });
   const herdr = createHerdr({ git: metadata, request });
@@ -242,9 +244,115 @@ test("creates/opens workspaces without focus and uses agent-agnostic start/promp
     undefined,
   );
   expect(request).toHaveBeenCalledWith(
-    ["agent", "prompt", "worker", "Do the task"],
+    [
+      "agent",
+      "prompt",
+      "worker",
+      "Do the task",
+      "--wait",
+      "--until",
+      "working",
+      "--until",
+      "done",
+      "--until",
+      "idle",
+      "--until",
+      "blocked",
+      "--timeout",
+      "10000",
+    ],
     undefined,
   );
+});
+
+test("waits past early terminal readiness for Pi's session-start report", async () => {
+  const agent = {
+    agent: "pi",
+    name: "worker",
+    agent_status: "idle",
+    interactive_ready: true,
+  };
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({ agent })
+    .mockResolvedValueOnce({
+      agent: {
+        ...agent,
+        agent_session: {
+          agent: "pi",
+          source: "herdr:pi",
+          kind: "path",
+          value: "/sessions/child.jsonl",
+        },
+      },
+    });
+  const herdr = createHerdr({ git: metadata, request });
+  const signal = new AbortController().signal;
+  await herdr.waitForSession("worker", signal);
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(request).toHaveBeenCalledWith(["agent", "get", "worker"], signal);
+});
+
+test.each([
+  { agent: "pi", name: "worker", agent_status: "blocked" },
+  { agent: "pi", name: "worker", agent_status: "working" },
+  { agent: "codex", name: "worker", agent_status: "idle" },
+  { agent: "pi", name: "replacement", agent_status: "idle" },
+])("refuses unsafe readiness: %j", async (agent) => {
+  const request = vi.fn(async () => ({ agent }));
+  const herdr = createHerdr({ git: metadata, request });
+  await expect(herdr.waitForSession("worker")).rejects.toThrow();
+  expect(request).toHaveBeenCalledOnce();
+});
+
+test("readiness is bounded and cancellable, never a reason to send anyway", async () => {
+  const request = vi.fn(async () => ({
+    agent: { agent: "pi", name: "worker", agent_status: "idle" },
+  }));
+  const herdr = createHerdr({ git: metadata, request });
+  const clock = vi
+    .spyOn(Date, "now")
+    .mockReturnValueOnce(0)
+    .mockReturnValueOnce(0)
+    .mockReturnValue(30000);
+  try {
+    await expect(herdr.waitForSession("worker")).rejects.toThrow(
+      /no task prompt was sent/,
+    );
+    expect(request).toHaveBeenCalledOnce();
+  } finally {
+    clock.mockRestore();
+  }
+  request.mockClear();
+  await expect(
+    herdr.waitForSession("worker", AbortSignal.abort()),
+  ).rejects.toThrow();
+  expect(request).not.toHaveBeenCalled();
+});
+
+test.each(["working", "done", "idle"])(
+  "acknowledges a prompt that reaches %s",
+  async (agent_status) => {
+    const request = vi.fn(async () => ({ agent: { agent_status } }));
+    await createHerdr({ git: metadata, request }).promptAgent("worker", "Task");
+    expect(request).toHaveBeenCalledOnce();
+  },
+);
+
+test("propagates stalled submission without retry and rejects blocked acceptance", async () => {
+  const request = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("agent_prompt_stalled"))
+    .mockResolvedValueOnce({ agent: { agent_status: "blocked" } });
+  const herdr = createHerdr({ git: metadata, request });
+  await expect(herdr.promptAgent("worker", "Task")).rejects.toThrow(
+    "agent_prompt_stalled",
+  );
+  expect(request).toHaveBeenCalledOnce();
+  await expect(herdr.promptAgent("worker", "Different task")).rejects.toThrow(
+    /acceptance was not confirmed/,
+  );
+  expect(request).toHaveBeenCalledTimes(2);
 });
 
 test("reconciles sidebar repositories without reopening parked or closing occupied workspaces", async () => {

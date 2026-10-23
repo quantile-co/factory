@@ -74,6 +74,7 @@ function dependencies(): Dependencies {
       openWorktree: unexpected,
       inspectWorkspace: unexpected,
       startAgent: unexpected,
+      waitForSession: unexpected,
       promptAgent: unexpected,
     },
   };
@@ -193,7 +194,14 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
   deps.herdr.startAgent = vi.fn(async () => {
     occupied = true;
   });
-  deps.herdr.promptAgent = vi.fn(async () => {});
+  let ready = false;
+  deps.herdr.waitForSession = vi.fn(async () => {
+    expect(occupied).toBe(true);
+    ready = true;
+  });
+  deps.herdr.promptAgent = vi.fn(async () => {
+    expect(ready).toBe(true);
+  });
   writeFileSync(join(primary, "file.txt"), "uncommitted\n");
   const result = await startWorktree(
     { branch: "feature/test", task: "Implement it" },
@@ -237,6 +245,7 @@ it("uses local placement, forks safely, and never replaces an occupied agent", a
     ).started,
   ).toBe(false);
   expect(deps.herdr.startAgent).toHaveBeenCalledOnce();
+  expect(deps.herdr.waitForSession).toHaveBeenCalledOnce();
   expect(deps.herdr.promptAgent).toHaveBeenCalledOnce();
   expect(existsSync(join(primary, ".git/pi-herdr-worktree.lock"))).toBe(false);
   vi.stubEnv("PI_HERDR_WORKTREE_ROOT", join(tmpdir(), "outside-family"));
@@ -293,6 +302,52 @@ it("refuses concurrent launches and preserves partial results on startup failure
   expect(existsSync(lock)).toBe(false);
   expect(git(primary, "branch", "--show-current")).toBe("main");
 });
+
+it.each(["readiness", "submission"])(
+  "preserves a launched child after %s failure without resending",
+  async (failure) => {
+    const deps = dependencies();
+    const ctx = { cwd: primary, mode: "tui" } as ExtensionContext;
+    let occupied = false;
+    deps.herdr.openWorktree = async () => "existing";
+    deps.herdr.inspectWorkspace = async () => ({
+      pane: "existing:p1",
+      occupied,
+    });
+    deps.herdr.startAgent = vi.fn(async () => {
+      occupied = true;
+    });
+    deps.herdr.waitForSession = vi.fn(async () => {
+      if (failure === "readiness") throw new Error("session startup timed out");
+    });
+    deps.herdr.promptAgent = vi.fn(async () => {
+      throw new Error("agent_prompt_stalled");
+    });
+    const options = {
+      branch: "task",
+      task: "Implement it",
+      context: "fresh" as const,
+    };
+    await expect(startWorktree(options, ctx, "launch", deps)).rejects.toThrow(
+      /Workspace existing.*preserved/,
+    );
+    expect(existsSync(child)).toBe(true);
+    expect(existsSync(join(primary, ".git/pi-herdr-worktree.lock"))).toBe(
+      false,
+    );
+    expect(deps.herdr.promptAgent).toHaveBeenCalledTimes(
+      failure === "readiness" ? 0 : 1,
+    );
+    expect((await startWorktree(options, ctx, "retry", deps)).started).toBe(
+      false,
+    );
+    expect(deps.herdr.startAgent).toHaveBeenCalledOnce();
+    expect(deps.herdr.waitForSession).toHaveBeenCalledOnce();
+    expect(deps.herdr.promptAgent).toHaveBeenCalledTimes(
+      failure === "readiness" ? 0 : 1,
+    );
+  },
+);
 
 it("adapts the injected terminal to Pi and refuses handoff outside TUI or after cancellation", async () => {
   const deps = dependencies();
