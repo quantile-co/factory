@@ -12,10 +12,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { Type, type Usage } from "@earendil-works/pi-ai";
+import { type ClassifierResult, Type, type Usage } from "@earendil-works/pi-ai";
 import {
   type ExtensionAPI,
   type ExtensionContext,
+  getAgentDir,
   getShellConfig,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
@@ -53,7 +54,17 @@ export interface Dependencies {
     options: StartOptions,
     ctx: ExtensionContext,
     signal?: AbortSignal,
+    observe?: () =>
+      | ((result: ClassifierResult | undefined, failure?: string) => void)
+      | undefined,
   ): Promise<Selection>;
+  traceClassifier(options: {
+    npmRoots: readonly string[];
+    sessionId: string;
+    toolCallId: string;
+  }):
+    | ((result: ClassifierResult | undefined, failure?: string) => void)
+    | undefined;
   git: {
     repository(path: string): Promise<Repository | undefined>;
     primaryDrift(repo: Repository): string | undefined;
@@ -211,6 +222,7 @@ export async function startWorktree(
     selectChild,
   }: Pick<Dependencies, "git" | "herdr" | "direnv" | "selectChild">,
   signal?: AbortSignal,
+  observe?: Parameters<Dependencies["selectChild"]>[3],
 ) {
   signal =
     signal && ctx.signal
@@ -303,7 +315,7 @@ export async function startWorktree(
           "An agent already occupies this worktree. It was not replaced or prompted.",
       };
     await direnv.trust(repo.primary, path, signal);
-    selection = await selectChild(options, ctx, signal);
+    selection = await selectChild(options, ctx, signal, observe);
     signal?.throwIfAborted();
     const session =
       options.context === "fresh"
@@ -404,9 +416,63 @@ export async function startWorktree(
   }
 }
 
+function addUsage(first: Usage | undefined, second: Usage): Usage {
+  if (!first) return second;
+  const sum = { ...first, cost: { ...first.cost } };
+  for (const key of [
+    "input",
+    "output",
+    "cacheRead",
+    "cacheWrite",
+    "totalTokens",
+    "cacheWrite1h",
+    "reasoning",
+  ] as const) {
+    const amount = second[key];
+    if (amount !== undefined) sum[key] = (first[key] ?? 0) + amount;
+  }
+  for (const key of [
+    "input",
+    "output",
+    "cacheRead",
+    "cacheWrite",
+    "total",
+  ] as const)
+    sum.cost[key] += second.cost[key];
+  return sum;
+}
+
 export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
   const { git, herdr, terminal } = deps;
   let lastRoutingWarning: string | undefined;
+  const roots = new Map<string, string>();
+  const tracedUsage = new Map<string, Usage>();
+  const clearUsage = () => {
+    roots.clear();
+    tracedUsage.clear();
+  };
+  pi.on("tool_execution_start", (event) => {
+    roots.set(
+      event.toolCallId,
+      event.parentToolCallId
+        ? (roots.get(event.parentToolCallId) ?? event.parentToolCallId)
+        : event.toolCallId,
+    );
+  });
+  pi.on("tool_execution_end", (event) => {
+    roots.delete(event.toolCallId);
+  });
+  pi.on("message_end", ({ message }) => {
+    if (message.role !== "toolResult") return;
+    const usage = tracedUsage.get(message.toolCallId);
+    if (!usage) return;
+    tracedUsage.delete(message.toolCallId);
+    // Langfuse 0.1.2 synthesizes an unattributed generation at tool_execution_end.
+    // Add only our already-traced usage afterward, before Pi persists the message.
+    // Nested calls have no messages, so account on their outermost tool result.
+    return { message: { ...message, usage: addUsage(message.usage, usage) } };
+  });
+  pi.on("agent_settled", clearUsage);
   const reporter = (ctx: ExtensionContext): Reporter => ({
     warn: (message) => ctx.ui.notify(message, "warning"),
   });
@@ -428,6 +494,7 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
       "Internal worktree startup receipt; contains no task or credentials.",
   });
   pi.on("session_start", async (event, ctx) => {
+    clearUsage();
     const receipt = pi.getFlag("factory-child-receipt");
     if (event.reason === "startup" && typeof receipt === "string") {
       // Fresh Pi sessions do not persist setup-only entries. A short-lived receipt
@@ -473,6 +540,7 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
       await herdr.changed(reporter(ctx));
   });
   pi.on("session_shutdown", () => {
+    clearUsage();
     herdr.clear();
   });
   pi.on("before_agent_start", async (_event, ctx) => {
@@ -579,11 +647,43 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
     async execute(toolCallId, params, signal, _onUpdate, ctx) {
       if (params.action === "reconcile" && !inHerdr(ctx))
         throw new Error("Reconciliation requires interactive Pi inside Herdr.");
+      let traced = false;
+      const observe = () => {
+        const finish = deps.traceClassifier({
+          npmRoots: [
+            ...(ctx.isProjectTrusted() ? [join(ctx.cwd, ".pi", "npm")] : []),
+            join(getAgentDir(), "npm"),
+          ],
+          sessionId: ctx.sessionManager.getSessionId(),
+          toolCallId,
+        });
+        return (
+          finish &&
+          ((result: ClassifierResult | undefined, failure?: string) => {
+            finish(result, failure);
+            if (result?.usage) {
+              const root = roots.get(toolCallId) ?? toolCallId;
+              tracedUsage.set(
+                root,
+                addUsage(tracedUsage.get(root), result.usage),
+              );
+              traced = true;
+            }
+          })
+        );
+      };
       try {
         const result =
           params.action === "reconcile"
             ? await herdr.reconcile(reporter(ctx))
-            : await startWorktree(params, ctx, toolCallId, deps, signal);
+            : await startWorktree(
+                params,
+                ctx,
+                toolCallId,
+                deps,
+                signal,
+                observe,
+              );
         const warning =
           "selection" in result ? result.selection?.warning : undefined;
         if (warning && warning !== lastRoutingWarning)
@@ -592,7 +692,10 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
         return {
           content: [{ type: "text", text: JSON.stringify(result) }],
           details: result,
-          usage: "selection" in result ? result.selection?.usage : undefined,
+          usage:
+            !traced && "selection" in result
+              ? result.selection?.usage
+              : undefined,
         };
       } catch (error) {
         if (!(error instanceof Error) || !("usage" in error)) throw error;
@@ -601,7 +704,7 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
           details:
             "selection" in error ? { selection: error.selection } : undefined,
           isError: true,
-          usage: error.usage as Usage | undefined,
+          usage: traced ? undefined : (error.usage as Usage | undefined),
         };
       }
     },

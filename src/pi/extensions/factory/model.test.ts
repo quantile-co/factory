@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type {
   Api,
   ClassifierApi,
@@ -6,7 +7,17 @@ import type {
   Model,
   Usage,
 } from "@earendil-works/pi-ai";
+import {
+  LangfuseOtelSpanAttributes as Attr,
+  setLangfuseTracerProvider,
+} from "@langfuse/tracing";
+import {
+  InMemorySpanExporter,
+  SimpleSpanProcessor,
+  TracerProvider,
+} from "@opentelemetry/sdk-trace";
 import { afterEach, expect, it, vi } from "vitest";
+import { traceClassifier } from "./langfuse.ts";
 import { selectChild } from "./model.ts";
 
 type Context = Parameters<typeof selectChild>[1];
@@ -87,7 +98,11 @@ function context() {
   };
   return { ctx, classify, available };
 }
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+  setLangfuseTracerProvider(null);
+});
 
 it.each(["fork", "fresh"] as const)(
   "deliberately inherits current API state for %s without classification",
@@ -379,7 +394,8 @@ it("bounds classifier latency even if a provider ignores abort", async () => {
   vi.useFakeTimers();
   const { ctx, classify } = context();
   classify.mockImplementation(() => new Promise(() => {}));
-  const pending = selectChild({ task }, ctx);
+  const finish = vi.fn();
+  const pending = selectChild({ task }, ctx, undefined, () => finish);
   await vi.advanceTimersByTimeAsync(5001);
   expect(await pending).toMatchObject({
     model: "gpt-6-astra",
@@ -387,6 +403,7 @@ it("bounds classifier latency even if a provider ignores abort", async () => {
     disposition: "fallback",
     reason: expect.stringContaining("timeout"),
   });
+  expect(finish).toHaveBeenCalledExactlyOnceWith(undefined, "timeout");
 });
 
 it("cancellation is never swallowed as fallback, and native aborted usage survives", async () => {
@@ -399,9 +416,84 @@ it("cancellation is never swallowed as fallback, and native aborted usage surviv
   await expect(selectChild({}, ctx, controller.signal)).rejects.toThrow(
     /abort/i,
   );
-  classify.mockResolvedValue({ ...result(), stopReason: "aborted" });
-  await expect(selectChild({ task }, ctx)).rejects.toMatchObject({
+  const aborted = { ...result(), stopReason: "aborted" } as const;
+  const finish = vi.fn();
+  classify.mockResolvedValue(aborted);
+  await expect(
+    selectChild({ task }, ctx, undefined, () => finish),
+  ).rejects.toMatchObject({
     message: expect.stringContaining("cancelled"),
     usage,
   });
+  expect(finish).toHaveBeenCalledExactlyOnceWith(aborted, "aborted");
+});
+
+it("traces only the bounded classifier, with actual model/usage and no fabricated price or sensitive bodies", async () => {
+  const exporter = new InMemorySpanExporter();
+  const provider = new TracerProvider({
+    spanProcessors: [new SimpleSpanProcessor({ exporter })],
+  });
+  setLangfuseTracerProvider(provider);
+  vi.stubEnv("LANGFUSE_PI_PARENT_TRACE_ID", "a".repeat(32));
+  vi.stubEnv("LANGFUSE_PI_PARENT_SPAN_ID", "b".repeat(16));
+  vi.stubEnv("LANGFUSE_PI_PARENT_SESSION_ID", "current-session");
+  const options = {
+    npmRoots: [fileURLToPath(new URL("../../../../", import.meta.url))],
+    sessionId: "current-session",
+    toolCallId: "codemode/1",
+  };
+  const observe = () => traceClassifier(options);
+  const { ctx, classify } = context();
+  let complete: (value: ClassifierResult) => void = () => {};
+  classify.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  try {
+    const pending = selectChild({ task }, ctx, undefined, observe);
+    expect(exporter.getFinishedSpans()).toHaveLength(0);
+    complete({ ...result(), model: "jev-resolved-version" });
+    expect((await pending).usage).toEqual(usage);
+    await provider.forceFlush();
+    const [span] = exporter.getFinishedSpans();
+    expect(exporter.getFinishedSpans()).toHaveLength(1);
+    expect(span.spanContext().traceId).toBe("a".repeat(32));
+    expect(span.parentSpanContext?.spanId).toBe("b".repeat(16));
+    expect(span.attributes).toMatchObject({
+      [Attr.OBSERVATION_TYPE]: "generation",
+      [Attr.OBSERVATION_MODEL]: "typesafe/jev-resolved-version",
+      [Attr.OBSERVATION_USAGE_DETAILS]: JSON.stringify({
+        input: 10,
+        output: 1,
+      }),
+      [`${Attr.OBSERVATION_METADATA}.tool_call_id`]: "codemode/1",
+      [`${Attr.OBSERVATION_METADATA}.cost_source`]: "unknown",
+    });
+    expect(span.attributes[Attr.OBSERVATION_COST_DETAILS]).toBeUndefined();
+    expect(span.attributes[Attr.OBSERVATION_INPUT]).toBeUndefined();
+    expect(
+      JSON.parse(span.attributes[Attr.OBSERVATION_OUTPUT] as string),
+    ).toEqual(result().answers);
+
+    classify.mockRejectedValue(new Error("private provider response body"));
+    await selectChild({ task }, ctx, undefined, observe);
+    await provider.forceFlush();
+    const failed = exporter.getFinishedSpans()[1];
+    expect(failed.attributes[`${Attr.OBSERVATION_METADATA}.stop_reason`]).toBe(
+      "error",
+    );
+    expect(JSON.stringify(failed.attributes)).not.toContain("private provider");
+
+    // Neither inherited context nor an inactive tracer should suppress native usage.
+    expect(
+      traceClassifier({ ...options, sessionId: "another-session" }),
+    ).toBeUndefined();
+    setLangfuseTracerProvider(null);
+    expect(observe()).toBeUndefined();
+  } finally {
+    setLangfuseTracerProvider(null);
+    await provider.shutdown();
+  }
 });

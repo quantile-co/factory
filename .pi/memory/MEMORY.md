@@ -127,7 +127,8 @@ objects into consumer-owned interfaces. `pi.ts` owns Pi registration, sessions a
 SDK UI integration; `git.ts` owns Git inspection and protections; `herdr.ts` owns
 Herdr workspaces, agents and reconciliation; `terminal.ts` owns foreground process
 execution and terminal restoration; `direnv.ts` owns worktree environment approval;
-`model.ts` owns the one-time child selection policy over native Pi registry APIs.
+`model.ts` owns the one-time child selection policy over native Pi registry APIs;
+`langfuse.ts` owns the optional classifier observation adapter.
 Keep these boundary implementations independent of the Pi SDK. No dependency-injection framework, service registry or interface per helper.
 Tests inject boundary dependencies rather than mocking sibling modules, retaining
 real Git repositories and Pi session files where their behavior matters.
@@ -188,6 +189,18 @@ permit routing; these are policy thresholds, not task-success estimates. Missing
 classifier/auth, errors, uncertainty or unsafe candidates inherit both current
 settings except deliberate overrides. Cancellation aborts launch. Returned
 classifier usage enters native tool accounting, including launch failures.
+
+Factory's classifier observations reuse the Langfuse plugin's existing SDK
+provider and published active-turn context; they do not create exporters or read
+credentials. Declare the tracing SDK and its OpenTelemetry API peer explicitly
+in shared Pi packages. Record actual classifier model, labels, timing and usage,
+not task text or raw provider errors; an unpriced catalog entry is not free usage.
+With a recording span, defer only Factory's usage to the enclosing tool result's
+native `message_end`, preserving Pi totals without the plugin's duplicate,
+parent-model-attributed generation. Track nesting through `parentToolCallId`, not
+ID parsing. Missing/inactive tracing retains ordinary tool usage. Recheck this
+bridge when upgrading Pi 1.4's finalized-message hooks or Langfuse plugin 0.1.2's
+`tool_execution_end` accounting; this is not general classifier instrumentation.
 
 Auto stays on `openai-codex` and intersects the available registry snapshot with
 any current parent scope. Scope is a cycling preference, not a security boundary;

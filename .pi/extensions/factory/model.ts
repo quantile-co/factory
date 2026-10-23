@@ -89,6 +89,9 @@ export async function selectChild(
   options: Options,
   ctx: Context,
   signal?: AbortSignal,
+  observe?: () =>
+    | ((result: ClassifierResult | undefined, failure?: string) => void)
+    | undefined,
 ): Promise<Selection> {
   signal?.throwIfAborted();
   const registry = ctx.modelRegistry;
@@ -221,6 +224,8 @@ export async function selectChild(
       ]);
       let onAbort: (() => void) | undefined;
       let result: ClassifierResult | undefined;
+      let failure: string | undefined;
+      const finish = observe?.();
       try {
         // Race as well as signal: a faulty provider must not hold the launch lock forever.
         result = await Promise.race([
@@ -324,6 +329,13 @@ export async function selectChild(
           }
         }
       } catch (error) {
+        failure = signal?.aborted
+          ? "aborted"
+          : deadline.signal.aborted
+            ? "timeout"
+            : result?.stopReason === "aborted"
+              ? "aborted"
+              : "error";
         if (
           signal?.aborted ||
           (!deadline.signal.aborted &&
@@ -342,6 +354,7 @@ export async function selectChild(
       } finally {
         clearTimeout(timer);
         if (onAbort) bounded.removeEventListener("abort", onAbort);
+        finish?.(result, failure);
       }
     }
   }

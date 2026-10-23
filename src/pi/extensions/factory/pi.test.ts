@@ -66,6 +66,7 @@ function dependencies(): Dependencies {
     throw new Error("Unexpected dependency call");
   };
   return {
+    traceClassifier: () => undefined,
     selectChild: vi.fn(async () => ({
       provider: "openai-codex",
       model: "gpt-6.1-sol",
@@ -710,6 +711,122 @@ it("returns classifier usage through native tool results even on launch failure,
     usage,
     details: { selection: { ...selection, usage } },
   });
+});
+
+it("accounts traced usage once on direct and nested results, preserving unrelated usage even when launch fails", async () => {
+  const deps = dependencies();
+  const selection = await deps.selectChild({}, {} as ExtensionContext);
+  const usage = {
+    input: 10,
+    output: 1,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 11,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  };
+  deps.traceClassifier = vi.fn(() => () => {});
+  deps.selectChild = async (_options, _ctx, _signal, observe) => {
+    observe?.()?.({
+      provider: "typesafe",
+      model: "jev-latest",
+      api: "typesafe-system-one",
+      timestamp: 0,
+      stopReason: "stop",
+      answers: {},
+      usage,
+    });
+    return { ...selection, usage };
+  };
+  deps.herdr.openWorktree = async () => "existing";
+  deps.herdr.inspectWorkspace = async () => ({
+    pane: "existing:p1",
+    occupied: false,
+  });
+  deps.herdr.startAgent = async () => {
+    throw new Error("startup failed");
+  };
+  const { events, tools } = adapter(deps);
+  const tool = tools.get("herdr_worktree") as ToolDefinition;
+  const session = SessionManager.create(primary, join(base, "sessions"));
+  const ctx = {
+    cwd: primary,
+    mode: "tui",
+    ui: { notify: vi.fn() },
+    sessionManager: session,
+    isProjectTrusted: () => false,
+  } as unknown as ExtensionToolContext;
+  const emit = (name: string, event: unknown) => events.get(name)?.(event, ctx);
+  const run = async (id: string, parentToolCallId?: string) => {
+    await emit("tool_execution_start", { toolCallId: id, parentToolCallId });
+    const result = await tool.execute(
+      id,
+      {
+        action: "start",
+        branch: "task",
+        task: "Test",
+        context: "fresh",
+      },
+      undefined,
+      undefined,
+      ctx,
+    );
+    expect(result).toMatchObject({
+      isError: true,
+      details: { selection: { usage } },
+    });
+    // Neither the plugin nor Pi's nested recorder sees a second copy of our usage.
+    expect(result.usage).toBeUndefined();
+    await emit("tool_execution_end", { toolCallId: id, result });
+  };
+  await emit("tool_execution_start", { toolCallId: "outer" });
+  await emit("tool_execution_start", {
+    toolCallId: "wrapper",
+    parentToolCallId: "outer",
+  });
+  await run("nested-1", "wrapper");
+  await run("nested-2", "wrapper");
+  await emit("tool_execution_end", { toolCallId: "wrapper" });
+  // Another root can finish while the enclosing codemode result is still pending.
+  await run("direct");
+  expect(deps.traceClassifier).toHaveBeenLastCalledWith({
+    npmRoots: [join(base, "pi", "npm")],
+    sessionId: session.getSessionId(),
+    toolCallId: "direct",
+  });
+  const direct = {
+    role: "toolResult",
+    toolCallId: "direct",
+    content: [],
+    isError: true,
+  };
+  expect(await emit("message_end", { message: direct })).toEqual({
+    message: { ...direct, usage },
+  });
+  const otherUsage = {
+    ...usage,
+    input: 30,
+    output: 5,
+    totalTokens: 35,
+    reasoning: 2,
+    cost: { ...usage.cost, input: 0.1, total: 0.1 },
+  };
+  await emit("tool_execution_end", {
+    toolCallId: "outer",
+    result: { usage: otherUsage },
+  });
+  const outer = {
+    role: "toolResult",
+    toolCallId: "outer",
+    content: [],
+    usage: otherUsage,
+  };
+  expect(await emit("message_end", { message: outer })).toEqual({
+    message: {
+      ...outer,
+      usage: { ...otherUsage, input: 50, output: 7, totalTokens: 57 },
+    },
+  });
+  expect(await emit("message_end", { message: outer })).toBeUndefined();
 });
 
 it("adapts the injected terminal to Pi and refuses handoff outside TUI or after cancellation", async () => {
