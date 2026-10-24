@@ -162,6 +162,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  undici@8.10.2: 8.12.2
+
 importers:
 
   .:
@@ -171,7 +174,7 @@ importers:
         version: 2.5.15
       '@earendil-works/pi-ai':
         specifier: 1.4.0
-        version: 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)
+        version: 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)
       '@earendil-works/pi-coding-agent':
         specifier: 1.4.0
         version: 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(ws@8.22.0)
@@ -243,7 +246,7 @@ importers:
     dependencies:
       '@earendil-works/pi-ai':
         specifier: '*'
-        version: 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)
+        version: 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)
       '@earendil-works/pi-coding-agent':
         specifier: '*'
         version: 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(ws@8.22.0)
@@ -1445,7 +1448,7 @@ packages:
       '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
       '@smithy/hash-node': '>=4.3.0 <5'
       '@smithy/signature-v4': '>=5.4.0 <6'
-      undici: '>=5 <9'
+      undici: 8.12.2
       ws: ^8.21.0
       zod: ^3.25 || ^4.0
     peerDependenciesMeta:
@@ -1633,8 +1636,8 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@8.10.2:
-    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
+  undici@8.12.2:
+    resolution: {integrity: sha512-XtuDWVdqTLr3NAxm2ly9/hU6kUsJOgGh1RASzMBbsw6aWCOaQzHdW+QQDfdERjfJ2V5vL5pRPa4RetO9UfivDg==}
     engines: {node: '>=22.19.0'}
 
   vite-plugin-static-copy@4.1.1:
@@ -2004,9 +2007,9 @@ snapshots:
   '@biomejs/cli-win32-x64@2.5.15':
     optional: true
 
-  '@earendil-works/pi-agent-core@1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)':
+  '@earendil-works/pi-agent-core@1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)':
     dependencies:
-      '@earendil-works/pi-ai': 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)
+      '@earendil-works/pi-ai': 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)
       typebox: 1.3.27
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
@@ -2021,7 +2024,7 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-ai@1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)':
+  '@earendil-works/pi-ai@1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)':
     dependencies:
       '@anthropic-ai/sdk': 0.129.0
       '@aws-sdk/client-bedrock-runtime': 3.1127.0
@@ -2030,7 +2033,7 @@ snapshots:
       '@smithy/node-http-handler': 4.12.1
       http-proxy-agent: 9.1.0
       https-proxy-agent: 9.1.0
-      openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)
+      openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)
       partial-json: 0.1.7
       typebox: 1.3.27
     transitivePeerDependencies:
@@ -2052,8 +2055,8 @@ snapshots:
 
   '@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(ws@8.22.0)':
     dependencies:
-      '@earendil-works/pi-agent-core': 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)
-      '@earendil-works/pi-ai': 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0)
+      '@earendil-works/pi-agent-core': 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)
+      '@earendil-works/pi-ai': 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0)
       '@earendil-works/pi-codemode': 1.4.0
       '@earendil-works/pi-mcp': 1.4.0
       '@earendil-works/pi-tui': 1.4.0
@@ -2072,7 +2075,7 @@ snapshots:
       quickjs-wasi: 3.6.2
       semver: 7.8.5
       typebox: 1.3.27
-      undici: 8.10.2
+      undici: 8.12.2
       yaml: 2.9.0
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
@@ -2816,11 +2819,11 @@ snapshots:
 
   obug@3.0.0: {}
 
-  openai@7.19.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.22.0):
+  openai@7.19.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(undici@8.12.2)(ws@8.22.0):
     optionalDependencies:
       '@aws-sdk/credential-provider-node': 3.972.88
       '@smithy/signature-v4': 5.7.4
-      undici: 8.10.2
+      undici: 8.12.2
       ws: 8.22.0
 
   p-map@7.1.1: {}
@@ -3008,7 +3011,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@8.10.2: {}
+  undici@8.12.2: {}
 
   vite-plugin-static-copy@4.1.1(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)):
     dependencies:

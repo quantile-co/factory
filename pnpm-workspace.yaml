@@ -2,6 +2,9 @@ allowBuilds:
   '@google/genai': false
   esbuild: false
   protobufjs: false
+overrides:
+  # Pi 1.4 pins a release affected by CVE-2026-109869.
+  undici@8.10.2: 8.12.2
 packages:
   - apps/*
   - packages/*
