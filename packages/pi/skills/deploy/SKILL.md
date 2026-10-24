@@ -14,6 +14,12 @@ Use the repository task/app's mapping of the workflow's logical `--tf-layer` as
 the reviewed `TF_DIR` for local inspection. Directory and backend-prefix mappings
 belong to the repository, not the shared workflow.
 
+Before planning, review the concrete root's source-owned repository identity,
+paired owners/members, billing account, parent folder and bucket location. Adjust
+source only for the intended installation or explicitly reviewed change; runtime
+variables do not override these values. Existing-installation edits may change
+access or replace resources, so inspect those effects rather than copying defaults.
+
 Skill invocation, a source merge, a green Check or a successful Plan is not
 authorization to Apply. Obtain separate approval for each dispatch, credential
 operation, state repair or retry. Preserve main/prod restrictions, WIF,

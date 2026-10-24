@@ -20,8 +20,11 @@ state migration, IAM change, workflow dispatch or retry needs separate approval.
 The code examples are a phase-by-phase procedure, not permission to run all of
 them end-to-end or evidence that every consumer has been bootstrapped.
 
-Review the concrete root's verified billing, folder and bucket-location values.
-Keep confirmed paired project identities in the concrete root's source. Supply
+Review and, for the new installation, adjust the concrete root's source-owned
+repository identity, billing account, parent folder, bucket location and paired
+owner/member records before seeding. Confirm the values and identity pairings;
+runtime variables do not override them. Keep existing installations unchanged
+unless a separately reviewed resource or access change is intended. Supply
 verified `GH_REPO`, WIF and the provider token from approved runtime sources. Never hardcode a Factory
 repository identity into consumer source or expose token values through Nix,
 Terraform inputs, Git or public logs. Preserve WIF, locks, backups and recovery
