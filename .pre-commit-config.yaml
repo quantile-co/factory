@@ -38,8 +38,8 @@ repos:
         args:
           - >-
             github\.com/[^/[:space:]<>"'`]+/[^/[:space:]<>"'`]+/(blob|tree)/[^/[:space:]?#<>"'`()]+
-        # Copied skills and Semgrep packs retain upstream documentation links.
-        exclude: '(^\.gitignore$|^\.pi/skills/|^\.semgrep/packs/)'
+        # Copied Semgrep packs retain upstream documentation links.
+        exclude: '(^\.gitignore$|^\.semgrep/packs/)'
       - id: gitleaks
         name: Full-history and working-tree secret scanning
         entry: check-gitleaks

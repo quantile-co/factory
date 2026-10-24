@@ -14,12 +14,10 @@ import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
 it.each([
-  { check: 0, legacy: "none", status: 0, order: "check\nlfs\n" },
-  { check: 0, legacy: "0", status: 0, order: "check\nlegacy\nlfs\n" },
-  { check: 17, legacy: "0", status: 17, order: "check\n" },
-  { check: 0, legacy: "23", status: 23, order: "check\nlegacy\n" },
-  { check: 0, legacy: "missing", status: 1, order: "check\n" },
-])("gates LFS and preserves push refs: $check / $legacy", (test) => {
+  { check: 0, lfs: 0, status: 0, order: "check\nlfs\n" },
+  { check: 17, lfs: 0, status: 17, order: "check\n" },
+  { check: 0, lfs: 23, status: 23, order: "check\nlfs\n" },
+])("gates LFS and preserves push refs: $check / $lfs", (test) => {
   const root = mkdtempSync(join(tmpdir(), "factory-husky-"));
   try {
     mkdirSync(join(root, "bin"));
@@ -41,22 +39,10 @@ shift 3
 printf 'lfs\\n' >> "$LOG/order"
 printf '%s\\n' "$@" > "$LOG/lfs.args"
 cat > "$LOG/lfs.refs"
+exit "$LFS_STATUS"
 `,
       { mode: 0o755 },
     );
-    const legacy = join(root, "legacy");
-    if (test.legacy !== "missing") {
-      writeFileSync(
-        legacy,
-        `#!/usr/bin/env bash
-printf 'legacy\\n' >> "$LOG/order"
-printf '%s\\n' "$@" > "$LOG/legacy.args"
-cat > "$LOG/legacy.refs"
-exit "$LEGACY_STATUS"
-`,
-        { mode: 0o755 },
-      );
-    }
     const refs = "refs/heads/main abc refs/heads/main def\n";
     const args = ["origin", "remote with spaces"];
     const run = spawnSync(
@@ -75,8 +61,7 @@ exit "$LEGACY_STATUS"
           TMPDIR: join(root, "tmp"),
           LOG: root,
           CHECK_STATUS: String(test.check),
-          LEGACY_STATUS: test.legacy,
-          GIT_PRE_PUSH_LEGACY: test.legacy === "none" ? "" : legacy,
+          LFS_STATUS: String(test.lfs),
         },
       },
     );
@@ -84,15 +69,13 @@ exit "$LEGACY_STATUS"
     expect(run.status, run.stderr).toBe(test.status);
     expect(readFileSync(join(root, "order"), "utf8")).toBe(test.order);
     expect(readFileSync(join(root, "check.refs"), "utf8")).toBe("");
-    for (const stage of ["legacy", "lfs"]) {
-      if (test.order.includes(`${stage}\n`)) {
-        expect(readFileSync(join(root, `${stage}.refs`), "utf8")).toBe(refs);
-        expect(readFileSync(join(root, `${stage}.args`), "utf8")).toBe(
-          `${args.join("\n")}\n`,
-        );
-      } else {
-        expect(existsSync(join(root, `${stage}.refs`))).toBe(false);
-      }
+    if (test.order.includes("lfs\n")) {
+      expect(readFileSync(join(root, "lfs.refs"), "utf8")).toBe(refs);
+      expect(readFileSync(join(root, "lfs.args"), "utf8")).toBe(
+        `${args.join("\n")}\n`,
+      );
+    } else {
+      expect(existsSync(join(root, "lfs.refs"))).toBe(false);
     }
     expect(readdirSync(join(root, "tmp"))).toEqual([]);
   } finally {
@@ -100,7 +83,7 @@ exit "$LEGACY_STATUS"
   }
 });
 
-it("isolates check subprocesses from Git's real worktree hook environment, preserving legacy and LFS", () => {
+it("isolates check subprocesses from Git's real worktree hook environment, preserving LFS", () => {
   const base = mkdtempSync(join(tmpdir(), "factory-hook-env-"));
   const primary = join(base, "primary");
   const child = join(base, "task");
@@ -161,16 +144,6 @@ cat > "$LOG/lfs.refs"
 `,
       { mode: 0o755 },
     );
-    const legacy = join(base, "legacy");
-    writeFileSync(
-      legacy,
-      `#!/usr/bin/env bash
-printf '%s' "\${GIT_DIR:-missing}" > "$LOG/legacy.gitdir"
-printf 'legacy\\n' >> "$LOG/order"
-cat > "$LOG/legacy.refs"
-`,
-      { mode: 0o755 },
-    );
     const result = spawnSync("git", ["-C", child, "push", "origin", "task"], {
       encoding: "utf8",
       env: {
@@ -179,18 +152,14 @@ cat > "$LOG/legacy.refs"
         ROOT: child,
         LOG: base,
         REMOTE: remote,
-        GIT_PRE_PUSH_LEGACY: legacy,
       },
     });
     expect(result.status, result.stderr).toBe(0);
-    expect(readFileSync(join(base, "order"), "utf8")).toBe(
-      "check\nlegacy\nlfs\n",
-    );
+    expect(readFileSync(join(base, "order"), "utf8")).toBe("check\nlfs\n");
     const metadata = git(child, "rev-parse", "--absolute-git-dir");
-    expect(readFileSync(join(base, "legacy.gitdir"), "utf8")).toBe(metadata);
     expect(readFileSync(join(base, "lfs.gitdir"), "utf8")).toBe(metadata);
-    expect(readFileSync(join(base, "legacy.refs"), "utf8")).toBe(
-      readFileSync(join(base, "lfs.refs"), "utf8"),
+    expect(readFileSync(join(base, "lfs.refs"), "utf8")).toBe(
+      `refs/heads/task ${git(child, "rev-parse", "HEAD")} refs/heads/task ${"0".repeat(40)}\n`,
     );
     expect(git(remote, "rev-parse", "refs/heads/task")).toBe(
       git(child, "rev-parse", "HEAD"),

@@ -8,7 +8,6 @@ let
   cfg = config.quantile-co.factory.git;
 in
 {
-  imports = [ ../prek ];
   options.quantile-co.factory.git = {
     ignoreFile = lib.mkOption {
       type = lib.types.path;
@@ -45,14 +44,10 @@ in
             trap 'exit 143' TERM
             cat > "$work/refs"
             GIT_PRE_PUSH_REFS="$work/refs" check-git-hooks
-            if [ -n "''${GIT_PRE_PUSH_LEGACY:-}" ]; then
-              test -x "$GIT_PRE_PUSH_LEGACY" || { echo 'Additional pre-push hook is not executable.' >&2; exit 1; }
-              "$GIT_PRE_PUSH_LEGACY" "$@" < "$work/refs"
-            fi
             git-lfs pre-push "$@" < "$work/refs"
           '';
         };
-        description = "Run native Prek checks and an optional additional hook before uploading LFS objects.";
+        description = "Run native Prek checks before uploading LFS objects.";
       };
       install.package = lib.mkOption {
         type = lib.types.package;

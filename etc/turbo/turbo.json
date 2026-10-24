@@ -1,0 +1,33 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "cacheDir": ".turbo/cache",
+  "remoteCache": {
+    "enabled": false
+  },
+  "globalDependencies": ["flake.lock", "tsconfig.json"],
+  "globalPassThroughEnv": [
+    "NIX_CONFIG",
+    "NIX_PATH",
+    "NIX_SSL_CERT_FILE",
+    "SSL_CERT_FILE",
+    "pnpm_config_offline",
+    "npm_config_offline"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "check": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "fix": {
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "cache": false
+    }
+  }
+}

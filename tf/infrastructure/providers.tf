@@ -5,8 +5,8 @@ provider "github" {
 
 provider "google" {}
 
-# REST_API_BEARER supplies the same runtime credential as GITHUB_TOKEN. Set both
-# for local Plan/Apply; neither credential belongs in resource data or state.
+# The workflow CLI maps GH_REPO_TOKEN to both providers' native token variables.
+# Direct OpenTofu procedures must supply both; neither belongs in state.
 provider "restapi" {
   uri = "https://api.github.com"
 

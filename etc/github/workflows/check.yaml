@@ -40,4 +40,5 @@ jobs:
         run: |
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
-          "$direnv" exec . ./scripts/github/check.sh
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm run check

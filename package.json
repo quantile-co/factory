@@ -2,12 +2,16 @@
   "name": "@quantile-co/factory",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.25.0",
+  "packageManager": "pnpm@12.9.0",
   "scripts": {
     "prepare": "husky",
-    "check": "./scripts/pnpm/check.sh",
-    "fix": "./scripts/pnpm/fix.sh",
-    "test": "./scripts/pnpm/test.sh"
+    "build": "turbo run build --cache=local:rw",
+    "skills:sync": "skills experimental_sync --agent pi --copy --yes",
+    "check": "pnpm run build && turbo run check --cache=local:rw",
+    "fix": "pnpm --filter @quantile-co/factory-repo-cli fix",
+    "test": "pnpm run check && turbo run test --cache=local:rw",
+    "github:plan": "tsx apps/github/cli.ts plan",
+    "github:apply": "tsx apps/github/cli.ts apply"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
@@ -16,9 +20,16 @@
     "@langfuse/tracing": "5.14.0",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/sdk-trace": "2.12.0",
+    "@quantile-co/factory-pi": "workspace:*",
     "@types/node": "26.6.5",
     "husky": "9.1.7",
+    "rolldown-plugin-dts": "0.28.8",
+    "skills": "1.7.4",
+    "tsx": "4.23.15",
+    "turbo": "2.11.10",
     "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vite-plugin-static-copy": "4.1.1",
     "vitest": "5.0.4"
   }
 }

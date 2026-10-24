@@ -26,10 +26,8 @@ strict_env() { set -euo pipefail; }
 source_env_if_exists() { [[ ! -f "$1" ]] || source "$1"; }
 nix() { printf '%s' "$STORE_INFO"; return "$STORE_STATUS"; }
 use() { [[ "$*" == flake ]]; printf 'flake\\n' >> "$LOG"; }
-factory-files() { [[ "$*" == write ]]; printf 'files\\n' >> "$LOG"; }
-git() { [[ "$*" == 'rev-parse --show-toplevel' ]]; printf '%s' "$PWD"; }
 source "$1" || exit $?
-printf '%s\\0%s\\0%s' "$NIX_CONFIG" "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY"
+printf '%s' "$NIX_CONFIG"
 `,
         "fixture",
         fileURLToPath(new URL("../../etc/direnv/.envrc", import.meta.url)),
@@ -52,15 +50,13 @@ printf '%s\\0%s\\0%s' "$NIX_CONFIG" "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY"
       expect(() => readFileSync(join(root, "order"))).toThrow();
       return;
     }
-    const [config, memory, summary] = run.stdout.split("\0");
+    const config = run.stdout;
     expect(config).toContain(
       "sandbox = true\nextra-experimental-features = nix-command flakes",
     );
     expect(config?.includes("extra-substituters =")).toBe(test.caches);
     expect(config?.includes("extra-trusted-public-keys =")).toBe(test.caches);
-    expect(readFileSync(join(root, "order"), "utf8")).toBe("flake\nfiles\n");
-    expect(memory).toBe(join(root, ".pi/memory"));
-    expect(summary).toBe("0");
+    expect(readFileSync(join(root, "order"), "utf8")).toBe("flake\n");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

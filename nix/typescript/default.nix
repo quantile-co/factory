@@ -20,9 +20,7 @@
           base = builtins.fromJSON (builtins.readFile config.quantile-co.factory.typescript.configFile);
           source = pkgs.writeText "tsconfig.json" (builtins.toJSON (lib.recursiveUpdate base overrides));
         in
-        pkgs.runCommand "tsconfig.json" { nativeBuildInputs = [ pkgs.biome ]; } ''
-          biome format --indent-style=space --indent-width=2 --stdin-file-path tsconfig.json < ${source} > "$out"
-        '';
+        config.quantile-co.factory.biome.formatFile "tsconfig.json" source;
       description = "Render TypeScript configuration with project overrides.";
     };
 

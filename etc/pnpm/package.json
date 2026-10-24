@@ -1,0 +1,22 @@
+{
+  "name": "project",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "husky",
+    "build": "turbo run build --cache=local:rw",
+    "check": "factory-files check && turbo run check --cache=local:rw",
+    "fix": "factory-files write && turbo run fix --cache=local:rw",
+    "test": "pnpm run check && turbo run test --cache=local:rw"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "26.6.5",
+    "husky": "9.1.7",
+    "tsx": "4.23.15",
+    "turbo": "2.11.10",
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
+  }
+}

@@ -27,10 +27,6 @@ let
   };
 in
 {
-  imports = [
-    ../commitizen
-    ../gitleaks
-  ];
   options.quantile-co.factory.prek = {
     package = lib.mkOption {
       type = lib.types.package;

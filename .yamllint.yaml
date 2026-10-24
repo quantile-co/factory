@@ -7,7 +7,7 @@ ignore:
   - "**/node_modules/**"
   - "*.min.yaml"
   - "*.min.yml"
-  # Keep upstream rule metadata and Vale styles unchanged.
+  # Keep generated upstream rule metadata and Vale styles unchanged.
   - ".semgrep/packs/**"
   - ".vale/Google/**"
   - "etc/vale/styles/Google/**"

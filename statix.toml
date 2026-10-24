@@ -1,0 +1,2 @@
+# Prefer explicit, qualified package assignments in this repository.
+disabled = ["manual_inherit_from"]

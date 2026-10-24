@@ -18,7 +18,7 @@ it("checks selected nested TypeScript with a hoisted project compiler and no emi
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-      config = (pkgs.lib.evalModules { modules = [ f.nixModules.typescript ]; specialArgs = { inherit pkgs; }; }).config;
+      config = (pkgs.lib.evalModules { modules = [ f.nixModules.typescript f.nixModules.biome ]; specialArgs = { inherit pkgs; }; }).config;
       rendered = config.quantile-co.factory.typescript.withOverrides {
         compilerOptions = { composite = true; incremental = true; outDir = "dist"; tsBuildInfoFile = "build info.tsbuildinfo"; };
         include = [ "source with spaces/*.ts" ];

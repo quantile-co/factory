@@ -2,11 +2,28 @@
   "defaultTools": ["+codemode", "+tool_search"],
   "showCacheMissNotices": true,
   "packages": [
+    {
+      "source": "../node_modules/@quantile-co/factory-pi",
+      "extensions": ["dist/index.js"],
+      "skills": [],
+      "prompts": [],
+      "themes": []
+    },
+    {
+      "source": "git:github.com/herdrdev/herdr@2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01",
+      "extensions": [],
+      "skills": [],
+      "prompts": [],
+      "themes": []
+    },
     "npm:pi-memory@0.4.2",
     "npm:pi-web-access@0.42.0",
     "npm:@langfuse/pi-observability-plugin@0.1.2",
     "npm:@langfuse/tracing@5.14.0",
     "npm:@opentelemetry/api@1.9.0"
   ],
-  "skills": ["./skills/deploy", "./skills/day-zero-deploy"]
+  "skills": [],
+  "extensions": [
+    "./git/github.com/herdrdev/herdr/src/integration/assets/pi/herdr-agent-state.ts"
+  ]
 }

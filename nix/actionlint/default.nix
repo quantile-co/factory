@@ -8,7 +8,6 @@ let
   cfg = config.quantile-co.factory.actionlint;
 in
 {
-  imports = [ ../shellcheck ];
   options.quantile-co.factory.actionlint = {
     package = lib.mkOption {
       type = lib.types.package;

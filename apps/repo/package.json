@@ -1,0 +1,18 @@
+{
+  "name": "@quantile-co/factory-repo-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "factory-repo": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "check": "node cli.ts check",
+    "fix": "node cli.ts fix",
+    "test": "node cli.ts test"
+  }
+}

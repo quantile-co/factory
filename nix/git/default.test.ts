@@ -25,7 +25,7 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
       const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${source.href}`)};
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
-        modules = [ f.nixModules.git ];
+        modules = [ f.nixModules.git f.nixModules.prek f.nixModules.commitizen f.nixModules.gitleaks ];
         specialArgs = { inherit pkgs; };
       }).config.quantile-co.factory.${tool}.${selector ? `${selector}.` : ""}package`;
       const result = spawnSync(
@@ -153,13 +153,9 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
       oid.slice(2, 4),
       oid,
     );
-    const legacy = join(work, "legacy-hook");
-    writeFileSync(legacy, `#!/bin/sh\ncat > '${join(work, "legacy-refs")}'\n`);
-    chmodSync(legacy, 0o700);
     const rejected = run(push, ["origin", remote], repo, refs);
     expect(rejected.status).not.toBe(0);
     expect(rejected.output).toContain("Non-permanent VCS link");
-    expect(existsSync(join(work, "legacy-refs"))).toBe(false);
     expect(existsSync(uploaded)).toBe(false);
 
     writeFileSync(join(repo, "links.txt"), permalink);
@@ -172,15 +168,12 @@ it("checks native Git hooks before an opt-in LFS upload without installing hooks
     chmodSync(hook, 0o700);
     const accepted = spawnSync("git", ["push", "origin", "main"], {
       cwd: repo,
-      env: { ...env, GIT_PRE_PUSH_LEGACY: legacy },
+      env,
       encoding: "utf8",
       timeout: 90_000,
     });
     if (accepted.error) throw accepted.error;
     expect(accepted.status, accepted.stderr).toBe(0);
-    expect(readFileSync(join(work, "legacy-refs"), "utf8")).toBe(
-      `refs/heads/main ${git("rev-parse", "HEAD")} refs/heads/main ${"0".repeat(40)}\n`,
-    );
     expect(readFileSync(uploaded)).toEqual(asset);
   } finally {
     rmSync(work, { recursive: true, force: true });
@@ -194,7 +187,7 @@ it("replaces the pre-push hook once for all worktrees without installing other h
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${source.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
-      modules = [ f.nixModules.git ]; specialArgs = { inherit pkgs; };
+      modules = [ f.nixModules.git f.nixModules.prek f.nixModules.commitizen f.nixModules.gitleaks ]; specialArgs = { inherit pkgs; };
     }).config.quantile-co.factory.git.prePush.install.package`;
     const built = spawnSync(
       "nix",

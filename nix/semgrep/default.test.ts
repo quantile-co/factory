@@ -19,7 +19,7 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
   try {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-    in let cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.semgrep ]; specialArgs = { inherit pkgs; }; }).config.quantile-co.factory.semgrep;
+    in let cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.semgrep ]; specialArgs = { inherit pkgs; rulesSource = f.inputs.semgrep-rules; }; }).config.quantile-co.factory.semgrep;
     in [ cfg.test.package cfg.check.package ]`;
     const built = spawnSync(
       "nix",
@@ -39,6 +39,11 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
     expect(built.status, built.stderr).toBe(0);
     cpSync(
       fileURLToPath(new URL("../../etc/semgrep/rules", import.meta.url)),
+      join(work, ".semgrep"),
+      { recursive: true },
+    );
+    cpSync(
+      fileURLToPath(new URL("./fixtures", import.meta.url)),
       join(work, ".semgrep"),
       { recursive: true },
     );
@@ -112,7 +117,6 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
       "nested/result-build",
       ".terraform",
       "nested/.terraform",
-      ".pi/skills/external",
     ]) {
       const output = join(work, generated);
       mkdirSync(output, { recursive: true });
@@ -120,11 +124,13 @@ it("tests selected Semgrep fixtures and scans source without modifying it", () =
     }
     const ignoredBuildOutputs = run(check);
     expect(ignoredBuildOutputs.status, ignoredBuildOutputs.output).toBe(0);
-    const ownedSkill = join(work, "etc/pi/skills/owned");
-    mkdirSync(ownedSkill, { recursive: true });
-    writeFileSync(join(ownedSkill, "source.tf"), original);
-    expect(run(check).status).not.toBe(0);
-    rmSync(ownedSkill, { recursive: true });
+    for (const skill of [".pi/skills/native", "packages/pi/skills/owned"]) {
+      const ownedSkill = join(work, skill);
+      mkdirSync(ownedSkill, { recursive: true });
+      writeFileSync(join(ownedSkill, "source.tf"), original);
+      expect(run(check).status).not.toBe(0);
+      rmSync(ownedSkill, { recursive: true });
+    }
     const fixtures = join(work, "selected-fixtures");
     mkdirSync(join(fixtures, "tf"), { recursive: true });
     copyFileSync(
@@ -174,7 +180,7 @@ it("Factory's checked-in rules cover TypeScript, Terraform and GitHub Actions", 
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
-      modules = [ f.nixModules.semgrep ]; specialArgs = { inherit pkgs; };
+      modules = [ f.nixModules.semgrep ]; specialArgs = { inherit pkgs; rulesSource = f.inputs.semgrep-rules; };
     }).config.quantile-co.factory.semgrep.check.package`;
     const built = spawnSync(
       "nix",
@@ -236,7 +242,7 @@ it("scans with pinned packs and local rules together", () => {
     const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
       pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     in (pkgs.lib.evalModules {
-      specialArgs = { inherit pkgs; };
+      specialArgs = { inherit pkgs; rulesSource = f.inputs.semgrep-rules; };
       modules = [ f.nixModules.semgrep ({ config, ... }: {
         quantile-co.factory.semgrep.check.configs = builtins.attrValues config.quantile-co.factory.semgrep.packs;
       }) ];

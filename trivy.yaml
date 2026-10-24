@@ -34,10 +34,10 @@ scan:
     - result
   # Semgrep rule fixtures deliberately contain insecure manifests and Terraform.
   skip-files:
-    - etc/semgrep/rules/k8s/docker-socket-hostpath.test.yaml
-    - etc/semgrep/rules/k8s/host-namespaces.test.yaml
-    - etc/semgrep/rules/k8s/privileged-container.test.yaml
-    - etc/semgrep/rules/tf/gcs-bucket-public-access-prevention.tf
+    - nix/semgrep/fixtures/k8s/docker-socket-hostpath.test.yaml
+    - nix/semgrep/fixtures/k8s/host-namespaces.test.yaml
+    - nix/semgrep/fixtures/k8s/privileged-container.test.yaml
+    - nix/semgrep/fixtures/tf/gcs-bucket-public-access-prevention.tf
   skip-version-check: true
 severity: [HIGH, CRITICAL]
 exit-code: 1

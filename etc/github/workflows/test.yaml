@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0 # test:all runs the full-history check:all dependency.
+          fetch-depth: 0 # Tests run the full-history checks first.
 
       - name: Mount the Nix store and database
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
@@ -47,4 +47,5 @@ jobs:
         run: |
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
-          "$direnv" exec . ./scripts/github/test.sh
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm test

@@ -1,0 +1,389 @@
+{
+  "name": "@quantile-co/factory-pi",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --maxWorkers=4"
+  },
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "skills": [],
+    "prompts": [],
+    "themes": []
+  },
+  "skills": [
+    {
+      "source": "marimo-team/marimo-pair/skills/marimo-pair",
+      "ref": "5368e127e736881fedd6bd7db315f6f974290230",
+      "skills": [
+        "marimo-pair"
+      ]
+    },
+    {
+      "source": "coreyhaines31/marketingskills/skills/seo-audit",
+      "ref": "6b9e9387265d9e3049258f7eae3f746d3c3ddf87",
+      "skills": [
+        "seo-audit"
+      ]
+    },
+    {
+      "source": "vercel-labs/agent-skills/skills/web-design-guidelines",
+      "ref": "ba46938889d4e58635362fb8f618e1178ac3ec46",
+      "skills": [
+        "web-design-guidelines"
+      ]
+    },
+    {
+      "source": "cloudflare/skills/skills/web-perf",
+      "ref": "3af2c77450c91af61384887def098fbfd247bbad",
+      "skills": [
+        "web-perf"
+      ]
+    },
+    {
+      "source": "addyosmani/web-quality-skills/skills/web-quality-audit",
+      "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
+      "skills": [
+        "web-quality-audit"
+      ]
+    },
+    {
+      "source": "addyosmani/web-quality-skills/skills/performance",
+      "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
+      "skills": [
+        "performance"
+      ]
+    },
+    {
+      "source": "addyosmani/web-quality-skills/skills/core-web-vitals",
+      "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
+      "skills": [
+        "core-web-vitals"
+      ]
+    },
+    {
+      "source": "addyosmani/web-quality-skills/skills/accessibility",
+      "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
+      "skills": [
+        "accessibility"
+      ]
+    },
+    {
+      "source": "addyosmani/web-quality-skills/skills/seo",
+      "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
+      "skills": [
+        "seo"
+      ]
+    },
+    {
+      "source": "addyosmani/web-quality-skills/skills/best-practices",
+      "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
+      "skills": [
+        "best-practices"
+      ]
+    },
+    {
+      "source": "anthropics/skills/skills/webapp-testing",
+      "ref": "b9e19e6f44773509fbdd7001d77ff41a49a486c1",
+      "skills": [
+        "webapp-testing"
+      ]
+    },
+    {
+      "source": "ClickHouse/agent-skills/skills/clickhouse-best-practices",
+      "ref": "69a8354b05b5942e5cea77b6c87be7788303fc18",
+      "skills": [
+        "clickhouse-best-practices"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/code-review",
+      "ref": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "skills": [
+        "code-review"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/diagnosing-bugs",
+      "ref": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "skills": [
+        "diagnosing-bugs"
+      ]
+    },
+    {
+      "source": "trailofbits/skills/plugins/differential-review/skills/differential-review",
+      "ref": "196a9073ab10d35bacf111f945e02c00b2c6883a",
+      "skills": [
+        "differential-review"
+      ]
+    },
+    {
+      "source": "docker/skills/skills/docker-build-strategies",
+      "ref": "179c9cfd04c89ae50cd5d5d68b939797a8fd03d3",
+      "skills": [
+        "docker-build-strategies"
+      ]
+    },
+    {
+      "source": "docker/skills/skills/docker-compose-patterns",
+      "ref": "179c9cfd04c89ae50cd5d5d68b939797a8fd03d3",
+      "skills": [
+        "docker-compose-patterns"
+      ]
+    },
+    {
+      "source": "duckdb/duckdb-skills/skills/duckdb-docs",
+      "ref": "7feda8e01e22bc0886c86123f3884947e36d8c69",
+      "skills": [
+        "duckdb-docs"
+      ]
+    },
+    {
+      "source": "firebase/agent-skills/skills/firebase-security-rules-auditor",
+      "ref": "92eed24c0976a79a66d5b8038e9eda8b441ef92d",
+      "skills": [
+        "firebase-security-rules-auditor"
+      ]
+    },
+    {
+      "source": "anthropics/skills/skills/frontend-design",
+      "ref": "b9e19e6f44773509fbdd7001d77ff41a49a486c1",
+      "skills": [
+        "frontend-design"
+      ]
+    },
+    {
+      "source": "google/skills/skills/cloud/gcloud",
+      "ref": "d542604d73544bcb4bcc61322f3b25522ceba7ed",
+      "skills": [
+        "gcloud"
+      ]
+    },
+    {
+      "source": "cli/cli/skills/gh",
+      "ref": "fc4b137cdef0a6bd28fd461b7cf9c84a5812a8cd",
+      "skills": [
+        "gh"
+      ]
+    },
+    {
+      "source": "modem-dev/hunk/packages/hunk/skills/hunk-review",
+      "ref": "0c6feadb58f99ed9a4876d93168ba776e06a27ec",
+      "skills": [
+        "hunk-review"
+      ]
+    },
+    {
+      "source": "langfuse/skills/skills/langfuse",
+      "ref": "4429a94b309980e1cee2f5960c271e123347cb42",
+      "skills": [
+        "langfuse"
+      ]
+    },
+    {
+      "source": "bufbuild/claude-plugins/plugins/protobuf/skills/protobuf",
+      "ref": "c4766e5fff1b52283f38bd61122103efe58c60fd",
+      "skills": [
+        "protobuf"
+      ]
+    },
+    {
+      "source": "duckdb/duckdb-skills/skills/query",
+      "ref": "7feda8e01e22bc0886c86123f3884947e36d8c69",
+      "skills": [
+        "query"
+      ]
+    },
+    {
+      "source": "resend/resend-skills/skills/react-email",
+      "ref": "b2ae7b1798b70134faf679f35fc05b4331462988",
+      "skills": [
+        "react-email"
+      ]
+    },
+    {
+      "source": "duckdb/duckdb-skills/skills/read-file",
+      "ref": "7feda8e01e22bc0886c86123f3884947e36d8c69",
+      "skills": [
+        "read-file"
+      ]
+    },
+    {
+      "source": "resend/resend-cli/skills/resend-cli",
+      "ref": "cb6244c79757832628c3de3ee60a328cea538039",
+      "skills": [
+        "resend-cli"
+      ]
+    },
+    {
+      "source": "trailofbits/skills/plugins/semgrep-rule-creator/skills/semgrep-rule-creator",
+      "ref": "196a9073ab10d35bacf111f945e02c00b2c6883a",
+      "skills": [
+        "semgrep-rule-creator"
+      ]
+    },
+    {
+      "source": "trailofbits/skills/plugins/sharp-edges/skills/sharp-edges",
+      "ref": "196a9073ab10d35bacf111f945e02c00b2c6883a",
+      "skills": [
+        "sharp-edges"
+      ]
+    },
+    {
+      "source": "wshobson/agents/plugins/developer-essentials/skills/sql-optimization-patterns",
+      "ref": "0874a27b17a22e2b7c2e2bcd725768e0803cad06",
+      "skills": [
+        "sql-optimization-patterns"
+      ]
+    },
+    {
+      "source": "stripe/ai/skills/stripe-best-practices",
+      "ref": "8a8818e856376003701bb0d4a569c26bacac1d0e",
+      "skills": [
+        "stripe-best-practices"
+      ]
+    },
+    {
+      "source": "supabase/agent-skills/skills/supabase-postgres-best-practices",
+      "ref": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+      "skills": [
+        "supabase-postgres-best-practices"
+      ]
+    },
+    {
+      "source": "obra/superpowers/skills/systematic-debugging",
+      "ref": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+      "skills": [
+        "systematic-debugging"
+      ]
+    },
+    {
+      "source": "tailscale/tailscale-skill/skills/tailscale",
+      "ref": "4f05d353efc56962546aa26ccc59bb08ca699ad1",
+      "skills": [
+        "tailscale"
+      ]
+    },
+    {
+      "source": "hashicorp/agent-skills/plugins/terraform/skills/terraform-style-guide",
+      "ref": "f706481af9b8fedb66de909f6243ad29601afa0c",
+      "skills": [
+        "terraform-style-guide"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/to-tickets",
+      "ref": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "skills": [
+        "to-tickets"
+      ]
+    },
+    {
+      "source": "vercel-labs/agent-skills/skills/react-best-practices",
+      "ref": "ba46938889d4e58635362fb8f618e1178ac3ec46",
+      "skills": [
+        "vercel-react-best-practices"
+      ]
+    },
+    {
+      "source": "obra/superpowers/skills/verification-before-completion",
+      "ref": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+      "skills": [
+        "verification-before-completion"
+      ]
+    },
+    {
+      "source": "humanlayer/skills/plugins/show-me/skills/show-me",
+      "ref": "653b6411c1f70c275a18e37673b042ff99f67ceb",
+      "skills": [
+        "show-me"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/codebase-design",
+      "ref": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "skills": [
+        "codebase-design"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/improve-codebase-architecture",
+      "ref": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "skills": [
+        "improve-codebase-architecture"
+      ]
+    },
+    {
+      "source": "dmmulroy/anti-slop/skills/install-anti-slop",
+      "ref": "13909c9e07590f5a85d93c62712259fe14a883f7",
+      "skills": [
+        "install-anti-slop"
+      ]
+    },
+    {
+      "source": "antfu/skills/skills/pnpm",
+      "ref": "8886fe2d385d3644cbb47e46ae9cb1cf09307d3b",
+      "skills": [
+        "pnpm"
+      ]
+    },
+    {
+      "source": "wshobson/agents/plugins/shell-scripting/skills/bash-defensive-patterns",
+      "ref": "0874a27b17a22e2b7c2e2bcd725768e0803cad06",
+      "skills": [
+        "bash-defensive-patterns"
+      ]
+    },
+    {
+      "source": "muratcankoylan/Agent-Skills-for-Context-Engineering/skills/context-compression",
+      "ref": "9ff0c99108b36d3b886defd825d8ac1f47dba374",
+      "skills": [
+        "context-compression"
+      ]
+    },
+    {
+      "source": "muratcankoylan/Agent-Skills-for-Context-Engineering/skills/context-optimization",
+      "ref": "9ff0c99108b36d3b886defd825d8ac1f47dba374",
+      "skills": [
+        "context-optimization"
+      ]
+    },
+    {
+      "source": "backnotprop/pstack/skills/unslop",
+      "ref": "18b6c36e6e201b110acc62472de987416ac4e23b",
+      "skills": [
+        "unslop"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/setup-matt-pocock-skills",
+      "ref": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "skills": [
+        "setup-matt-pocock-skills"
+      ]
+    }
+  ],
+  "dependencies": {
+    "@langfuse/tracing": "5.14.0",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}

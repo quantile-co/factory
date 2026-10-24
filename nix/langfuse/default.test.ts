@@ -19,7 +19,7 @@ it("wires the overridable module, public package and development shell on each p
         in builtins.map (system: let
           pkgs = f.inputs.nixpkgs.legacyPackages.\${system};
           evaluate = modules: (pkgs.lib.evalModules {
-            inherit modules; specialArgs = { inherit pkgs; };
+            inherit modules; specialArgs = { inherit pkgs; factoryInputs = f.inputs; };
           }).config.quantile-co.factory;
           module = evaluate [ f.nixModules.langfuse ];
           aggregate = evaluate [ f.nixModules.default ];

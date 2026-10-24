@@ -1,8 +1,8 @@
-{ rulesSource }:
 {
   config,
   lib,
   pkgs,
+  rulesSource,
   ...
 }:
 let
@@ -14,38 +14,15 @@ let
     pkgs.runCommand "semgrep-packs"
       {
         nativeBuildInputs = [
-          (pkgs.python3.withPackages (ps: [ ps.pyyaml ]))
+          pkgs.nodejs_24
           pkgs.yq-go
         ];
       }
       ''
-        mkdir -p "$out"
-        python - ${inventory} ${rulesSource} "$out" <<'PY'
-        import json
-        import sys
-        from pathlib import Path
-        import yaml
-
-        inventory, source, output = map(Path, sys.argv[1:])
-        documents = {}
-        for pack, entries in json.loads(inventory.read_text()).items():
-            rules = []
-            for rule_id, relative_path in entries.items():
-                if relative_path not in documents:
-                    documents[relative_path] = yaml.safe_load((source / relative_path).read_text())["rules"]
-                matches = [
-                    rule for rule in documents[relative_path]
-                    if rule_id == rule["id"] or rule_id.endswith("." + rule["id"])
-                ]
-                if len(matches) != 1:
-                    raise ValueError(f"{pack}: expected exactly one {rule_id} in {relative_path}")
-                rules.append({**matches[0], "id": rule_id})
-            (output / f"{pack}.json").write_text(json.dumps({"rules": rules}) + "\n")
-        PY
-        for json in "$out"/*.json; do
-          yq --prettyPrint --output-format yaml '.' "$json" > "''${json%.json}.yaml"
-          rm "$json"
-        done
+        node --input-type=module - ${inventory} ${rulesSource} "$out" <<'JS'
+        import { assemblePacks } from "${../../packages/nix/src/semgrep.ts}";
+        assemblePacks(...process.argv.slice(2));
+        JS
       '';
 in
 {
@@ -78,6 +55,12 @@ in
       type = lib.types.path;
       default = ../../etc/semgrep/.semgrepignore;
       description = "Semgrep ignore template.";
+    };
+
+    test.fixturesDir = lib.mkOption {
+      type = lib.types.path;
+      default = ./fixtures;
+      description = "Native annotated rule fixtures; select separately from runtime rule configuration.";
     };
 
     test.package = lib.mkOption {

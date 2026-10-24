@@ -9,5 +9,12 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["*.test.ts", "nix/**/*.test.ts", "tf/**/*.test.ts", "src/**/*.ts"]
+  "exclude": ["**/dist/**", "**/node_modules/**"],
+  "include": [
+    "*.test.ts",
+    "nix/**/*.test.ts",
+    "tf/**/*.test.ts",
+    "apps/**/*.ts",
+    "packages/**/*.ts"
+  ]
 }

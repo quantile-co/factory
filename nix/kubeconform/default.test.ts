@@ -13,6 +13,53 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
+it("passes the configured target schema version and permits an explicit override", () => {
+  const built = spawnSync(
+    "nix",
+    [
+      "build",
+      "--no-link",
+      "--print-out-paths",
+      "--impure",
+      "--expr",
+      `let
+      f = builtins.getFlake ${JSON.stringify(`git+${new URL("../../", import.meta.url).href}`)};
+      pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    in (pkgs.lib.evalModules {
+      specialArgs = { inherit pkgs; };
+      modules = [ f.nixModules.kubeconform {
+        quantile-co.factory.kubeconform = {
+          kubernetesVersion = "1.29.7";
+          package = pkgs.writeShellScriptBin "kubeconform" ''printf '%s\\n' "$@"'';
+        };
+      } ];
+    }).config.quantile-co.factory.kubeconform.check.package`,
+    ],
+    { encoding: "utf8", timeout: 120_000 },
+  );
+  if (built.error) throw built.error;
+  expect(built.status, built.stderr).toBe(0);
+  for (const override of [[], ["-kubernetes-version", "1.31.0"]]) {
+    const result = spawnSync(
+      join(built.stdout.trim(), "bin/check-k8s"),
+      [...override, "-schema-location", "local schemas", "manifest.yaml"],
+      { encoding: "utf8", timeout: 10_000 },
+    );
+    if (result.error) throw result.error;
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim().split("\n")).toEqual([
+      "-summary",
+      "-strict",
+      "-kubernetes-version",
+      override[1] ?? "1.29.7",
+      "-schema-location",
+      "local schemas",
+      "--",
+      "manifest.yaml",
+    ]);
+  }
+}, 150_000);
+
 it("validates selected Kubernetes manifests using only local schemas and ignores host kubectl plugins", () => {
   const root = new URL("../../", import.meta.url);
   const work = mkdtempSync(join(tmpdir(), "factory-k8s-"));
@@ -136,6 +183,18 @@ it("validates selected Kubernetes manifests using only local schemas and ignores
         "        args: [-schema-location, 'schemas/{{.ResourceKind}}{{.KindSuffix}}.json']\n        # args: [-schema-location, LOCAL_SCHEMA_TEMPLATE]",
       ),
     );
+    const unpinned = check();
+    expect(unpinned.status).not.toBe(0);
+    expect(unpinned.output).toContain(
+      "Select a pinned Kubernetes schema version",
+    );
+    writeFileSync(
+      config,
+      readFileSync(config, "utf8").replace(
+        "args: [-schema-location,",
+        "args: [-kubernetes-version, '1.31.0', -schema-location,",
+      ),
+    );
     const verified = check();
     expect(verified.status, verified.output).toBe(0);
     for (const [text, diagnostic] of [
@@ -175,6 +234,14 @@ it("validates selected Kubernetes manifests using only local schemas and ignores
     ]);
     expect(skip.status).not.toBe(0);
     expect(skip.output).toContain("Unsupported kubeconform option");
+    for (const version of ["latest", "1.31", "1.31.0; echo unsafe"]) {
+      const invalid = run(join(checker, "check-k8s"), [
+        "-kubernetes-version",
+        version,
+      ]);
+      expect(invalid.status).not.toBe(0);
+      expect(invalid.output).toContain("must be a pinned x.y.z release");
+    }
     expect(existsSync(join(repo, ".git/hooks/pre-push"))).toBe(false);
 
     const pluginDir = join(work, "home/.krew/bin");

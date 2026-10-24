@@ -2,11 +2,15 @@
 .devenv/
 .devenv.flake.nix
 .direnv/
-/node_modules/
+node_modules/
+dist/
+.turbo/
 /.husky/_/
 .envrc.local
 gha-creds-*.json
 .pi/npm/
+.pi/git/
+.agents/skills/
 result
 result-*
 # Keep local Terraform data, backend overrides, plans, and diagnostics out of Git.

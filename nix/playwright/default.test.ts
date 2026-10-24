@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -22,9 +22,9 @@ it("renders with the pinned headless browser without host tools or browser cache
   const home = mkdtempSync(join(tmpdir(), "factory-playwright-"));
   try {
     const html = join(home, "index.html");
-    copyFileSync(
-      new URL("../../etc/playwright/fixtures/browser.html", import.meta.url),
+    writeFileSync(
       html,
+      '<!doctype html>\n<html lang="en">\n  <head><title>Browser smoke test</title></head>\n  <body>\n    <p>pinned browser</p>\n    <script>document.body.dataset.executed = "yes";</script>\n  </body>\n</html>\n',
     );
     const result = spawnSync(
       join(built.stdout.trim(), "bin/chromium-headless-shell"),

@@ -1,9 +1,9 @@
-# Installed skills are external resources; first-party sources live under etc/.
-.pi/skills/
-
 # Rule fixtures are tested, not scanned as source.
 .semgrep/
 etc/semgrep/rules/
+nix/semgrep/fixtures/
+**/dist/
+**/.turbo/
 
 # Nix build results and transient files are outputs, not source.
 result

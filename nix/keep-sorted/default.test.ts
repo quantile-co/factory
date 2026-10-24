@@ -64,7 +64,7 @@ it("checks annotated blocks read-only and fixes only selected tracked text on re
       const expr = `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
         pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
       in (pkgs.lib.evalModules {
-        modules = [ f.nixModules.keep-sorted ];
+        modules = [ f.nixModules.keep-sorted f.nixModules.prek ];
         specialArgs = { inherit pkgs; };
       }).config.quantile-co.factory.keep-sorted.${selector}.package`;
       const result = spawnSync(

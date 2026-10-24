@@ -3,7 +3,15 @@ name: Apply
 on:
   workflow_dispatch:
     inputs:
-      plan_ref:
+      tf_layer:
+        description: Layer
+        required: true
+        type: choice
+        default: infrastructure
+        options:
+          - infrastructure
+          - application
+      gh_plan_ref:
         description: Plan ref
         required: true
         type: string
@@ -17,35 +25,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  production:
+  infrastructure:
     name: Infrastructure
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      contains(fromJSON(vars.PROJECT_OWNERS || '[]').*.gh_username, github.actor) &&
-      contains(fromJSON(vars.PROJECT_OWNERS || '[]').*.gh_username, github.triggering_actor)
+      inputs.tf_layer == 'infrastructure'
     runs-on: namespace-profile-quantile-4x8
     environment: prod
     timeout-minutes: 120
-    env:
-      TF_IN_AUTOMATION: "true"
-      GCP_TF_STATE_BUCKET: ${{ vars.GCP_TF_STATE_BUCKET }}
-      TF_BACKEND_PREFIX: repository/prod
-      TF_VAR_gcp_wif_pool: ${{ vars.GCP_WIF_POOL }}
-      TF_VAR_project_owners: ${{ vars.PROJECT_OWNERS }}
-      TF_VAR_project_members: ${{ vars.PROJECT_MEMBERS || '[]' }}
-
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          project_id: ${{ vars.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
 
       - name: Mount the Nix store and database
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
@@ -67,12 +60,77 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           useDaemon: false
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
       - name: Apply
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
-          REST_API_BEARER: ${{ secrets.GH_REPO_TOKEN }}
-          PLAN_REF: ${{ inputs.plan_ref }}
+          GH_REPO_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
+          GH_PLAN_REF: ${{ inputs.gh_plan_ref }} # Prevent shell injection from operator-controlled input.
         run: |
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
-          "$direnv" exec . ./scripts/github/apply.sh
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm run github:apply \
+            --tf-layer infrastructure \
+            --gcp-tf-state-bucket '${{ vars.GCP_TF_STATE_BUCKET }}' \
+            --gcp-wif-pool '${{ vars.GCP_WIF_POOL }}' \
+            --gh-plan-ref "$GH_PLAN_REF"
+
+  application:
+    name: Application
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.tf_layer == 'application'
+    runs-on: namespace-profile-quantile-4x8
+    environment: prod
+    timeout-minutes: 120
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Mount the Nix store and database
+        uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+        with:
+          path: /nix
+          spacectl-version: 0.12.3
+          spacectl-system-binary: ignore
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31.11.2
+        with:
+          install_options: --no-daemon
+          extra_nix_config: require-sigs = true
+
+      - name: Set up Cachix
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ github.repository_owner }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          useDaemon: false
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+      - name: Apply
+        env:
+          GH_REPO_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
+          GH_PLAN_REF: ${{ inputs.gh_plan_ref }} # Prevent shell injection from operator-controlled input.
+        run: |
+          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
+          "$direnv" allow .
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm run github:apply \
+            --tf-layer application \
+            --gcp-tf-state-bucket '${{ vars.GCP_TF_STATE_BUCKET }}' \
+            --gcp-wif-pool '${{ vars.GCP_WIF_POOL }}' \
+            --gh-plan-ref "$GH_PLAN_REF"

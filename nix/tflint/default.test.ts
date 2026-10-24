@@ -132,7 +132,7 @@ it("lints the selected root with consumer-native TFLint rules without changing s
       GIT_CONFIG_VALUE_0: "https://example.invalid/fixture.git",
     };
     expect(run(ambient).status).not.toBe(0);
-    // Both explicit Devenv storage and the Git-owned fallback must work.
+    // Both the explicit state directory and the Git-owned fallback must work.
     for (const state of [join(work, "isolated-data"), ""]) {
       const env = { ...ambient, QUANTILE_CO_FACTORY_STATE_DIR: state };
       const initialized = run(env, tofuCheck);

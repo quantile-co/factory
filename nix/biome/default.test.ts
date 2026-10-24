@@ -13,6 +13,60 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
+it("lets callers replace formatting for independently selected native config renderers", () => {
+  const expression = `let
+    f = builtins.getFlake ${JSON.stringify(`git+${new URL("../../", import.meta.url).href}`)};
+    pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
+    render = name: select: let
+      cfg = (pkgs.lib.evalModules {
+        specialArgs = { inherit pkgs; };
+        modules = [ f.nixModules.\${name} f.nixModules.biome {
+          quantile-co.factory.biome.formatFile = filename: source:
+            pkgs.writeText filename (builtins.toJSON {
+              inherit filename;
+              contents = builtins.fromJSON (builtins.readFile source);
+            });
+        } ];
+      }).config.quantile-co.factory;
+    in select cfg;
+  in [
+    (render "typescript" (cfg: cfg.typescript.withOverrides { compilerOptions.strict = false; }))
+    (render "firebase" (cfg: cfg.firebase.withOverrides { hosting.public = "out"; }))
+    (render "pnpm" (cfg: cfg.pnpm.packageJsonFile))
+  ]`;
+  const result = spawnSync(
+    "nix",
+    [
+      "build",
+      "--no-link",
+      "--print-out-paths",
+      "--impure",
+      "--expr",
+      expression,
+    ],
+    { encoding: "utf8", timeout: 120_000 },
+  );
+  if (result.error) throw result.error;
+  expect(result.status, result.stderr).toBe(0);
+  const rendered = Object.fromEntries(
+    result.stdout
+      .trim()
+      .split("\n")
+      .map((path) => {
+        const file = JSON.parse(readFileSync(path, "utf8"));
+        return [file.filename, file.contents];
+      }),
+  );
+  expect(Object.keys(rendered).sort()).toEqual([
+    "firebase.json",
+    "package.json",
+    "tsconfig.json",
+  ]);
+  expect(rendered["tsconfig.json"].compilerOptions.strict).toBe(false);
+  expect(rendered["firebase.json"].hosting.public).toBe("out");
+  expect(rendered["package.json"].packageManager).toMatch(/^pnpm@/);
+}, 150_000);
+
 it("checks without editing and safely fixes consumer files using the store-backed Biome template", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url));
   const work = mkdtempSync(join(tmpdir(), "factory-biome-"));
@@ -78,15 +132,11 @@ it("checks without editing and safely fixes consumer files using the store-backe
     mkdirSync(join(work, ".pi/skills/external"), { recursive: true });
     writeFileSync(
       join(work, ".pi/skills/external/example.ts"),
-      "not typescript\n",
+      "export const answer=42\n",
     );
-    run("pnpm", [
-      "exec",
-      "biome",
-      "check",
-      "--no-errors-on-unmatched",
-      ".pi/skills",
-    ]);
+    expect(
+      run("pnpm", ["exec", "biome", "check", ".pi/skills"], false),
+    ).toContain("format");
     const untouched = [
       "README.md",
       "tf/README.md",

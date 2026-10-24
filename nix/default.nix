@@ -1,75 +1,67 @@
-{ inputs }:
-let
-  modules = {
-    actionlint = ./actionlint;
-    amp = import ./amp { llmAgents = inputs.llm-agents; };
-    biome = ./biome;
-    checkov = ./checkov;
-    clang-format = ./clang-format;
-    clang-tidy = ./clang-tidy;
-    clickhouse = ./clickhouse;
-    clickhousectl = ./clickhousectl;
-    commitizen = ./commitizen;
-    conftest = ./conftest;
-    deadnix = ./deadnix;
-    dependabot = ./dependabot;
-    direnv = ./direnv;
-    editorconfig = ./editorconfig;
-    emscripten = ./emscripten;
-    firebase = ./firebase;
-    github = ./github;
-    git = ./git;
-    gitleaks = ./gitleaks;
-    gofumpt = ./gofumpt;
-    goimports = ./goimports;
-    golangci-lint = ./golangci-lint;
-    hunk = import ./hunk { llmAgents = inputs.llm-agents; };
-    husky = ./husky;
-    kubectl = ./kubectl;
-    kubeconform = ./kubeconform;
-    keep-sorted = ./keep-sorted;
-    knip = ./knip;
-    langfuse = ./langfuse;
-    license = ./license;
-    markdownlint-cli2 = ./markdownlint-cli2;
-    mypy = ./mypy;
-    nixfmt = ./nixfmt;
-    opa = ./opa;
-    opentofu = ./opentofu;
-    pi = import ./pi { llmAgents = inputs.llm-agents; };
-    playwright = ./playwright;
-    prek = ./prek;
-    prettier = ./prettier;
-    protoc = ./protoc;
-    qmd = import ./qmd { llmAgents = inputs.llm-agents; };
-    readme = ./readme;
-    resend-cli = ./resend-cli;
-    ruff = ./ruff;
-    semgrep = import ./semgrep { rulesSource = inputs.semgrep-rules; };
-    shellcheck = ./shellcheck;
-    shfmt = ./shfmt;
-    statix = ./statix;
-    tailscale = ./tailscale;
-    taplo = ./taplo;
-    tflint = ./tflint;
-    trivy = ./trivy;
-    typescript = ./typescript;
-    typos = ./typos;
-    vale = ./vale;
-    wabt = ./wabt;
-    wasm-tools = ./wasm-tools;
-    yamllint = ./yamllint;
-  };
-in
+{ factoryInputs, ... }:
 {
-  flakeInputs = inputs;
-  lib = {
-    mkFiles = import ./files;
-    mkFlake = import ./flake;
-  };
-  nixModules = modules // {
-    default = { ... }: {
-      imports = builtins.attrValues modules;
-    };
+  imports = [
+    ./actionlint
+    ./biome
+    ./checkov
+    ./clang-format
+    ./clang-tidy
+    ./clickhousectl
+    ./commitizen
+    ./conftest
+    ./deadnix
+    ./dependabot
+    ./direnv
+    ./editorconfig
+    ./emscripten
+    ./files
+    ./firebase
+    ./flake
+    ./git
+    ./github
+    ./gitleaks
+    ./gofumpt
+    ./goimports
+    ./golangci-lint
+    ./husky
+    ./keep-sorted
+    ./knip
+    ./kubeconform
+    ./kubectl
+    ./langfuse
+    ./license
+    ./markdownlint-cli2
+    ./mypy
+    ./nixfmt
+    ./opa
+    ./opentofu
+    ./pi
+    ./playwright
+    ./pnpm
+    ./prek
+    ./prettier
+    ./protoc
+    ./qmd
+    ./readme
+    ./resend-cli
+    ./ruff
+    ./semgrep
+    ./shellcheck
+    ./shfmt
+    ./statix
+    ./taplo
+    ./tflint
+    ./trivy
+    ./turbo
+    ./typescript
+    ./typos
+    ./vale
+    ./wabt
+    ./wasm-tools
+    ./yamllint
+  ];
+  _module.args = {
+    llmAgents = factoryInputs.llm-agents;
+    rulesSource = factoryInputs.semgrep-rules;
   };
 }

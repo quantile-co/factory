@@ -50,7 +50,6 @@ let
     };
 in
 {
-  imports = [ ../prek ];
   options.quantile-co.factory.keep-sorted = {
     package = lib.mkOption {
       type = lib.types.package;

@@ -5,16 +5,56 @@
   ...
 }:
 let
-  remoteInit = ''
-    : "''${GCP_TF_STATE_BUCKET:?Missing state bucket}"
-    : "''${TF_BACKEND_PREFIX:?Missing backend prefix}"
-    tofu -chdir="''${TF_DIR:-tf/infrastructure}" init -input=false -lockfile=readonly \
-      -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
-      -backend-config="prefix=$TF_BACKEND_PREFIX"
-  '';
+  cfg = config.quantile-co.factory.github.workflows;
+  render =
+    name: source:
+    let
+      # Select the two native job blocks without reserializing the YAML layout.
+      parts = lib.splitString "\njobs:\n" (builtins.readFile source);
+      sections = lib.splitString "\n  application:\n" (builtins.elemAt parts 1);
+      jobs = {
+        infrastructure = builtins.head sections;
+        application = "  application:\n" + builtins.elemAt sections 1;
+      };
+      choices = "          - infrastructure\n          - application\n";
+      header = builtins.head parts;
+      selectedHeader =
+        builtins.replaceStrings
+          [ "        default: infrastructure\n" choices ]
+          [
+            "        default: ${builtins.head cfg.layers}\n"
+            (lib.concatMapStrings (layer: "          - ${layer}\n") cfg.layers)
+          ]
+          header;
+    in
+    assert lib.assertMsg (
+      cfg.layers != [ ] && lib.length cfg.layers == lib.length (lib.unique cfg.layers)
+    ) "Select distinct workflow layers.";
+    assert lib.assertMsg (
+      lib.length parts == 2
+      && lib.length sections == 2
+      && lib.hasInfix choices header
+      && lib.hasInfix "        default: infrastructure\n" header
+    ) "Workflow template sections changed.";
+    pkgs.writeText name (
+      selectedHeader + "\njobs:\n" + lib.concatStringsSep "\n" (map (layer: jobs.${layer}) cfg.layers)
+    );
 in
 {
   options.quantile-co.factory.github.workflows = {
+    layers = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.enum [
+          "infrastructure"
+          "application"
+        ]
+      );
+      default = [
+        "infrastructure"
+        "application"
+      ];
+      description = "Jobs offered by Plan/Apply; each dispatch selects exactly one layer.";
+    };
     check.configFile = lib.mkOption {
       type = lib.types.path;
       default = ../../../etc/github/workflows/check.yaml;
@@ -30,129 +70,15 @@ in
       default = ../../../etc/github/workflows/build.yaml;
       description = "Build workflow.";
     };
-    plan = {
-      configFile = lib.mkOption {
-        type = lib.types.path;
-        default = ../../../etc/github/workflows/plan.yaml;
-        description = "Plan workflow.";
-      };
-      package = lib.mkOption {
-        type = lib.types.package;
-        default = pkgs.writeShellApplication {
-          name = "github-workflow-plan";
-          runtimeInputs = [
-            pkgs.google-cloud-sdk
-            config.quantile-co.factory.opentofu.package
-            pkgs.coreutils
-          ];
-          text = ''
-            : "''${GCP_TF_STATE_BUCKET:?Set the private state bucket}"
-            : "''${GITHUB_REPOSITORY_ID:?Set the producing repository ID}"
-            : "''${GITHUB_RUN_ID:?Set the producing run ID}"
-            : "''${GITHUB_RUN_ATTEMPT:?Set the producing attempt}"
-            : "''${GITHUB_STEP_SUMMARY:?Set the protected step summary path}"
-            : "''${RUNNER_TEMP:?Set the runner scratch directory}"
-            case "$RUNNER_TEMP" in /*) ;; *) echo 'RUNNER_TEMP must be absolute' >&2; exit 1 ;; esac
-            private="$RUNNER_TEMP/saved-plan"
-            plan="$private/plan.tfplan"
-            base="gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT"
-            umask 077
-            mkdir -p -- "$private"
-            test ! -e "$plan"
-
-            cleanup() {
-              status=$?
-              trap - EXIT
-              if (( status != 0 )) && [ -f "$private/plan.log" ]; then
-                gcloud storage cp "$private/plan.log" "$base/plan.log" \
-                  --if-generation-match=0 --quiet > /dev/null 2>&1 || :
-              fi
-              rm -rf -- "$private"
-              exit "$status"
-            }
-            trap cleanup EXIT
-
-            export TF_PLAN_FILE="$plan"
-            {
-              if (( $# )); then
-                "$@"
-              else
-                ${remoteInit}
-                tofu -chdir="''${TF_DIR:-tf/infrastructure}" plan -input=false -no-color -out="$plan"
-              fi
-            } > "$private/plan.log" 2>&1
-            test -s "$plan"
-            gcloud storage cp --recursive "$private" "$base/" \
-              --if-generation-match=0 --quiet > /dev/null
-            generation=$(gcloud storage objects describe \
-              "$base/saved-plan/plan.tfplan" --raw --format='value(generation)')
-            [[ "$generation" =~ ^[1-9][0-9]*$ ]]
-            printf 'Plan reference: %s/%s/%s\n' \
-              "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$generation" >> "$GITHUB_STEP_SUMMARY"
-          '';
-        };
-        description = "Plan.";
-      };
+    plan.configFile = lib.mkOption {
+      type = lib.types.path;
+      default = render "plan.yaml" ../../../etc/github/workflows/plan.yaml;
+      description = "Plan workflow.";
     };
-    apply = {
-      configFile = lib.mkOption {
-        type = lib.types.path;
-        default = ../../../etc/github/workflows/apply.yaml;
-        description = "Apply workflow.";
-      };
-      package = lib.mkOption {
-        type = lib.types.package;
-        default = pkgs.writeShellApplication {
-          name = "github-workflow-apply";
-          runtimeInputs = [
-            pkgs.google-cloud-sdk
-            config.quantile-co.factory.opentofu.package
-            pkgs.coreutils
-          ];
-          text = ''
-            : "''${GCP_TF_STATE_BUCKET:?Set the private state bucket}"
-            : "''${GITHUB_REPOSITORY_ID:?Set the producing repository ID}"
-            : "''${GITHUB_RUN_ID:?Set the Apply run ID}"
-            : "''${GITHUB_RUN_ATTEMPT:?Set the Apply attempt}"
-            : "''${RUNNER_TEMP:?Set the runner scratch directory}"
-            : "''${PLAN_REF:?Set the reviewed run/attempt/generation}"
-            case "$RUNNER_TEMP" in /*) ;; *) echo 'RUNNER_TEMP must be absolute' >&2; exit 1 ;; esac
-            [[ "$PLAN_REF" =~ ^([1-9][0-9]*)/([1-9][0-9]*)/([1-9][0-9]*)$ ]]
-            source="gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/''${BASH_REMATCH[1]}/''${BASH_REMATCH[2]}/saved-plan/plan.tfplan#''${BASH_REMATCH[3]}"
-            private="$RUNNER_TEMP/saved-plan"
-            plan="$private/plan.tfplan"
-            umask 077
-            mkdir -p -- "$private"
-            test ! -e "$plan"
-
-            cleanup() {
-              status=$?
-              trap - EXIT
-              if (( status != 0 )) && [ -f "$private/apply.log" ]; then
-                gcloud storage cp "$private/apply.log" \
-                  "gs://$GCP_TF_STATE_BUCKET/plans/$GITHUB_REPOSITORY_ID/apply/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/apply.log" \
-                  --if-generation-match=0 --quiet > /dev/null 2>&1 || :
-              fi
-              rm -rf -- "$private"
-              exit "$status"
-            }
-            trap cleanup EXIT
-
-            gcloud storage cp "$source" "$plan" --quiet > "$private/apply.log" 2>&1
-            test -s "$plan"
-            export TF_PLAN_FILE="$plan"
-            {
-              if (( $# )); then
-                "$@"
-              else
-                ${remoteInit}
-                tofu -chdir="''${TF_DIR:-tf/infrastructure}" apply -input=false "$plan"
-              fi
-            } >> "$private/apply.log" 2>&1
-          '';
-        };
-        description = "Apply plan.";
-      };
+    apply.configFile = lib.mkOption {
+      type = lib.types.path;
+      default = render "apply.yaml" ../../../etc/github/workflows/apply.yaml;
+      description = "Apply workflow.";
     };
   };
 }

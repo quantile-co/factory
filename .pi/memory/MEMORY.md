@@ -17,7 +17,7 @@ Private consumer guidance belongs in the private repository, never here.
 #decision [[factory-config-layout]] [[factory-native-config]]
 Factory is a shared Nix flake, not a shared shell-task framework. Use tool-owned
 `nix/<tool>/default.nix` modules with meaningful colocated tests and native assets
-under `etc/`. Every directory under `nix/`, including the root, has a `default.nix`.
+under `etc/`. Every module directory under `nix/`, including the root, has a `default.nix`; native annotated test fixtures remain data.
 Root and intermediate defaults only wire imports/exports through adjacent directory
 entry points. Leaf defaults own the implementation, normally beside `default.test.ts`;
 do not introduce `module.nix` or other forwarding-only splits for leaf implementations.
@@ -54,15 +54,38 @@ Remove migration scaffolding after successful adoption and prove convergence.
 
 #decision [[factory-flake-direnv]] [[factory-managed-files]]
 Factory uses a locked flake shell and the same `.envrc` through direnv locally and
-in CI. Pnpm entry points live under `scripts/pnpm/`; every checked-in workflow
-has a corresponding `scripts/github/` entry point. Protected Plan/Apply remain
-workflow-only. `flake.nix` declares destination, source expression and seed/copy
-mode through `nix/files/`. Direnv runs `factory-files write`: copy overwrites
-like Devenv, seed keeps existing contents, and neither creates symlinks. All
-selected destinations are checked-in regular files. Check requires them in the
+in CI. Pnpm/Turbo workspaces separate thin commands in `apps/` from importable
+behavior in `packages/`. The three apps are Nix, GitHub and repo; the three
+packages are Nix, GitHub and Pi. Code packages use `src/` with colocated tests and
+`index.ts` for actual root public entry points. Nix exposes separate `files` and
+`semgrep` subpaths without a forwarding barrel. Single-file CLI apps use root `cli.ts` entry points.
+Build tooling, manifests and skill assets remain at package roots. Native
+`pnpm install --frozen-lockfile` installs JS
+dependencies and runs the root `prepare: husky` hook. Dependency install scripts
+remain disallowed through pnpm's explicit build policy. Set
+`verifyDepsBeforeRun: false` in the workspace configuration to disable automatic
+installation. Install explicitly before local tasks, as documented in the README.
+Each workflow runs `pnpm install --frozen-lockfile` immediately before its pnpm
+task in the same run block, never a separate setup step or installer wrapper.
+A failed frozen install stops the block before the task. Build artifacts separately with `pnpm run build`;
+validation can rebuild declared prerequisites. Turbo caches only reproducible build outputs locally;
+checks, tests, fixes and Git/index/native-sensitive work remain uncached.
+There is no remote Turbo cache. Protected Plan/Apply remain workflow-only.
+`flake.nix` declares native destinations/sources/modes through the files module and
+explicitly selects `files.shellHook`, which runs the cold `factory-files write`
+command from the runtime Git checkout root. Copy overwrites
+like Devenv, seed keeps existing contents, and neither creates symlinks. Both
+modes reject symlink destinations, including Nix-store links; operators must
+replace those explicitly. All selected destinations are checked-in regular files. Check requires them in the
 Git index and compares copies with their source and index so entry cannot hide
 committed drift. Q0 remains
-Factory-independent.
+Factory-independent. Pi owns the opt-in `pi.shellHook` for runtime checkout-local
+memory exports. Factory explicitly selects it through `flake.devShell.shellHook`;
+module imports alone do not activate it. Compose file reconciliation before Pi
+memory setup. These native shell hooks run for both direnv and `nix develop`;
+replaying the cached `nix print-dev-env` script also reruns them. Direnv retains
+only pre-evaluation local configuration/cache trust and `use flake`. Those settings
+cannot move into a shell hook that runs after Nix evaluation.
 
 #decision [[factory-shared-file-ownership]]
 Native templates cover Gitignore, Husky pre-push, direnv, README seeds and explicit
@@ -76,18 +99,40 @@ in consumer references and share only applicable entry points/procedures. Q0 sta
 independent.
 
 #decision [[factory-declarative-flake]] [[factory-package-exports]]
-Keep repository-level inputs, systems, public `packages`, `devShell.packages`
-and `devShell.files` in `flake.nix`. Keep section interiors free of explanatory
-comments and blank-line groupings. `lib.mkFlake` under `nix/flake/` handles only
-module evaluation, platform iteration and output wiring; do not hide repository
-policy in a shell module. `lib.mkFiles { inherit pkgs; }` accepts destination-to-source/mode
-declarations; local paths and derivation references are retained without a caller
-`sourceRoot` or manifest variable. Prefer explicit `packages.<system>.<name>`
+Keep repository inputs, systems and explicit selections in `flake.nix`. All Nix
+entry points are modules, including the root, flake and files modules; no parallel
+`lib.mkFlake`/`lib.mkFiles` API. A small per-system `lib.evalModules` bootstrap
+passes `pkgs` and `factoryInputs = factory.inputs` when importing the aggregate
+`factory.nixModules.default`. Factory-owned llm-agents/Semgrep inputs come from that
+pinned Factory input, never redeclared floating consumer inputs. Named Pi/QMD
+modules receive `llmAgents = factory.inputs.llm-agents`; named Semgrep receives
+`rulesSource = factory.inputs.semgrep-rules`.
+`factory.flake.packages`, `factory.flake.devShell.packages` and
+`factory.files.entries` are explicit selections; evaluated `factory.flake.outputs`
+provides per-system outputs. The generic files module preserves store references
+and packages the same stdlib implementation as `packages/nix/src/files.ts`, with no workspace
+node_modules requirement and no README/license knowledge. The Nix package also owns
+curated Semgrep pack assembly; `apps/nix` dispatches these two operations. Native
+`nix/files` and `nix/semgrep` modules retain configuration and dependency ownership.
+The manifest-bound `factory-files` command remains the cold-bootstrap entry point. README/license assets
+and renderers stay with their own Nix modules under `etc/readme`/`etc/license`. Prefer explicit `packages.<system>.<name>`
 exports using upstream names, including `nodejs_24`, over generic package-only
 modules. Explicitly selected tool modules may retain native package options.
-Factory-owned workflow outputs use `github-workflow-plan` and `github-workflow-apply`.
+GitHub workflows use the normal JS workspace, not a second self-contained Nix
+CLI build. Workflow YAML calls consumer-owned `github:plan` and `github:apply`
+pnpm tasks, never Factory workspace paths. Factory restores the repository root
+and runs its TypeScript CLI with locked `tsx`; the GitHub library exports source.
+Both workspaces have optional Vite builds; workflow execution continues to use
+source through tsx without a build prerequisite. Type checking remains separate,
+and protected Plan/Apply bypass Turbo. Workflows install with the frozen lockfile immediately
+before the task in the same run block; phase credentials stay scoped to that block. Consumers own their JS dependency delivery
+and task implementations; Nix supplies runtimes, provider tools and workflow templates. Check/Test/Build continue using their existing pnpm tasks;
+repository check/fix/test scripts dispatch directly to `apps/repo`.
 Unsupported or broken exports are omitted for that platform. Factory enables
 unfree packages in its own Nixpkgs instance; host configuration is unchanged.
+Keep public package assignments explicitly qualified and development-shell tools
+in one continuous qualified list. Factory's native `statix.toml` disables only
+`manual_inherit_from` to permit that style; other rules remain enabled.
 Exports alone do not build packages or publish caches. Downstreams must replace
 removed package-only module imports/options when updating their Factory input.
 
@@ -112,22 +157,27 @@ assertions or skip coverage to conceal missing dependencies.
 Keep comments about current behavior, not historical migration narratives.
 `AGENTS.md` stays a navigation index. README edits require explicit approval.
 
-Checks are read-only; fixes and hook installation are explicit. Husky's tracked
-pre-push entry point runs direnv checks and optional legacy handling before LFS
-upload. Run checks in a subshell with Git's repository-local hook environment
+Check implementations do not mutate source or managed configuration and do not
+embed dependency/hook installers. Native pnpm automatic installation is disabled.
+Workflows install explicitly immediately before the task in the same run block,
+not through a separate step or action. Reproducible ignored build
+artifacts remain permissible prerequisites. Source fixes are explicit. Husky's tracked
+pre-push entry point runs direnv checks before LFS upload, without additional hook
+chaining. Run checks in a subshell with Git's repository-local hook environment
 cleared, so nested root lookups and module clones resolve their own checkouts.
-Keep the original push environment and refs for legacy hooks and LFS.
+Keep the original push environment and refs for LFS.
 No commit-time hook or implicit shell-entry installation is intended.
 
 ## Shared Pi extensions
 
 #decision [[factory-pi-extensions]]
-Use one first-party Pi extension with a small registration entry point at
-`src/pi/extensions/factory/index.ts`. Keep its implementation flat, with
-single-word filename stems and colocated tests; no internal subdirectories.
-Only `index.ts` imports sibling implementation modules: it wires plain dependency
-objects into consumer-owned interfaces. `pi.ts` owns Pi registration, sessions and
-SDK UI integration; `git.ts` owns Git inspection and protections; `herdr.ts` owns
+Use one guarded first-party Pi extension with a small registration entry point at
+`packages/pi/src/index.ts`. Keep implementation flat within `src/`, with
+single-word filename stems and colocated tests. The entry point wires plain
+dependencies into consumer-owned interfaces. Git/Herdr/direnv/terminal modules
+remain independent of the Pi SDK inside this package. Extract another package
+only when an actual additional consumer needs it. `pi.ts` owns Pi registration,
+sessions and SDK UI integration; `git.ts` owns Git inspection and protections; `herdr.ts` owns
 Herdr workspaces, agents and reconciliation; `terminal.ts` owns foreground process
 execution and terminal restoration; `direnv.ts` owns worktree environment approval;
 `model.ts` owns the one-time child selection policy over native Pi registry APIs;
@@ -135,11 +185,12 @@ execution and terminal restoration; `direnv.ts` owns worktree environment approv
 Keep these boundary implementations independent of the Pi SDK. No dependency-injection framework, service registry or interface per helper.
 Tests inject boundary dependencies rather than mocking sibling modules, retaining
 real Git repositories and Pi session files where their behavior matters.
-Author code there, not in `etc/` or generated `.pi/` copies.
-`factory.pi.extensionsDir` packages the Factory extension and the unmodified
-Pi agent-state integration from the pinned Herdr package. Consumers explicitly
-copy this directory to `.pi/extensions` and select Pi, Herdr, Git and shfmt in
-their development shell. Shared Pi settings select pinned upstream memory,
+Author runtime behavior in packages, not `etc/` or generated `.pi/` copies.
+`packages/pi` is a native Pi package with explicit independently selectable
+extension/skill/prompt/theme manifest paths. Herdr integration is selected
+independently through native Pi settings, without Factory vendoring. Consumers select native
+Pi package resources and Pi/Herdr/Git/shfmt binaries explicitly, without copied
+shared `.pi/extensions`/`.pi/skills` trees or a runtime bootstrap. Shared Pi settings select pinned upstream memory,
 web-access and Langfuse packages; Pi installs those npm packages after project
 trust, not during the Nix build. Enable native codemode and tool search additively
 through `defaultTools`, retaining ordinary tools and codemode's default `on` mode.
@@ -152,6 +203,46 @@ customization remains personal. Shared integration covers Pi built-ins,
 Factory-owned tools and declared dependencies, not personal extension collections.
 Use foreground-terminal for requested interactive programs and ordinary Bash for
 captured output. Do not add a tool wrapper for every CLI or a plugin framework.
+
+#decision [[factory-skill-distribution]]
+Keep upstream skills unchanged. `packages/pi/package.json` owns the top-level
+`skills` declarations with full Git commit pins and positive selections.
+Consumers install this package as a direct dependency and explicitly run pinned
+`skills@1.7.4 experimental_sync --agent pi --copy --yes`; Factory exposes
+`pnpm run skills:sync`. Persist downstream `--include`/`--exclude` filters using
+`@quantile-co/factory-pi#skill-name` patterns in that task. Synchronization writes
+ignored `.agents/skills/` and a reviewed `skills-lock.json`. The experimental
+CLI's lock hash is provenance, not an enforced frozen artifact checksum.
+Do not run sync during install, builds, shell entry or Pi startup. Native
+`.pi/skills/` remains a valid authored source directory and is not excluded from
+shared linting; ignored `.agents/skills/` holds synchronized external resources.
+
+The package ships only Factory's extension and two first-party deployment
+skills under `skills/`. Its native `pi.skills` is empty:
+the CLI synchronizes the shipped skills too, avoiding double activation.
+Pstack `unslop` replaces avoid-ai-writing without executable helpers; upstream
+makes it explicit-use. Matt's five selected skills and his setup skill are
+unchanged; running setup or installing anti-slop lint rules remains a separately
+approved repository operation. Do not enable Superpowers bootstrap implicitly.
+Upstream skill distributions retain their own licensing. Factory does not copy
+or aggregate the upstream catalog. There is no Factory skill-patching or
+vendoring framework.
+
+`etc/pi/settings.json` is the only native settings template. Factory overrides
+only its local package source when materializing `.pi/settings.json`.
+Preserve the five exact upstream npm recommendations. SDK-only settings entries
+do not activate resources; Factory bundles its declared SDK dependencies from
+the workspace lock rather than searching Pi's installation directories.
+Npm transitives installed independently by Pi do not inherit the workspace lock.
+
+Nix supplies available skill binaries; downstreams independently choose their
+skill filters and development-shell packages. Do not add missing-binary warnings,
+automatic installers or a dependency registry. Curl, FFmpeg, yt-dlp, Marimo,
+Google Lighthouse, xdg-utils and libsecret are exports, not Factory shell inputs.
+The Lighthouse web-audit package is `google-lighthouse`, not `lighthouse`.
+There is no nvim-pair skill or Neovim export. Downstreams own Python Playwright
+SDK dependencies through their language manifest; Factory's existing Playwright
+module remains browser-only. Services, authentication and desktops stay external.
 
 `herdr_worktree` is the model-facing start/reconcile tool; there are no extension
 slash commands. Start uses native Herdr worktree and agent commands, preserves
@@ -196,8 +287,9 @@ classifier usage enters native tool accounting, including launch failures.
 
 Factory's classifier observations reuse the Langfuse plugin's existing SDK
 provider and published active-turn context; they do not create exporters or read
-credentials. Declare the tracing SDK and its OpenTelemetry API peer explicitly
-in shared Pi packages. Record actual classifier model, labels, timing and usage,
+credentials. Declare the tracing SDK and its OpenTelemetry API peer as normal
+package dependencies and bundle them under the workspace lock. Use the SDK's
+public shared-provider API; never search Pi's npm installation directories. Record actual classifier model, labels, timing and usage,
 not task text or raw provider errors; an unpriced catalog entry is not free usage.
 With a recording span, defer only Factory's usage to the enclosing tool result's
 native `message_end`, preserving Pi totals without the plugin's duplicate,
@@ -323,18 +415,33 @@ separate under `tf/modules/project/`. Existing deployments retain their bucket,
 backend prefix and lineage. Explicit address moves are temporary migrations,
 not permission to recreate an installation.
 
-Plan/Apply remain manual, protected-main operations with original and triggering
-actor checks, protected environments, WIF, backend locks and non-cancelling
-concurrency. Workflow reuse is file-based: Factory maintains native YAML under
-`etc/github/workflows/` and one Nix module with CI transport scripts at
-`nix/github/workflows/default.nix`. Consumers other than independent Q0 materialize the
+Plan/Apply remain manual, protected-main operations with protected environments,
+WIF, backend locks and non-cancelling concurrency. There are no owner-roster actor
+or triggering-actor conditions in YAML. Platform authorization remains in GitHub
+repository/environment policy and the existing WIF/IAM configuration. Workflow reuse is file-based: Factory maintains native YAML under
+`etc/github/workflows/` and one Nix module with template options at
+`nix/github/workflows/default.nix`. Consumers other than independent Q0 materialize
 the files explicitly and own their task-specific input validation, release
 logic and post-Apply checks. Do not add downstream-application-specific logic
-to shared templates. For Terraform-only infrastructure, the shared workflow
-scripts call OpenTofu directly and honor `TF_DIR` (default `tf/infrastructure`)
-so single-root consumers can select `tf` without changing backend identity.
+to shared templates. Workflows pass the logical `--tf-layer` to repository-owned
+pnpm tasks/apps, which map it internally to the root and existing backend prefix.
+Shared YAML owns neither filesystem layout nor backend identity. Factory's app
+supports Infrastructure only, mapped to `tf/infrastructure` and `repository/prod`. Runtime
+transport is importable `packages/github` behavior with a thin Commander app.
+Library callbacks receive the exact saved-plan path, not an ambient TF_PLAN_FILE.
+Commander reads the credential through native `.env()` and also accepts its
+optional flag. Workflows use environment-based credentials and pass trusted
+repository vars directly as quoted CLI arguments. Apply bridges its operator input
+through `GH_PLAN_REF` with a short safety comment, then passes the quoted variable
+to `--gh-plan-ref`; this is not a CLI environment input. Google authentication
+keeps its actions-managed files. Native Actions
+metadata is read directly rather than repeated as flags. The app derives only
+explicit provider variables, never forwarding ambient TF_VAR/backend input wholesale.
+Cancellation waits for owned process close and bounds process-group termination;
+private scratch ownership is atomically fresh and regular plan files are required.
 Deployment skills use the consumer's selected root. Local exceptional commands
-live in deploy skills, not local Plan/Apply tasks. A merge or green Check is not deployment approval.
+live in deploy skills; the namespaced workflow task entry points do not authorize
+local production execution. A merge or green Check is not deployment approval.
 Plan writes a local saved file and private log; workflows use `gcloud storage cp` to persist
 these in private GCS, then download the operator-selected exact plan generation
 for Apply without replanning. There are no GitHub artifacts, producer-run checks
@@ -369,21 +476,24 @@ listing, so keep the bootstrap seed canonical and verify startup on QMD updates.
 ## Configuration contract
 
 #decision [[configuration-contracts]] [[project-membership]]
-The [configuration contract](../skills/deploy/references/configuration.md) defines
-canonical names, platform namespaces and the coordinated consumer migration.
-Terraform roots own paired `project_owners` and `project_members` records and
-project emails/usernames directly into independent GCP/GitHub module inputs.
+The [configuration contract](../../packages/pi/skills/deploy/references/configuration.md) defines
+canonical names and platform namespaces.
+Concrete Terraform roots own paired `local.project_owners` and
+`local.project_members` source records and project emails/usernames directly into
+independent GCP/GitHub module inputs. They are not runtime inputs.
 Do not add an intermediary identity module or registry. Platform modules own
 permission logic. The approved member policy grants GitHub repository write
-access only, with no GCP grants or protected Plan/Apply eligibility. Members never
-enter the owner-ID map or actor gates. Existing owner views retain plans-only
+access only, with no added GCP or WIF grants. Members never enter the owner-ID map. Existing owner views retain plans-only
 human reads and main/repository/actor-scoped WIF, not direct human project Owner
 grants. Review inherited permissions and trusted workflow source separately.
 
-Shared workflows use `PROJECT_OWNERS` for both actor guards and the internal
-Terraform adapter; optional `PROJECT_MEMBERS` defaults to an empty list. The old
-independently editable maintainer arrays and
-bucket/folder compatibility aliases are no longer the source contract. Native
+Owner/member records live only in Terraform source for platform permissions. The
+CLI reads no roster environment input and forwards no roster `TF_VAR_*`. No Actions
+owner roster, variable resource or adoption import is part of this contract.
+Removing the YAML actor conditions is intentional; do not claim those checks remain.
+Retiring historical live variables is a separate operation, not implied by source cleanup. The old
+independently editable maintainer arrays and bucket/folder compatibility aliases
+are no longer the source contract. Native
 provider names remain boundary exceptions. The `module.github` to `module.gh`
 address migration is complete; the temporary move is retired. Canonical owner and
 bucket settings were separately approved and activated. No source change
@@ -398,14 +508,19 @@ but publishing them reveals account/hierarchy metadata and does not replace IAM
 review. Factory's owner pairing is confirmed; other installations must confirm
 their own rosters. Reusable module parameters remain configurable.
 
-Use `GH_REPO` for the repository selector and `GH_REPO_TOKEN` for the separate
-repository-scoped provider credential. The native `GH_REPO` selector must be
+Use `GH_REPO` for the repository selector. The stored repository credential,
+workflow environment variable and Commander `.env()` all use `GH_REPO_TOKEN`;
+its optional flag is `--gh-repo-token`. Keep organization credentials distinct as
+`GH_ORG_TOKEN` or organization-qualified names when needed. The CLI maps its one
+resolved repository token to native `GITHUB_TOKEN` and `REST_API_BEARER` internally;
+the storage subprocess receives neither. Prefer credential environment variables
+in workflows without forbidding user-selected CLI flags. The native `GH_REPO` selector must be
 unset for independent checkout verification; keep explicit targets on mutations.
 Owned Terraform names use `repo_name`, `repo_id` and cross-platform `gh_repo_id`;
 provider attributes and existing resource addresses retain native spellings.
 Project outputs use `module.gcp.project_id` / `project_number` and root
 `gcp_project_id`; retain `tf_state` on bucket names. Operators select one
-`PLAN_REF` (`RUN_ID/ATTEMPT/GENERATION`); review derives its components internally
+`GH_PLAN_REF` (`RUN_ID/ATTEMPT/GENERATION`); review derives its components internally
 and Apply uses the same reference without replanning.
 
 Tool wrappers use native discovery for Actionlint and Clang configuration.
@@ -414,6 +529,24 @@ Retained file selectors use `<TOOL>_CONFIG_FILE`, including
 `PREK_CONFIG_FILE`. The latter is shared by the Prek and keep-sorted adapters.
 Keep explicit paths where wrappers validate settings or change working roots;
 do not rename upstream-native configuration variables.
+
+#decision [[factory-starters]]
+Native `templates.default` supplies a downstream-only flake starter. It uses the
+same modules with explicit tool/file selections and no deployment or Pi activation.
+Enter once with `nix develop` to materialize native configuration, then review and
+stage it before approving direnv. Package/workspace/Turbo configuration is seeded,
+not overwritten: repositories own later scripts, dependencies, layout and outputs.
+The new package-manifest seed derives its pnpm pin from the selected Nix package;
+Factory's own pin is aligned to 12.9.0. Flake and pnpm locks are generated per repo.
+The base tasks reference no unavailable Factory workspace package, and an empty
+workspace graph is not evidence of application validation.
+Plan/Apply templates offer Infrastructure and Application jobs. Consumers select
+available layers through `github.workflows.layers`; `tf_layer` selects one job per
+dispatch and is passed as `--tf-layer` to the repository-owned task/app. Factory
+selects Infrastructure only. Repository mappings retain each root's existing backend
+prefix; shared templates contain no directory or backend-prefix arguments.
+Apply must select the same layer as its reviewed Plan. If Infrastructure changes
+inputs used by Application, apply it first and create a new Application Plan.
 
 ## Retained implementation decisions and open issues
 
@@ -452,14 +585,14 @@ do not rename upstream-native configuration variables.
 ## Native CLI packages
 
 #decision [[factory-native-cli-packages]]
-`factory.amp.package` and `factory.hunk.package` select the native packages from
-the locked `llm-agents` input; `factory.tailscale.package` and
-`factory.clickhouse.package` select Nixpkgs packages. `factory.clickhousectl.package`
+Amp and Hunk are selected directly from the locked `llm-agents` input; Tailscale
+and ClickHouse directly from Nixpkgs. The four trivial alias modules are removed. `factory.clickhousectl.package`
 packages the fixed-hash official release, retaining its Apache-2.0 license and
 `chctl` alias. ClickStack management is `clickhousectl cloud clickstack`, not a
 separate binary; native SQL access uses `clickhouse client` rather than ctl-managed
-downloads. Each has named/default module exports, a public package with the native
-tool name and explicit Factory shell selection. These modules only expose packages:
+downloads. All four direct selections retain public packages with native tool
+names and explicit Factory shell selection. The custom clickhousectl module retains
+named/default module exports. Package exposure doesn't configure the services:
 authentication, telemetry preferences, agent/review operations, databases, daemon
 setup and tailnet/cloud changes remain operator-owned.
 
@@ -473,3 +606,26 @@ locked `nodejs_24`, retaining the MIT license and bundled API contract assets.
 The published bundle has no runtime npm dependencies. Native `LANGFUSE_*`
 configuration remains runtime-only and operator-owned; do not import credentials
 into Nix or manage user-global installations.
+
+
+#decision [[factory-typescript-build-tooling]]
+Use Vite for ordinary TypeScript app/package builds, Turbo for orchestration,
+and TypeScript for checking. `rolldown-plugin-dts` supports the locked TypeScript
+7 compiler; static-copy handles native local assets. Keep ordinary builds local
+and offline: no upstream fetching or source refresh. The self-contained cold Nix
+commands use pinned Node 24's native TypeScript support and do not require a
+consumer workspace.
+
+Herdr's Pi integration uses an independent pinned Git package in native settings.
+The repository has no Pi manifest, so disable its conventional package resources
+and explicitly select `./git/github.com/herdrdev/herdr/src/integration/assets/pi/herdr-agent-state.ts`
+through the top-level `extensions` field. Pi installs the project Git package
+before resolving that path. Ignore `.pi/git/`. No Nix-store paths, build-time
+acquisition, local vendor tree, update script or native-binary version-sync check.
+Downstreams may disable either integration independently; keep the corresponding
+Git source when its explicit extension path is enabled.
+
+
+<!-- 2026-10-24 04:01:40 [01a16d44] -->
+#decision [[factory-module-composition]]
+Keep Nix leaf implementations and named exports independent: each `flake.nix` named export points directly to its own module, without sibling imports or dependency bundles. Callers compose the modules required by the defaults they use; `nix/default.nix` remains the explicit aggregate convenience. Missing sibling options fail when their dependent defaults are evaluated, not merely on import; callers can replace those defaults through existing overridable options. Native TypeScript, Firebase and pnpm renderers consume the overridable `biome.formatFile` interface. Kubeconform targets an explicitly selected pinned schema version through `kubeconform.kubernetesVersion` or `-kubernetes-version`, never the kubectl client version. Cold Files and Semgrep commands independently load their stdlib-only package implementations with pinned Node 24's native TypeScript support, without bundling the combined workspace CLI or requiring node_modules.

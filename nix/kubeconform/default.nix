@@ -8,12 +8,16 @@ let
   cfg = config.quantile-co.factory.kubeconform;
 in
 {
-  imports = [ ../kubectl ];
   options.quantile-co.factory.kubeconform = {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.kubeconform;
       description = "kubeconform CLI.";
+    };
+    kubernetesVersion = lib.mkOption {
+      type = lib.types.nullOr (lib.types.strMatching "[0-9]+\\.[0-9]+\\.[0-9]+");
+      default = null;
+      description = "Target Kubernetes schema version; select here or with -kubernetes-version.";
     };
     check.package = lib.mkOption {
       type = lib.types.package;
@@ -22,7 +26,7 @@ in
         runtimeInputs = [ cfg.package ];
         text = ''
           schemas=()
-          version=${lib.escapeShellArg config.quantile-co.factory.kubectl.package.version}
+          version=${lib.escapeShellArg (if cfg.kubernetesVersion == null then "" else cfg.kubernetesVersion)}
           while (( $# )); do
             case "$1" in
               -schema-location)
@@ -49,6 +53,10 @@ in
           done
           if (( ''${#schemas[@]} == 0 )); then
             echo 'Kubernetes validation requires explicit local schema locations; remote fallback is disabled.' >&2
+            exit 2
+          fi
+          if [[ -z "$version" ]]; then
+            echo 'Select a pinned Kubernetes schema version with kubeconform.kubernetesVersion or -kubernetes-version.' >&2
             exit 2
           fi
           if (( $# == 0 )); then

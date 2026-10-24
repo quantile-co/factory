@@ -60,11 +60,11 @@ it("scans source with native offline policy, skips build output, and reports a r
         "  disable-telemetry: true\n  offline: true",
       );
     writeFileSync(config, offline);
-    const ruleFixtures = join(work, "etc/semgrep/rules/k8s");
+    const ruleFixtures = join(work, "nix/semgrep/fixtures/k8s");
     mkdirSync(ruleFixtures, { recursive: true });
     copyFileSync(
       new URL(
-        "../../etc/semgrep/rules/k8s/privileged-container.test.yaml",
+        "../semgrep/fixtures/k8s/privileged-container.test.yaml",
         import.meta.url,
       ),
       join(ruleFixtures, "privileged-container.test.yaml"),

@@ -26,9 +26,7 @@
           base = builtins.fromJSON (builtins.readFile config.quantile-co.factory.firebase.configFile);
           source = pkgs.writeText "firebase.json" (builtins.toJSON (lib.recursiveUpdate base overrides));
         in
-        pkgs.runCommand "firebase.json" { nativeBuildInputs = [ pkgs.biome ]; } ''
-          biome format --indent-style=space --indent-width=2 --stdin-file-path firebase.json < ${source} > "$out"
-        '';
+        config.quantile-co.factory.biome.formatFile "firebase.json" source;
       description = "Render Firebase configuration with project overrides.";
     };
   };

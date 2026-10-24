@@ -9,6 +9,11 @@ let
 in
 {
   options.quantile-co.factory.gitleaks = {
+    configFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/gitleaks/.gitleaks.toml;
+      description = "Native Gitleaks configuration template for explicit consumer placement.";
+    };
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.gitleaks;

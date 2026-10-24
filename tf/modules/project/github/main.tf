@@ -64,11 +64,6 @@ resource "restapi_object" "fork_workflow_approval" {
   data           = jsonencode({ approval_policy = "all_external_contributors" })
 }
 
-moved {
-  from = restapi_object.fork_workflow_approval
-  to   = restapi_object.fork_workflow_approval[0]
-}
-
 resource "github_repository_vulnerability_alerts" "self" {
   repository = github_repository.self.name
   enabled    = true

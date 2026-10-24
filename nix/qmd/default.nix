@@ -1,5 +1,9 @@
-{ llmAgents }:
-{ lib, pkgs, ... }:
+{
+  lib,
+  pkgs,
+  llmAgents,
+  ...
+}:
 let
   system = pkgs.stdenv.hostPlatform.system;
   # Keep upstream's package set so fixed-output dependencies and QMD remain

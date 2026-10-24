@@ -48,8 +48,8 @@ in
           if [ "$#" -eq 0 ]; then
             set -- '*.md' \
               ':(exclude,glob)**/AGENTS.md' ':(exclude,glob)nix/**/fixtures/**' \
-              ':(exclude,glob).pi/memory/**' ':(exclude,glob).pi/skills/**' \
-              ':(exclude,glob)etc/pi/skills/**' ':(exclude,glob)etc/license/**'
+              ':(exclude,glob).pi/memory/**' ':(exclude,glob)packages/pi/skills/**' \
+              ':(exclude,glob)etc/license/**'
           fi
           files=$(mktemp)
           trap 'rm -f -- "$files"' EXIT

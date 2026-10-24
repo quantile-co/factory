@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
-import { type FileEntry, manageFiles } from "../files/default";
+import { type FileEntry, manageFiles } from "../../packages/nix/src/files.ts";
 
 it("keeps the QMD output identity while substituting external fetchers", () => {
   const root = new URL("../../", import.meta.url);
@@ -25,7 +25,7 @@ it("keeps the QMD output identity while substituting external fetchers", () => {
       "--expr",
       `let f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
   pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
-  cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.qmd ]; specialArgs = { inherit pkgs; }; }).config;
+  cfg = (pkgs.lib.evalModules { modules = [ f.nixModules.qmd ]; specialArgs = { inherit pkgs; llmAgents = f.inputs.llm-agents; }; }).config;
 in { selected = cfg.quantile-co.factory.qmd.package.outPath;
   upstream = f.inputs.llm-agents.packages.\${builtins.currentSystem}.qmd.outPath; }`,
     ],

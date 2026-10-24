@@ -7,10 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      "**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc}",
-      "!!.pi/skills"
-    ]
+    "includes": ["**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc}"]
   },
   "formatter": {
     "enabled": true,

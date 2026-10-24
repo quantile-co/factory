@@ -1,0 +1,17 @@
+{
+  "name": "@quantile-co/factory-github",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --maxWorkers=4"
+  }
+}

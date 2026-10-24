@@ -15,20 +15,23 @@ copying their contents into this file.
 
 - [README.md](README.md): usage and development entry points.
 - [flake.nix](flake.nix) and [.envrc](.envrc): pinned shell and direnv entry.
-- [scripts/](scripts/): pnpm tasks and workflow entry points.
-- [src/pi/extensions/](src/pi/extensions/): shared Pi extensions and behavioral tests.
+- [apps/](apps/): thin Nix, GitHub and repository commands.
+- [packages/](packages/): TypeScript support for Nix and GitHub plus the native Pi package.
+- [etc/pi/settings.json](etc/pi/settings.json): native Pi package and resource selections.
 - [nix/](nix/): reusable Nix modules and executables.
-- [nix/files/](nix/files/): managed-file command and tests.
-- [nix/flake/](nix/flake/): reusable flake wiring and tests.
+- [nix/files/](nix/files/): generic manifest and cold-bootstrap command module.
+- [nix/flake/](nix/flake/): per-system output module and consumer-bootstrap tests.
 - [etc/](etc/): reusable native-format configuration assets.
+- [etc/flake/](etc/flake/): native downstream flake starter.
+- [etc/pnpm/](etc/pnpm/) and [etc/turbo/](etc/turbo/): repository-owned workspace seeds.
 - [tf/infrastructure/](tf/infrastructure/): this repository's deployment root.
 - [tf/modules/project/](tf/modules/project/): independent GitHub and GCP modules.
 - [.github/workflows/](.github/workflows/): checked-in CI and protected deployment workflows.
 - [etc/github/workflows/](etc/github/workflows/): native workflow templates.
-- [nix/github/workflows/](nix/github/workflows/): workflow modules and CI scripts.
+- [nix/github/workflows/](nix/github/workflows/): workflow template options and guard tests.
 - [package.json](package.json): TypeScript checks and colocated Vitest tests.
 
 ## Deployment instructions
 
-- Existing installation: [deploy](.pi/skills/deploy/SKILL.md).
-- Confirmed new installation: [day-zero-deploy](.pi/skills/day-zero-deploy/SKILL.md).
+- Existing installation: [deploy](packages/pi/skills/deploy/SKILL.md).
+- Confirmed new installation: [day-zero-deploy](packages/pi/skills/day-zero-deploy/SKILL.md).
