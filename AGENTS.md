@@ -11,6 +11,11 @@ runbooks, implementation details or session notes here; put durable guidance in
 `MEMORY.md`. Link to them rather than
 copying their contents into this file.
 
+**Memory hygiene:** Before finishing, leave no uncommitted or untracked memory
+files, including ignored working notes. Reconcile durable repository knowledge
+into tracked memory and commit it with the owning change; remove session logs
+and scratchpads. Never commit credentials or private cross-repository details.
+
 ## Repository map
 
 - [README.md](README.md): usage and development entry points.
