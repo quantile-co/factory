@@ -12,11 +12,12 @@ locals {
 module "gh" {
   source = "../modules/project/github"
 
-  repo_name   = "factory"
-  description = "Quantile software factory."
-  visibility  = "public"
-  owners      = [for person in local.project_owners : person.gh_username]
-  members     = [for person in local.project_members : person.gh_username]
+  repo_name    = "factory"
+  description  = "Quantile software factory."
+  visibility   = "public"
+  environments = ["prod"]
+  owners       = [for person in local.project_owners : person.gh_username]
+  members      = [for person in local.project_members : person.gh_username]
 }
 
 module "gcp" {
