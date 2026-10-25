@@ -50,8 +50,12 @@
         in
         {
           quantile-co.factory = {
-            github.workflows.layers = [ "infrastructure" ];
-            github.workflows.build.layers = [ "application" ];
+            github.workflows = {
+              layers = [ "infrastructure" ];
+              build.layers = [ "application" ];
+              plan.configFile = ./etc/github/workflows/state-freeze.yaml;
+              apply.configFile = ./etc/github/workflows/state-migration.yaml;
+            };
 
             # Public package outputs.
             flake.packages = {

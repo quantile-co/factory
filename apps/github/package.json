@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "check": "tsc --noEmit -p ../../tsconfig.json && vitest run migration.test.ts --maxWorkers=1 && node --import tsx --test migration.process.test.ts",
     "plan": "cd ../.. && tsx apps/github/cli.ts plan",
     "apply": "cd ../.. && tsx apps/github/cli.ts apply"
   },

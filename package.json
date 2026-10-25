@@ -15,7 +15,8 @@
     "npm:stage": "npm stage publish dist/npm/factory-github.tgz --access public && npm stage publish dist/npm/factory-pi.tgz --access public",
     "github:build": "tsx apps/github/cli.ts build",
     "github:plan": "tsx apps/github/cli.ts plan",
-    "github:apply": "tsx apps/github/cli.ts apply"
+    "github:apply": "tsx apps/github/cli.ts apply",
+    "github:migrate": "tsx apps/github/migration.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

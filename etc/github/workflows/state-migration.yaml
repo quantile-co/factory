@@ -1,0 +1,80 @@
+name: Apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_phase:
+        description: State-only cutover phase
+        required: true
+        type: choice
+        default: preflight
+        options:
+          - preflight
+          - migrate
+      confirm_repository:
+        description: Confirm quantile-co/factory
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: factory-production
+  cancel-in-progress: false
+
+jobs:
+  migration:
+    name: State migration
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.confirm_repository == 'quantile-co/factory'
+    runs-on: namespace-profile-quantile-4x8
+    environment: prod
+    timeout-minutes: 120
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Mount the Nix store and database
+        uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+        with:
+          path: /nix
+          spacectl-version: 0.12.3
+          spacectl-system-binary: ignore
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31.11.2
+        with:
+          install_options: --no-daemon
+          extra_nix_config: require-sigs = true
+
+      - name: Set up Cachix
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ github.repository_owner }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          useDaemon: false
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+      - name: Inspect or migrate only backend state
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GCP_TF_STATE_BUCKET: ${{ vars.GCP_TF_STATE_BUCKET }}
+          MIGRATION_PHASE: ${{ inputs.migration_phase }}
+          MIGRATION_CONFIRM: ${{ inputs.confirm_repository }}
+        run: |
+          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
+          "$direnv" allow .
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm run github:migrate

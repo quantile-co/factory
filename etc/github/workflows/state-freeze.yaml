@@ -1,0 +1,21 @@
+name: Plan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-production
+  cancel-in-progress: false
+
+jobs:
+  frozen:
+    name: Resource operations paused for backend cutover
+    if: github.ref == 'refs/heads/main'
+    runs-on: namespace-profile-quantile-4x8
+    environment: prod
+    steps:
+      - name: No resource Plan during backend migration
+        run: exit 1

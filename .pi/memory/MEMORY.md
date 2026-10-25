@@ -2,10 +2,17 @@
 
 ## Prepared backend cutover — not deployed
 
+The operator authorized the state migration and source cutover. A temporary
+state-only Apply workflow freezes normal resource operations until native GCS
+migration and generation-bound source retirement are verified. It uses existing
+main/prod OIDC, native locks and create-only backups outside `plans/`; the known
+GCS serial increment is exactly one, with all other state content unchanged.
+No resource Plan/Apply, package publication or credential/IAM change is included.
+
 The source target is `factory/prod/infrastructure`, following the actual repository name,
 environment and Terraform layer. Production still uses `repository/prod`;
-this change has not migrated state. Do not activate this source on main or run
-production Plan/Apply against the new prefix until a separately approved cutover
+this change has not migrated state. Keep normal resource Plan/Apply disabled
+throughout the temporary state-only bridge until the approved cutover
 moves the existing lineage. No old-prefix runtime fallback is provided.
 
 Quiesce production writers, verify the destination is unused and preserve a
