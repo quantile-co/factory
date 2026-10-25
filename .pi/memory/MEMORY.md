@@ -461,9 +461,16 @@ receives a reader and external/fork PRs no remote token. Developers use
 server-scoped readers; client read-only flags alone are not authorization.
 Restricted-runner authentication and real remote hits were verified with a scoped
 reader; read-only uploads were denied. The temporary qualification writer was
-revoked. CI readers are installed; permanent prod writers and complete cross-run
-qualification remain pending. The rejected separate-environment plans are obsolete
-and must never be applied. See the deployment configuration
+revoked. CI readers and expiring, cache-only prod writers are installed;
+rotate the current 90-day credentials before 2027-01-23. On 2026-10-25,
+population run 40190329593 and verification run 40191374855 qualified
+all four layers on quantile-4x8: Turbo local-only and remote-only hits,
+changed-input misses, Nix store reuse with builds/substitutions disabled, and
+signed Cachix imports into an empty isolated store. Early volume misses gave way
+to actual cross-run reuse; snapshots remain best-effort and may be stale.
+Restricted access, repository/profile isolation and main-only publication were
+unchanged. Other profiles are not implicitly warm. Temporary diagnostics were
+removed. The rejected separate-environment plans are obsolete and must never be applied. See the deployment configuration
 reference for credential scopes. No additional cache setup action is needed.
 Do not dispatch production workflows just to warm caches. Keep public cache
 additions in `.envrc`'s `NIX_CONFIG` for trusted stores in both CI and local use;
