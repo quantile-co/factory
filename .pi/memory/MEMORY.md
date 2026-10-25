@@ -1,27 +1,18 @@
 # Factory project memory
 
-## Prepared backend cutover — not deployed
+## Active backend
 
-The operator authorized the state migration and source cutover. A temporary
-state-only Apply workflow freezes normal resource operations until native GCS
-migration and generation-bound source retirement are verified. It uses existing
-main/prod OIDC, native locks and create-only backups outside `plans/`; the known
-GCS serial increment is exactly one, with all other state content unchanged.
-No resource Plan/Apply, package publication or credential/IAM change is included.
-
-The source target is `factory/prod/infrastructure`, following the actual repository name,
-environment and Terraform layer. Production still uses `repository/prod`;
-this change has not migrated state. Keep normal resource Plan/Apply disabled
-throughout the temporary state-only bridge until the approved cutover
-moves the existing lineage. No old-prefix runtime fallback is provided.
-
-Quiesce production writers, verify the destination is unused and preserve a
-restricted state backup. Use native backend state migration, not
-`init -reconfigure` as a substitute for moving state. Coordinate every backend
-writer and remote-state reader, verify lineage, resource addresses and outputs,
-and review a fresh no-op Plan afterward. Prior saved-plan approvals do not carry
-over. Keep the existing bucket, IAM, resource identities and protections.
-Below, older prefix references describe the existing deployment or its history.
+#deployment [[factory-layered-state-backend]]
+On 2026-10-25, protected state-only run `40172046339` migrated the default
+workspace in the existing bucket from `repository/prod` to
+`factory/prod/infrastructure`. Native locking, private create-only backup
+readback, unchanged lineage/resources/outputs, expected serial increment of one
+and generation-bound retirement of the old live object were verified.
+OpenTofu may reserialize transient variable-check metadata; resource state is
+unchanged. Backups remain outside `plans/`. Normal protected workflows are
+restored and all temporary migration code, tests and templates are removed.
+No resource Plan/Apply, publication, rollout, IAM or credential change occurred.
+Old prefix references below are historical; old saved-plan approvals are stale.
 
 Current source, tests and deployment skills take precedence over these notes.
 
@@ -34,6 +25,11 @@ files, session handoffs, routine check counts or investigation transcripts.
 Reconcile unique publishable notes before removing duplicates. Commit sanitized
 memory with related changes; do not create recurring note-only validation cycles.
 Private consumer guidance belongs in the private repository, never here.
+
+#preference [[lean-native-operations]]
+Prefer existing native tool roots and the minimum necessary verification,
+especially for small or not-yet-used repositories. Avoid extra frameworks,
+directories, test sprawl and repeated broad checks; remove one-off tooling after use.
 
 ## Architecture and consumer conventions
 

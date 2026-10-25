@@ -3,22 +3,20 @@ name: Apply
 on:
   workflow_dispatch:
     inputs:
-      migration_phase:
-        description: State-only cutover phase
+      tf_layer:
+        description: Layer
         required: true
         type: choice
-        default: preflight
+        default: infrastructure
         options:
-          - preflight
-          - migrate
-      confirm_repository:
-        description: Confirm quantile-co/factory
+          - infrastructure
+      gh_plan_ref:
+        description: Plan ref
         required: true
         type: string
 
 permissions:
   contents: read
-  actions: read
   id-token: write
 
 concurrency:
@@ -26,12 +24,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  migration:
-    name: State migration
+  infrastructure:
+    name: Infrastructure
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      inputs.confirm_repository == 'quantile-co/factory'
+      inputs.tf_layer == 'infrastructure'
     runs-on: namespace-profile-quantile-4x8
     environment: prod
     timeout-minutes: 120
@@ -67,14 +65,16 @@ jobs:
           project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
 
-      - name: Inspect or migrate only backend state
+      - name: Apply
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          GCP_TF_STATE_BUCKET: ${{ vars.GCP_TF_STATE_BUCKET }}
-          MIGRATION_PHASE: ${{ inputs.migration_phase }}
-          MIGRATION_CONFIRM: ${{ inputs.confirm_repository }}
+          GH_REPO_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
+          GH_PLAN_REF: ${{ inputs.gh_plan_ref }} # Prevent shell injection from operator-controlled input.
         run: |
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile
-          "$direnv" exec . pnpm run github:migrate
+          "$direnv" exec . pnpm run github:apply \
+            --tf-layer infrastructure \
+            --gcp-tf-state-bucket '${{ vars.GCP_TF_STATE_BUCKET }}' \
+            --gcp-wif-pool '${{ vars.GCP_WIF_POOL }}' \
+            --gh-plan-ref "$GH_PLAN_REF"
