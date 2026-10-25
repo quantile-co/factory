@@ -20,6 +20,7 @@ const bucket = "factory-a515-tf-state";
 const states = [
   {
     layer: "infrastructure",
+    directory: "tf/infrastructure",
     from: "repository/prod",
     to: "factory/prod/infrastructure",
   },
@@ -597,6 +598,11 @@ async function main(env: NodeJS.ProcessEnv, signal: AbortSignal) {
       writeFileSync(
         join(directory, "backend.tf"),
         'terraform {\n  backend "gcs" {}\n}\n',
+        { mode: 0o600, flag: "wx" },
+      );
+      writeFileSync(
+        join(directory, ".terraform.lock.hcl"),
+        readFileSync(join(state.directory, ".terraform.lock.hcl")),
         { mode: 0o600, flag: "wx" },
       );
       const localEnv = {
