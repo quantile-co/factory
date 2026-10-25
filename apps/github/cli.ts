@@ -223,7 +223,7 @@ for (const phase of ["plan", "apply"] as const) {
               "--json",
               `gs://${options.gcpTfStateBucket}/**`,
             ],
-            { logFile, append: true, signal },
+            { signal },
           ),
         ) as {
           url: string;
