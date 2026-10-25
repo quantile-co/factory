@@ -30,8 +30,12 @@ is passed as `--tf-layer` to the repository's pnpm task/app. That repository map
 the layer internally to its directory and existing backend prefix. Shared YAML
 contains neither directory nor backend-prefix arguments. Set
 `github.workflows.layers` to the supported subset. Factory selects Infrastructure
-only, mapped by its app to `tf/infrastructure` and `repository/prod`. Retain each
-consumer's existing state identity. Plan and Apply must select the same layer.
+only, mapped by its app to `tf/infrastructure`, with the source target
+`factory/prod/infrastructure`. Backend prefixes follow
+`<repository-name>/<environment>/<tf-layer>`, preserving dots in repository names.
+Changing an existing prefix requires a separately approved same-lineage state
+migration before activating its new source mapping; never initialize an empty
+backend as a replacement. Plan and Apply must select the same layer.
 
 A synthetic owner-roster example, not identities to deploy:
 

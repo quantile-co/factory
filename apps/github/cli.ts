@@ -16,7 +16,7 @@ import { Command, Option } from "commander";
 const deployments = {
   infrastructure: {
     directory: "tf/infrastructure",
-    backendPrefix: "repository/prod",
+    backendPrefix: "factory/prod/infrastructure",
   },
 };
 

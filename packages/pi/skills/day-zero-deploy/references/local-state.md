@@ -151,7 +151,7 @@ cp "$TF_DIR/terraform.tfstate" "$TF_DIR/terraform.tfstate.pre-gcs"
 rm "$TF_DIR/backend_override.tf"
 tofu -chdir="$TF_DIR" init -migrate-state -lockfile=readonly \
   -backend-config="bucket=$GCP_TF_STATE_BUCKET" \
-  -backend-config="prefix=repository/prod"
+  -backend-config="prefix=${GH_REPO#*/}/prod/infrastructure"
 tofu -chdir="$TF_DIR" state list
 tofu -chdir="$TF_DIR" plan # expect no changes; keep the ignored backup securely until verified
 unset GITHUB_TOKEN # gh run watch cannot use the Terraform fine-grained PAT

@@ -101,9 +101,12 @@ Check may have run on the source branch before fast-forwarding main. Confirm its
 exact SHA, not just the branch label. Inspect current production activity; never
 cancel another operator's job. Verify main/prod restrictions, WIF and IAM,
 the effective state bucket and backend prefix, including caller inputs and runtime
-environment overrides. Factory defaults to `repository/prod`; consumers may retain
-another existing prefix. Check the called workflow's `factory-production`
-concurrency and any caller guard.
+environment overrides. New prefixes use
+`<repository-name>/<environment>/<tf-layer>`; Factory's source target is
+`factory/prod/infrastructure`. Verify that the existing lineage has been migrated
+before activating a changed prefix. A source edit, empty-backend initialization
+or `init -reconfigure` is not a state migration. Check the called workflow's
+`factory-production` concurrency and any caller guard.
 The Terraform root's reviewed paired records are the source of truth for platform
 permissions, including plan-reader emails and immutable deployment actor IDs.
 Neither YAML nor the CLI reads an Actions owner roster. The YAML owner and

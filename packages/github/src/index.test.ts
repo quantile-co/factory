@@ -424,7 +424,7 @@ if(output)fs.writeFileSync(output.slice(5),"saved");
             "-input=false",
             "-lockfile=readonly",
             "-backend-config=bucket=private-bucket",
-            "-backend-config=prefix=repository/prod",
+            "-backend-config=prefix=factory/prod/infrastructure",
           ],
           [
             "-chdir=tf/infrastructure",
