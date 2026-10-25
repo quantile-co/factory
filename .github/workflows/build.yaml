@@ -1,0 +1,67 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-production
+  cancel-in-progress: false
+
+jobs:
+  packages:
+    name: NPM Package
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: namespace-profile-quantile-4x8
+    environment: prod
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # Package qualification runs the full-history checks.
+
+      - name: Mount the Nix store and database
+        uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+        with:
+          path: /nix
+          spacectl-version: 0.12.3
+          spacectl-system-binary: ignore
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31.11.2
+        with:
+          install_options: --no-daemon
+          extra_nix_config: require-sigs = true
+
+      - name: Set up Cachix
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ github.repository_owner }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          useDaemon: false
+
+      - name: Qualify and pack packages
+        run: |
+          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
+          "$direnv" allow .
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm run npm:pack
+          git diff --exit-code
+
+      - name: Stage packages for npm approval
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          umask 077
+          npmrc="$(mktemp "$RUNNER_TEMP/npmrc.XXXXXX")"
+          trap 'rm -f "$npmrc"' EXIT
+          printf '%s\n' "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > "$npmrc"
+          export NPM_CONFIG_USERCONFIG="$npmrc"
+          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
+          "$direnv" allow .
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm run npm:stage

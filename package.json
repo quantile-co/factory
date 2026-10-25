@@ -1,6 +1,7 @@
 {
   "name": "@quantile-co/factory",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@12.9.0",
   "scripts": {
@@ -10,6 +11,8 @@
     "check": "pnpm run build && turbo run check --cache=local:rw",
     "fix": "pnpm --filter @quantile-co/factory-repo-cli fix",
     "test": "pnpm run check && turbo run test --cache=local:rw",
+    "npm:pack": "pnpm test && pnpm --filter @quantile-co/factory-github pack --out dist/npm/factory-github.tgz && pnpm --filter @quantile-co/factory-pi pack --out dist/npm/factory-pi.tgz",
+    "npm:stage": "npm stage publish dist/npm/factory-github.tgz --access public && npm stage publish dist/npm/factory-pi.tgz --access public",
     "github:plan": "tsx apps/github/cli.ts plan",
     "github:apply": "tsx apps/github/cli.ts apply"
   },

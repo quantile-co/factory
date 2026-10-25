@@ -1,13 +1,32 @@
 {
   "name": "@quantile-co/factory-github",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Private saved-plan transport for repository-owned deployment commands.",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quantile-co/factory.git",
+    "directory": "packages/github"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
   "exports": {
     ".": "./src/index.ts"
   },
   "files": [
-    "src"
+    "dist"
   ],
   "scripts": {
     "build": "vite build",

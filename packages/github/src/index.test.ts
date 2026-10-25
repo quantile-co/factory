@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   appendFileSync,
   chmodSync,
@@ -14,6 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 import {
   type Action,
@@ -22,6 +23,44 @@ import {
   plan,
   processRunner,
 } from "./index.ts";
+
+it("packs a standalone JavaScript transport with declarations for downstreams", () => {
+  const root = mkdtempSync(join(tmpdir(), "factory-github-packed-"));
+  try {
+    const archive = join(root, "transport.tgz");
+    execFileSync("pnpm", ["pack", "--out", archive], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf8",
+    });
+    const installed = join(root, "node_modules/@quantile-co/factory-github");
+    mkdirSync(installed, { recursive: true });
+    execFileSync("tar", [
+      "-xzf",
+      archive,
+      "--strip-components=1",
+      "-C",
+      installed,
+    ]);
+    const manifest = JSON.parse(
+      readFileSync(join(installed, "package.json"), "utf8"),
+    );
+    expect(
+      readFileSync(join(installed, manifest.exports["."].types), "utf8"),
+    ).toContain("TransportOptions");
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        'import { plan, apply, processRunner } from "@quantile-co/factory-github"; if ([plan, apply, processRunner].some(value => typeof value !== "function")) process.exit(1);',
+      ],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(result.status, result.stderr).toBe(0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 it.each([undefined, "tf"])(
   "preserves saved bytes, generation scoping and private failure logs with tfDirectory=%s",

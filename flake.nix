@@ -200,6 +200,7 @@
                 source = factory.turbo.configFile;
                 mode = "seed";
               };
+              "LICENSE" = copy factory.license.mitFile;
               ".gitignore" = copy factory.git.ignoreFile;
               ".envrc" = copy factory.direnv.configFile;
               ".husky/pre-push" = copy factory.husky.prePushFile;
@@ -248,6 +249,7 @@
               ".github/actionlint.yaml" = copy factory.actionlint.configFile;
               ".github/workflows/check.yaml" = copy factory.github.workflows.check.configFile;
               ".github/workflows/test.yaml" = copy factory.github.workflows.test.configFile;
+              ".github/workflows/build.yaml" = copy ./etc/github/workflows/build-packages.yaml;
               ".github/workflows/plan.yaml" = copy factory.github.workflows.plan.configFile;
               ".github/workflows/apply.yaml" = copy factory.github.workflows.apply.configFile;
               ".github/dependabot.yml" = copy (
