@@ -68,10 +68,11 @@ Namespace volume and uses remote team `main` in the caller's workspace.
 Keep Restricted runners and main-only volume publication.
 
 Use the native `TURBO_TOKEN` secret name at both scopes: an organization/repository
-read-only cache token for internal Check and Build, and a cache-only read/write
-token overriding it in the `turbo-cache` environment for manual main Test.
-Provision that environment's main-only branch policy before installing its writer
-secret. Never store a writer token at organization/repository scope or in `prod`.
+read-only cache token for internal Check, and a cache-only read/write token
+overriding it in `prod` for trusted main Test and Build. Test, Build, Plan and Apply
+use the existing `prod` environment wherever those workflows exist; there is no
+separate cache environment. Preserve its branch restrictions. Never store a writer
+token at organization/repository scope.
 Environment policies control credential delivery; Namespace token grants enforce
 read/write access. Keep expiring token payloads CLI-managed, outside Terraform,
 Git and Nix. Missing tokens fall back to local caching. Fork PRs and PR authors
@@ -86,8 +87,8 @@ pnpm run build
 
 Use the correct workspace's token. The setup token is short-lived; rerun setup
 when it expires. `--read-only` sets client behavior, not server authorization.
-Verify explicit cache-token access from Restricted runners before activating
-remote caching. Do not relax runner access to bypass a failure. Cache only
+Explicit cache tokens work on Restricted runners; no access-level change is needed.
+Do not relax runner access to bypass a failure. Cache only
 reproducible build outputs and safe logs, never credentials, state or saved plans.
 
 ### Concrete values are not overrides

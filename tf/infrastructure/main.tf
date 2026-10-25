@@ -15,7 +15,7 @@ module "gh" {
   repo_name    = "factory"
   description  = "Quantile software factory."
   visibility   = "public"
-  environments = ["prod", "turbo-cache"]
+  environments = ["prod"]
   owners       = [for person in local.project_owners : person.gh_username]
   members      = [for person in local.project_members : person.gh_username]
 }

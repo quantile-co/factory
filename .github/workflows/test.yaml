@@ -15,7 +15,7 @@ jobs:
     name: All
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: namespace-profile-quantile-4x8
-    environment: turbo-cache
+    environment: prod
     timeout-minutes: 30
     steps:
       - name: Check out repository

@@ -454,13 +454,16 @@ Namespace volume caches are best-effort; a cache-action message does not prove a
 Turbo persists .turbo/cache alongside /nix, with existing repository/profile volume
 isolation and main-only snapshot publication. One remote Turbo team main is shared
 within each caller workspace. The native TURBO_TOKEN name selects a read-only
-organization/repository secret or a writer override in the dedicated main-only
-turbo-cache environment. Only manual main Test receives the writer; internal
-Check and Build receive readers, external/fork PRs no remote token. Developers
-use server-scoped readers; client read-only flags alone are not authorization.
-Keep Restricted runner access. Explicit cache-token authentication on those
-runners, credential provisioning and live hit/write-denial qualification remain
-pending; source support is not activation. See the deployment configuration
+organization/repository secret or a writer override in the existing prod
+environment. Test, Build, Plan and Apply use prod wherever they exist, with no
+separate cache environment. Trusted main Test/Build may write; internal Check
+receives a reader and external/fork PRs no remote token. Developers use
+server-scoped readers; client read-only flags alone are not authorization.
+Restricted-runner authentication and real remote hits were verified with a scoped
+reader; read-only uploads were denied. The temporary qualification writer was
+revoked. CI readers are installed; permanent prod writers and complete cross-run
+qualification remain pending. The rejected separate-environment plans are obsolete
+and must never be applied. See the deployment configuration
 reference for credential scopes. No additional cache setup action is needed.
 Do not dispatch production workflows just to warm caches. Keep public cache
 additions in `.envrc`'s `NIX_CONFIG` for trusted stores in both CI and local use;

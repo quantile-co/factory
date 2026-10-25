@@ -24,7 +24,7 @@ module "repository" {
   visibility = "private"
   owners = ["fixture-operator"]
   required_checks = ["Caller / All"]
-  environments = ["preview", "prod", "turbo-cache"]
+  environments = ["preview", "prod"]
 }
 `,
     );
@@ -57,15 +57,7 @@ run "${visibility}_fork_approval" {
     visibility = "${visibility}"
     owners = ["fixture-operator"]
     required_checks = ["Caller / All"]
-    environments = ["preview", "prod", "turbo-cache"]
-  }
-  assert {
-    condition = (
-      github_repository_environment.main["turbo-cache"].deployment_branch_policy[0].custom_branch_policies &&
-      !github_repository_environment.main["turbo-cache"].deployment_branch_policy[0].protected_branches &&
-      github_repository_environment_deployment_policy.main["turbo-cache"].branch_pattern == "main"
-    )
-    error_message = "Cache writer credentials require their own main-only environment."
+    environments = ["preview", "prod"]
   }
   assert {
     condition = output.owner_ids["fixture-operator"] == "987654321"

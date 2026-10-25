@@ -64,7 +64,7 @@ jobs:
         run: |
           export TURBO_CACHE=local:rw
           if [ -n "$TURBO_TOKEN" ]; then
-            export TURBO_CACHE=local:rw,remote:r
+            export TURBO_CACHE=local:rw,remote:rw
           fi
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
@@ -115,7 +115,7 @@ jobs:
         run: |
           export TURBO_CACHE=local:rw
           if [ -n "$TURBO_TOKEN" ]; then
-            export TURBO_CACHE=local:rw,remote:r
+            export TURBO_CACHE=local:rw,remote:rw
           fi
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .

@@ -171,10 +171,10 @@ process.exit(result.status ?? 1);
         });
         expect(existsSync(sentinel)).toBe(false);
         if (phase === "build" && layer === "infrastructure") {
-          const reader = execute(0, "reader-fixture");
-          expect(reader.status, reader.stderr + reader.stdout).toBe(0);
+          const writer = execute(0, "writer-fixture");
+          expect(writer.status, writer.stderr + writer.stdout).toBe(0);
           expect(JSON.parse(readFileSync(resultFile, "utf8")).cache).toBe(
-            "local:rw,remote:r",
+            "local:rw,remote:rw",
           );
           rmSync(resultFile);
           const failed = execute(17);
