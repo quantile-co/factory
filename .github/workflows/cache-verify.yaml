@@ -1,0 +1,124 @@
+name: Cache verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      verify:
+        description: Verify a previous population run on this exact revision
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  cache:
+    name: Cache
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    environment: prod
+    runs-on: namespace-profile-quantile-4x8
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+        with:
+          path: |
+            /nix
+            .turbo/cache
+          spacectl-version: 0.12.3
+          spacectl-system-binary: ignore
+      - uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31.11.2
+        with:
+          install_options: --no-daemon
+          extra_nix_config: require-sigs = true
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        if: github.repository_owner != 'quantile-q0'
+        with:
+          name: ${{ github.repository_owner }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          useDaemon: false
+      - name: Qualify caches
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          VERIFY: ${{ inputs.verify }}
+        run: |
+          set -euo pipefail
+          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
+          "$direnv" allow .
+          "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {execFileSync} from 'node:child_process';
+          const verify = process.env.VERIFY === 'true';
+          const sha = process.env.GITHUB_SHA;
+          if (!/^[0-9a-f]{40}$/.test(sha) || !process.env.TURBO_TOKEN) throw new Error('Missing trusted cache context');
+          const owner = process.env.GITHUB_REPOSITORY_OWNER;
+          const fixture = path.join(process.env.RUNNER_TEMP, 'cache-proof');
+          const local = path.join(process.env.GITHUB_WORKSPACE, '.turbo/cache/proof');
+          fs.mkdirSync(fixture);
+          const build = 'require("node:fs").mkdirSync("dist",{recursive:true});require("node:fs").writeFileSync("dist/proof.txt",' + JSON.stringify(sha) + ')';
+          const manifest = {name:'cache-proof-' + sha.slice(0,12),private:true,packageManager:'npm@'+execFileSync('npm',['--version'],{encoding:'utf8'}).trim(),scripts:{build:'node -e ' + JSON.stringify(build)}};
+          fs.writeFileSync(path.join(fixture,'package.json'),JSON.stringify(manifest));
+          fs.writeFileSync(path.join(fixture,'turbo.json'),JSON.stringify({
+            remoteCache:{enabled:true,apiUrl:'https://turbo.cache.namespaceapi.com',teamSlug:'main'},
+            tasks:{build:{inputs:['package.json','turbo.json'],outputs:['dist/**']}}
+          }));
+          fs.writeFileSync(path.join(fixture,'.gitignore'),'dist/\n.turbo/\n');
+          execFileSync('git',['init','--quiet','--initial-branch=main',fixture]);
+          execFileSync('git',['-C',fixture,'add','.']);
+          const turbo = path.join(process.env.GITHUB_WORKSPACE,'node_modules/.bin/turbo');
+          function runTurbo(mode, directory, source) {
+            fs.rmSync(path.join(fixture,'.turbo/runs'),{recursive:true,force:true});
+            fs.rmSync(path.join(fixture,'dist'),{recursive:true,force:true});
+            execFileSync(turbo,['run','build','--cache='+mode,'--cache-dir='+directory,'--summarize'],{cwd:fixture,stdio:'inherit'});
+            const files=fs.readdirSync(path.join(fixture,'.turbo/runs'));
+            if(files.length!==1)throw new Error('Missing Turbo provenance');
+            const task=JSON.parse(fs.readFileSync(path.join(fixture,'.turbo/runs',files[0]),'utf8')).tasks[0];
+            if(source && (task.cache.status!=='HIT' || !task.cache[source]))throw new Error('Expected '+source+' Turbo cache hit');
+            if(fs.readFileSync(path.join(fixture,'dist/proof.txt'),'utf8')!==sha)throw new Error('Wrong Turbo output');
+            console.log(JSON.stringify({cache:source||'populate',hash:task.hash,result:task.cache}));
+            return task;
+          }
+          if(!verify) {
+            const task=runTurbo('local:rw,remote:rw',local);
+            const response=await fetch('https://turbo.cache.namespaceapi.com/v8/artifacts/'+task.hash+'?slug=main',{headers:{Authorization:'Bearer '+process.env.TURBO_TOKEN}});
+            if(!response.ok)throw new Error('Turbo remote population failed: '+response.status);
+            await response.body.cancel();
+          } else {
+            const saved=runTurbo('local:rw',local,'local');
+            const remote=runTurbo('remote:r',path.join(process.env.RUNNER_TEMP,'empty-turbo-cache'),'remote');
+            if(saved.hash!==remote.hash)throw new Error('Different Turbo inputs');
+            manifest.scripts.build+='; true';
+            fs.writeFileSync(path.join(fixture,'package.json'),JSON.stringify(manifest));
+            const changed=runTurbo('remote:r',path.join(process.env.RUNNER_TEMP,'changed-turbo-cache'));
+            if(changed.hash===saved.hash || changed.cache.status!=='MISS')throw new Error('Turbo did not invalidate changed input');
+          }
+          const nix = (args) => execFileSync('nix',args,{encoding:'utf8',stdio:['ignore','pipe','inherit']}).trim();
+          const pkgs = 'let f = builtins.getFlake ("git+file://" + builtins.getEnv "GITHUB_WORKSPACE"); p = builtins.getAttr builtins.currentSystem f.inputs.nixpkgs.legacyPackages; in ';
+          const expression = pkgs+'p.runCommand ("cache-proof-" + builtins.substring 0 12 (builtins.getEnv "GITHUB_SHA")) {} ("printf %s " + p.lib.escapeShellArg (builtins.getEnv "GITHUB_SHA") + " > $out")';
+          const args=['build','--impure','--no-link','--print-out-paths','--expr',expression];
+          if(verify)args.push('--max-jobs','0','--option','substitute','false','--option','builders','');
+          const probe=nix(args);
+          if(fs.readFileSync(probe,'utf8')!==sha)throw new Error('Wrong Nix volume output');
+          console.log(JSON.stringify({cache:'nix-volume',path:probe,buildsAllowed:!verify,substitutionsAllowed:!verify}));
+          if(verify || owner==='quantile-q0') {
+            const upstream=owner==='quantile-q0';
+            const artifact=upstream?nix(['eval','--impure','--raw','--expr',pkgs+'p.hello.outPath']):probe;
+            const url=upstream?'https://cache.nixos.org':'https://'+owner+'.cachix.org';
+            const isolated=path.join(process.env.RUNNER_TEMP,'isolated-nix-store');
+            fs.mkdirSync(isolated);
+            try {
+              nix(['copy','--from',url,'--to','local?root='+isolated,artifact]);
+              nix(['path-info','--store','local?root='+isolated,artifact]);
+              if(upstream)fs.accessSync(isolated+artifact+'/bin/hello',fs.constants.X_OK);
+              else if(fs.readFileSync(isolated+artifact,'utf8')!==sha)throw new Error('Wrong Nix remote output');
+              console.log(JSON.stringify({cache:'nix-remote',url,path:artifact,isolatedStore:true}));
+            } finally {
+              execFileSync('chmod',['-R','u+w',isolated]);
+              fs.rmSync(isolated,{recursive:true,force:true});
+            }
+          }
+          JS
