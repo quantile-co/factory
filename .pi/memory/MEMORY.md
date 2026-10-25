@@ -378,8 +378,10 @@ never automatically approved or bypassed.
 Publish Factory Pi and GitHub packages publicly through npm; the root workspace
 and remaining packages stay private. Package builds and staging run on Namespace,
 not GitHub-hosted runners. Artifact building/publication uses `build.yaml`, named
-Build; Factory's job is NPM Package. The protected manual workflow validates and
-packs reviewed main, then uses the prod `NPM_TOKEN` only for staging those tarballs.
+Build, with Infrastructure and Application jobs. Callers select applicable layers;
+`github.workflows.build.layers` can differ from the shared deployment selection.
+Factory selects Application and its repository-owned `github:build` task qualifies
+and packs reviewed main before supplying the prod `NPM_TOKEN` to npm staging.
 Use a scoped, stage-only granular token without 2FA bypass; an npm maintainer
 approves each staged version with interactive 2FA. Staging a new package creates
 a public placeholder, so staging itself requires publication approval. Inspect
@@ -392,7 +394,9 @@ are optional to avoid installing duplicate physical host packages downstream.
 Consumers pin exact npm versions and integrity through their committed lockfiles.
 Credentials never enter Nix values, source, artifacts or build definitions. No
 additional license is inferred for bundled dependencies: Factory is MIT, and
-package archives retain its license and the bundled dependency notices.
+package archives retain its license and the bundled dependency notices. Keep
+registry-specific credentials and publication behavior in the owning app/flake,
+not in shared Build YAML or separate package-specific workflow templates.
 
 #decision [[factory-moving-flake-refs]]
 Moving flake refs resolve through the committed `flake.lock`. Generated Dependabot

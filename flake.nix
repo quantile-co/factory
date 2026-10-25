@@ -31,10 +31,27 @@
             inherit source;
             mode = "copy";
           };
+          buildFile =
+            let
+              source = builtins.readFile factory.github.workflows.build.configFile;
+              marker = "      - name: Build\n        run: |";
+            in
+            assert lib.assertMsg (
+              lib.length (lib.splitString marker source) == 2
+            ) "Factory expects one selected Build job";
+            pkgs.writeText "build.yaml" (
+              builtins.replaceStrings
+                [ marker ]
+                [
+                  "      - name: Build\n        env:\n          NPM_TOKEN: \${{ secrets.NPM_TOKEN }}\n        run: |"
+                ]
+                source
+            );
         in
         {
           quantile-co.factory = {
             github.workflows.layers = [ "infrastructure" ];
+            github.workflows.build.layers = [ "application" ];
 
             # Public package outputs.
             flake.packages = {
@@ -249,7 +266,7 @@
               ".github/actionlint.yaml" = copy factory.actionlint.configFile;
               ".github/workflows/check.yaml" = copy factory.github.workflows.check.configFile;
               ".github/workflows/test.yaml" = copy factory.github.workflows.test.configFile;
-              ".github/workflows/build.yaml" = copy ./etc/github/workflows/build-packages.yaml;
+              ".github/workflows/build.yaml" = copy buildFile;
               ".github/workflows/plan.yaml" = copy factory.github.workflows.plan.configFile;
               ".github/workflows/apply.yaml" = copy factory.github.workflows.apply.configFile;
               ".github/dependabot.yml" = copy (

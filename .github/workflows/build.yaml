@@ -2,6 +2,14 @@ name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      tf_layer:
+        description: Layer
+        required: true
+        type: choice
+        default: application
+        options:
+          - application
 
 permissions:
   contents: read
@@ -11,9 +19,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  packages:
-    name: NPM Package
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+  application:
+    name: Application
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.tf_layer == 'application'
     runs-on: namespace-profile-quantile-4x8
     environment: prod
     timeout-minutes: 30
@@ -22,7 +33,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0 # Package qualification runs the full-history checks.
+          fetch-depth: 0 # Build checks can inspect repository history.
 
       - name: Mount the Nix store and database
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
@@ -44,24 +55,11 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           useDaemon: false
 
-      - name: Qualify and pack packages
-        run: |
-          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
-          "$direnv" allow .
-          "$direnv" exec . pnpm install --frozen-lockfile
-          "$direnv" exec . pnpm run npm:pack
-          git diff --exit-code
-
-      - name: Stage packages for npm approval
+      - name: Build
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          umask 077
-          npmrc="$(mktemp "$RUNNER_TEMP/npmrc.XXXXXX")"
-          trap 'rm -f "$npmrc"' EXIT
-          printf '%s\n' "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > "$npmrc"
-          export NPM_CONFIG_USERCONFIG="$npmrc"
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile
-          "$direnv" exec . pnpm run npm:stage
+          "$direnv" exec . pnpm run github:build --tf-layer application

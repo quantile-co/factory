@@ -74,6 +74,7 @@ process.exit(result.status ?? 1);
     const sentinel = join(temporary, "must-not-exist");
     const planReference = `'"; $(touch ${sentinel})`;
     for (const [phase, code] of [
+      ["build", 0],
       ["plan", 0],
       ["apply", 23],
     ] as const) {
@@ -82,10 +83,11 @@ process.exit(result.status ?? 1);
       );
       for (const layer of ["infrastructure", "application"]) {
         const step = data.jobs[layer].steps.at(-1);
-        expect(Object.keys(step.env)).toEqual([
-          "GH_REPO_TOKEN",
-          ...(phase === "apply" ? ["GH_PLAN_REF"] : []),
-        ]);
+        expect(Object.keys(step.env ?? {})).toEqual(
+          phase === "build"
+            ? []
+            : ["GH_REPO_TOKEN", ...(phase === "apply" ? ["GH_PLAN_REF"] : [])],
+        );
         if (phase === "apply")
           expect(step.env.GH_PLAN_REF).toBe(`\${{ inputs.gh_plan_ref }}`);
         const script = step.run
@@ -114,15 +116,19 @@ process.exit(result.status ?? 1);
             phase,
             "--tf-layer",
             layer,
-            "--gcp-tf-state-bucket",
-            "private-bucket",
-            "--gcp-wif-pool",
-            "approved-pool",
+            ...(phase === "build"
+              ? []
+              : [
+                  "--gcp-tf-state-bucket",
+                  "private-bucket",
+                  "--gcp-wif-pool",
+                  "approved-pool",
+                ]),
             ...(phase === "apply" ? ["--gh-plan-ref", planReference] : []),
           ],
         });
         expect(existsSync(sentinel)).toBe(false);
-        if (phase === "plan" && layer === "infrastructure") {
+        if (phase === "build" && layer === "infrastructure") {
           rmSync(resultFile);
           const failed = execute(17);
           expect(failed.status, failed.stderr + failed.stdout).toBe(17);
@@ -135,7 +141,7 @@ process.exit(result.status ?? 1);
   }
 });
 
-it("offers one deployment layer per dispatch with inline frozen installation and no owner rosters", () => {
+it("offers selected artifact and deployment layers with inline installation and no owner rosters", () => {
   const envrc = readFileSync(join(root, ".envrc"), "utf8");
   expect(envrc).toContain(
     "extra-substituters = https://quantile-co.cachix.org",
@@ -144,7 +150,6 @@ it("offers one deployment layer per dispatch with inline frozen installation and
   expect(envrc).toContain("extra-trusted-public-keys = ");
   for (const directory of [".github/workflows", "etc/github/workflows"]) {
     for (const name of ["check", "test", "build", "plan", "apply"]) {
-      if (directory === ".github/workflows" && name === "build") continue;
       const path = join(root, directory, `${name}.yaml`);
       const source = readFileSync(path, "utf8");
       expect(source).not.toMatch(/^ {2}workflow_call:/m);
@@ -160,11 +165,11 @@ it("offers one deployment layer per dispatch with inline frozen installation and
         "nix build --no-link --print-out-paths '.#direnv'",
       );
       expect(source).toContain('"$direnv" allow .');
-      if (name !== "plan" && name !== "apply") continue;
+      if (name !== "build" && name !== "plan" && name !== "apply") continue;
       const data = workflow(path);
       const layers =
         directory === ".github/workflows"
-          ? ["infrastructure"]
+          ? [name === "build" ? "application" : "infrastructure"]
           : ["infrastructure", "application"];
       expect(Object.keys(data.jobs)).toEqual(layers);
       expect(data.on.workflow_dispatch.inputs.tf_layer.options).toEqual(layers);
@@ -183,14 +188,18 @@ it("offers one deployment layer per dispatch with inline frozen installation and
       expect(source).not.toMatch(
         /^\s+(GCP_TF_STATE_BUCKET|GCP_WIF_POOL|TF_VAR_\w+):/m,
       );
+      expect(source).toContain(`"$direnv" exec . pnpm run github:${name}`);
+      expect(data.concurrency["cancel-in-progress"]).toBe(false);
+      if (name === "build") {
+        expect(source).not.toMatch(/GCP_TF_STATE_BUCKET|GCP_WIF_POOL|npm:/);
+        continue;
+      }
       expect(source).toContain(
         `--gcp-tf-state-bucket '\${{ vars.GCP_TF_STATE_BUCKET }}'`,
       );
       expect(source).toContain(`--gcp-wif-pool '\${{ vars.GCP_WIF_POOL }}'`);
-      expect(source).toContain(`"$direnv" exec . pnpm run github:${name}`);
       expect(source).not.toContain("github:build");
       expect(source).not.toContain("actions/upload-artifact@");
-      expect(data.concurrency["cancel-in-progress"]).toBe(false);
       if (name === "apply") {
         expect(source).toContain('--gh-plan-ref "$GH_PLAN_REF"');
       }

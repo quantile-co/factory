@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   type Action,
   apply,
@@ -55,8 +59,63 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
 const program = new Command()
   .name("factory-github")
   .description(
-    "Protected saved-plan transport; invoke from approved production workflows.",
+    "Repository artifacts and saved-plan transport; use approved workflows.",
   );
+program
+  .command("build")
+  .addOption(
+    new Option("--tf-layer <layer>", "Repository artifact layer")
+      .choices(["application"])
+      .makeOptionMandatory(),
+  )
+  .addOption(
+    new Option("--npm-token <token>", "Stage-only credential; prefer NPM_TOKEN")
+      .env("NPM_TOKEN")
+      .makeOptionMandatory(),
+  )
+  .action((options: { npmToken: string }) => {
+    const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+    }).trim();
+    const buildEnvironment = { ...process.env };
+    delete buildEnvironment.NPM_TOKEN;
+    delete buildEnvironment.NPM_CONFIG_USERCONFIG;
+    delete buildEnvironment.npm_config_userconfig;
+    const run = (task: string, env: NodeJS.ProcessEnv) => {
+      const result = spawnSync("pnpm", ["run", task], {
+        cwd: root,
+        env,
+        stdio: "inherit",
+      });
+      if (result.error) throw result.error;
+      if (result.status !== 0)
+        throw new CommandFailure(result.status ?? 1, `${task} failed`);
+    };
+    run("npm:pack", buildEnvironment);
+    execFileSync("git", ["diff", "--exit-code", "HEAD"], {
+      cwd: root,
+      env: buildEnvironment,
+      stdio: "inherit",
+    });
+    const directory = mkdtempSync(join(tmpdir(), "factory-npm-"));
+    try {
+      const config = join(directory, "npmrc");
+      writeFileSync(
+        config,
+        `//registry.npmjs.org/:_authToken=\${NPM_TOKEN}\n`,
+        {
+          mode: 0o600,
+        },
+      );
+      run("npm:stage", {
+        ...buildEnvironment,
+        NPM_TOKEN: options.npmToken,
+        NPM_CONFIG_USERCONFIG: config,
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 for (const phase of ["plan", "apply"] as const) {
   const command = program
     .command(phase)

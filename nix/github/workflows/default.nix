@@ -7,7 +7,7 @@
 let
   cfg = config.quantile-co.factory.github.workflows;
   render =
-    name: source:
+    name: source: layers:
     let
       # Select the two native job blocks without reserializing the YAML layout.
       parts = lib.splitString "\njobs:\n" (builtins.readFile source);
@@ -22,13 +22,13 @@ let
         builtins.replaceStrings
           [ "        default: infrastructure\n" choices ]
           [
-            "        default: ${builtins.head cfg.layers}\n"
-            (lib.concatMapStrings (layer: "          - ${layer}\n") cfg.layers)
+            "        default: ${builtins.head layers}\n"
+            (lib.concatMapStrings (layer: "          - ${layer}\n") layers)
           ]
           header;
     in
     assert lib.assertMsg (
-      cfg.layers != [ ] && lib.length cfg.layers == lib.length (lib.unique cfg.layers)
+      layers != [ ] && lib.length layers == lib.length (lib.unique layers)
     ) "Select distinct workflow layers.";
     assert lib.assertMsg (
       lib.length parts == 2
@@ -37,7 +37,7 @@ let
       && lib.hasInfix "        default: infrastructure\n" header
     ) "Workflow template sections changed.";
     pkgs.writeText name (
-      selectedHeader + "\njobs:\n" + lib.concatStringsSep "\n" (map (layer: jobs.${layer}) cfg.layers)
+      selectedHeader + "\njobs:\n" + lib.concatStringsSep "\n" (map (layer: jobs.${layer}) layers)
     );
 in
 {
@@ -53,7 +53,7 @@ in
         "infrastructure"
         "application"
       ];
-      description = "Jobs offered by Plan/Apply; each dispatch selects exactly one layer.";
+      description = "Default jobs offered by Build/Plan/Apply; each dispatch selects exactly one layer.";
     };
     check.configFile = lib.mkOption {
       type = lib.types.path;
@@ -65,19 +65,29 @@ in
       default = ../../../etc/github/workflows/test.yaml;
       description = "Test workflow.";
     };
+    build.layers = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.enum [
+          "infrastructure"
+          "application"
+        ]
+      );
+      default = cfg.layers;
+      description = "Build jobs when artifact layers differ from deployment layers.";
+    };
     build.configFile = lib.mkOption {
       type = lib.types.path;
-      default = ../../../etc/github/workflows/build.yaml;
+      default = render "build.yaml" ../../../etc/github/workflows/build.yaml cfg.build.layers;
       description = "Build workflow.";
     };
     plan.configFile = lib.mkOption {
       type = lib.types.path;
-      default = render "plan.yaml" ../../../etc/github/workflows/plan.yaml;
+      default = render "plan.yaml" ../../../etc/github/workflows/plan.yaml cfg.layers;
       description = "Plan workflow.";
     };
     apply.configFile = lib.mkOption {
       type = lib.types.path;
-      default = render "apply.yaml" ../../../etc/github/workflows/apply.yaml;
+      default = render "apply.yaml" ../../../etc/github/workflows/apply.yaml cfg.layers;
       description = "Apply workflow.";
     };
   };
