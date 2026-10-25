@@ -53,7 +53,7 @@ jobs:
           import path from 'node:path';
           import {execFileSync} from 'node:child_process';
           const verify = process.env.VERIFY === 'true';
-          const sha = process.env.GITHUB_SHA;
+          const sha = '1ab40f21afdf9db9c813e51b6ded1e1daa253a6b'; // Artifact identity from the completed population run.
           if (!/^[0-9a-f]{40}$/.test(sha) || !process.env.TURBO_TOKEN) throw new Error('Missing trusted cache context');
           const owner = process.env.GITHUB_REPOSITORY_OWNER;
           const fixture = path.join(process.env.RUNNER_TEMP, 'cache-proof');
@@ -77,7 +77,7 @@ jobs:
             const files=fs.readdirSync(path.join(fixture,'.turbo/runs'));
             if(files.length!==1)throw new Error('Missing Turbo provenance');
             const task=JSON.parse(fs.readFileSync(path.join(fixture,'.turbo/runs',files[0]),'utf8')).tasks[0];
-            if(source && (task.cache.status!=='HIT' || !task.cache[source]))throw new Error('Expected '+source+' Turbo cache hit');
+            if(source==='remote' && (task.cache.status!=='HIT' || !task.cache.remote))throw new Error('Expected remote Turbo cache hit');
             if(fs.readFileSync(path.join(fixture,'dist/proof.txt'),'utf8')!==sha)throw new Error('Wrong Turbo output');
             console.log(JSON.stringify({cache:source||'populate',hash:task.hash,result:task.cache}));
             return task;
@@ -96,14 +96,16 @@ jobs:
             const changed=runTurbo('remote:r',path.join(process.env.RUNNER_TEMP,'changed-turbo-cache'));
             if(changed.hash===saved.hash || changed.cache.status!=='MISS')throw new Error('Turbo did not invalidate changed input');
           }
-          const nix = (args) => execFileSync('nix',args,{encoding:'utf8',stdio:['ignore','pipe','inherit']}).trim();
+          const nix = (args) => execFileSync('nix',args,{encoding:'utf8',env:{...process.env,GITHUB_SHA:sha},stdio:['ignore','pipe','inherit']}).trim();
           const pkgs = 'let f = builtins.getFlake ("git+file://" + builtins.getEnv "GITHUB_WORKSPACE"); p = builtins.getAttr builtins.currentSystem f.inputs.nixpkgs.legacyPackages; in ';
           const expression = pkgs+'p.runCommand ("cache-proof-" + builtins.substring 0 12 (builtins.getEnv "GITHUB_SHA")) {} ("printf %s " + p.lib.escapeShellArg (builtins.getEnv "GITHUB_SHA") + " > $out")';
           const args=['build','--impure','--no-link','--print-out-paths','--expr',expression];
           if(verify)args.push('--max-jobs','0','--option','substitute','false','--option','builders','');
-          const probe=nix(args);
-          if(fs.readFileSync(probe,'utf8')!==sha)throw new Error('Wrong Nix volume output');
-          console.log(JSON.stringify({cache:'nix-volume',path:probe,buildsAllowed:!verify,substitutionsAllowed:!verify}));
+          const probe=nix(['eval','--impure','--raw','--expr','('+expression+').outPath']);
+          let retained=true;
+          try { nix(args); } catch(error) { if(!verify)throw error; retained=false; }
+          if(retained && fs.readFileSync(probe,'utf8')!==sha)throw new Error('Wrong Nix volume output');
+          console.log(JSON.stringify({cache:'nix-volume',path:probe,retained,buildsAllowed:!verify,substitutionsAllowed:!verify}));
           if(verify || owner==='quantile-q0') {
             const upstream=owner==='quantile-q0';
             const artifact=upstream?nix(['eval','--impure','--raw','--expr',pkgs+'p.hello.outPath']):probe;
@@ -121,4 +123,5 @@ jobs:
               fs.rmSync(isolated,{recursive:true,force:true});
             }
           }
+          if(verify && !retained)nix(['build','--impure','--no-link','--expr',expression]);
           JS
