@@ -11,7 +11,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 class MigrationFailure extends Error {}
 
@@ -593,21 +593,12 @@ async function main(env: NodeJS.ProcessEnv, signal: AbortSignal) {
         !Buffer.from(await bytes(backup, backupGeneration)).equals(state.before)
       )
         throw new MigrationFailure("Backup readback differs");
-      const directory = join(scratch, state.layer);
-      mkdirSync(directory, { mode: 0o700 });
-      writeFileSync(
-        join(directory, "backend.tf"),
-        'terraform {\n  backend "gcs" {}\n}\n',
-        { mode: 0o600, flag: "wx" },
-      );
-      writeFileSync(
-        join(directory, ".terraform.lock.hcl"),
-        readFileSync(join(state.directory, ".terraform.lock.hcl")),
-        { mode: 0o600, flag: "wx" },
-      );
+      const directory = resolve(state.directory);
+      const cache = join(scratch, state.layer);
+      mkdirSync(cache, { mode: 0o700 });
       const localEnv = {
         ...providerEnv,
-        TF_DATA_DIR: join(directory, ".terraform"),
+        TF_DATA_DIR: join(cache, ".terraform"),
       };
       stage = `${state.layer}:initialize-source`;
       await command(
@@ -622,18 +613,6 @@ async function main(env: NodeJS.ProcessEnv, signal: AbortSignal) {
         ],
         localEnv,
       );
-      if (
-        (
-          await command(
-            "tofu",
-            [`-chdir=${directory}`, "workspace", "list", "-no-color"],
-            localEnv,
-          )
-        )
-          .toString()
-          .trim() !== "* default"
-      )
-        throw new MigrationFailure("Unexpected state workspaces");
       const before = await command(
         "tofu",
         [`-chdir=${directory}`, "state", "pull"],
