@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "prepare": "husky",
-    "build": "turbo run build --cache=local:rw",
-    "check": "factory-files check && turbo run check --cache=local:rw",
-    "fix": "factory-files write && turbo run fix --cache=local:rw",
-    "test": "pnpm run check && turbo run test --cache=local:rw"
+    "build": "TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run build",
+    "check": "factory-files check && TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run check",
+    "fix": "factory-files write && TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run fix",
+    "test": "pnpm run check && TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

@@ -98,9 +98,10 @@ installation. Install explicitly before local tasks, as documented in the README
 Each workflow runs `pnpm install --frozen-lockfile` immediately before its pnpm
 task in the same run block, never a separate setup step or installer wrapper.
 A failed frozen install stops the block before the task. Build artifacts separately with `pnpm run build`;
-validation can rebuild declared prerequisites. Turbo caches only reproducible build outputs locally;
+validation can rebuild declared prerequisites. Turbo caches only reproducible build outputs;
 checks, tests, fixes and Git/index/native-sensitive work remain uncached.
-There is no remote Turbo cache. Protected Plan/Apply remain workflow-only.
+Local caching is the default; CI may opt into Namespace remote caching through
+native TURBO_CACHE/TURBO_TOKEN. Protected Plan/Apply remain workflow-only.
 `flake.nix` declares native destinations/sources/modes through the files module and
 explicitly selects `files.shellHook`, which runs the cold `factory-files write`
 command from the runtime Git checkout root. Copy overwrites
@@ -443,12 +444,24 @@ never put resolved values in Nix outputs. Keep backend coordinates and exact
 saved-plan identity checks. Forward named secrets explicitly, not `secrets: inherit`.
 
 #decision [[factory-cachix-policy]]
-Check is credential-free and never publishes caches. Credentialed main workflows
+Check receives no production or cache-writer credentials and never publishes remote caches.
+Credentialed main workflows
 select the cache named after the caller's GitHub owner, configure authenticated
 reads, and publish through the pinned Cachix action. Private derivations must
 never be uploaded to a public cache. Cache credentials never enter source, state
 or Nix outputs. Preserve signatures and repository/profile cache isolation.
-Namespace caches are best-effort; a cache-action message does not prove a hit.
+Namespace volume caches are best-effort; a cache-action message does not prove a hit.
+Turbo persists .turbo/cache alongside /nix, with existing repository/profile volume
+isolation and main-only snapshot publication. One remote Turbo team main is shared
+within each caller workspace. The native TURBO_TOKEN name selects a read-only
+organization/repository secret or a writer override in the dedicated main-only
+turbo-cache environment. Only manual main Test receives the writer; internal
+Check and Build receive readers, external/fork PRs no remote token. Developers
+use server-scoped readers; client read-only flags alone are not authorization.
+Keep Restricted runner access. Explicit cache-token authentication on those
+runners, credential provisioning and live hit/write-denial qualification remain
+pending; source support is not activation. See the deployment configuration
+reference for credential scopes. No additional cache setup action is needed.
 Do not dispatch production workflows just to warm caches. Keep public cache
 additions in `.envrc`'s `NIX_CONFIG` for trusted stores in both CI and local use;
 untrusted daemon clients leave caches and keys to administrator configuration.

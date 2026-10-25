@@ -61,6 +61,35 @@ privileges to standardize names. The operator's GitHub CLI login remains separat
 and CI WIF are distinct authentication contexts. Keep credentials out of Git,
 Terraform inputs, Nix values and public logs.
 
+### Turbo cache access
+
+Turbo uses local caching by default. CI persists `.turbo/cache` on the existing
+Namespace volume and uses remote team `main` in the caller's workspace.
+Keep Restricted runners and main-only volume publication.
+
+Use the native `TURBO_TOKEN` secret name at both scopes: an organization/repository
+read-only cache token for internal Check and Build, and a cache-only read/write
+token overriding it in the `turbo-cache` environment for manual main Test.
+Provision that environment's main-only branch policy before installing its writer
+secret. Never store a writer token at organization/repository scope or in `prod`.
+Environment policies control credential delivery; Namespace token grants enforce
+read/write access. Keep expiring token payloads CLI-managed, outside Terraform,
+Git and Nix. Missing tokens fall back to local caching. Fork PRs and PR authors
+outside OWNER/MEMBER/COLLABORATOR receive no remote token.
+
+Local developers use a reader-scoped credential, not a general login token:
+
+```sh
+export $(nsc cache turborepo setup --team main --read-only --token /secure/path/reader.json)
+pnpm run build
+```
+
+Use the correct workspace's token. The setup token is short-lived; rerun setup
+when it expires. `--read-only` sets client behavior, not server authorization.
+Verify explicit cache-token access from Restricted runners before activating
+remote caching. Do not relax runner access to bypass a failure. Cache only
+reproducible build outputs and safe logs, never credentials, state or saved plans.
+
 ### Concrete values are not overrides
 
 Factory's `tf/infrastructure/main.tf` holds its approved billing account, parent

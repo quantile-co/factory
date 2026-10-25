@@ -34,7 +34,7 @@
           buildFile =
             let
               source = builtins.readFile factory.github.workflows.build.configFile;
-              marker = "      - name: Build\n        run: |";
+              marker = "      - name: Build\n        env:\n";
             in
             assert lib.assertMsg (
               lib.length (lib.splitString marker source) == 2
@@ -43,7 +43,7 @@
               builtins.replaceStrings
                 [ marker ]
                 [
-                  "      - name: Build\n        env:\n          NPM_TOKEN: \${{ secrets.NPM_TOKEN }}\n        run: |"
+                  "      - name: Build\n        env:\n          NPM_TOKEN: \${{ secrets.NPM_TOKEN }}\n"
                 ]
                 source
             );

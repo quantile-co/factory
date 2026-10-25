@@ -36,10 +36,12 @@ jobs:
           persist-credentials: false
           fetch-depth: 0 # Build checks can inspect repository history.
 
-      - name: Mount the Nix store and database
+      - name: Mount the Nix and Turbo caches
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
         with:
-          path: /nix
+          path: |
+            /nix
+            .turbo/cache
           spacectl-version: 0.12.3
           spacectl-system-binary: ignore
 
@@ -57,7 +59,13 @@ jobs:
           useDaemon: false
 
       - name: Build
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
         run: |
+          export TURBO_CACHE=local:rw
+          if [ -n "$TURBO_TOKEN" ]; then
+            export TURBO_CACHE=local:rw,remote:r
+          fi
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile
@@ -79,10 +87,12 @@ jobs:
           persist-credentials: false
           fetch-depth: 0 # Build checks can inspect repository history.
 
-      - name: Mount the Nix store and database
+      - name: Mount the Nix and Turbo caches
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
         with:
-          path: /nix
+          path: |
+            /nix
+            .turbo/cache
           spacectl-version: 0.12.3
           spacectl-system-binary: ignore
 
@@ -100,7 +110,13 @@ jobs:
           useDaemon: false
 
       - name: Build
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
         run: |
+          export TURBO_CACHE=local:rw
+          if [ -n "$TURBO_TOKEN" ]; then
+            export TURBO_CACHE=local:rw,remote:r
+          fi
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile

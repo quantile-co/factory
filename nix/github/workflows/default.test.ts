@@ -79,7 +79,8 @@ const args = process.argv.slice(2);
 const entry = args.indexOf("apps/github/cli.ts");
 if (entry !== -1) {
   require("node:fs").writeFileSync(process.env.TEST_WORKFLOW_RESULT, JSON.stringify({
-    cwd: process.cwd(), args: args.slice(entry + 1)
+    cwd: process.cwd(), args: args.slice(entry + 1),
+    cache: args[entry + 1] === "build" ? process.env.TURBO_CACHE : null
   }));
   process.exit(Number(process.env.TEST_WORKFLOW_EXIT));
 }
@@ -124,7 +125,7 @@ process.exit(result.status ?? 1);
         const step = data.jobs[layer].steps.at(-1);
         expect(Object.keys(step.env ?? {})).toEqual(
           phase === "build"
-            ? []
+            ? ["TURBO_TOKEN"]
             : ["GH_REPO_TOKEN", ...(phase === "apply" ? ["GH_PLAN_REF"] : [])],
         );
         if (phase === "apply")
@@ -132,7 +133,7 @@ process.exit(result.status ?? 1);
         const script = step.run
           .replace(`\${{ vars.GCP_TF_STATE_BUCKET }}`, "private-bucket")
           .replace(`\${{ vars.GCP_WIF_POOL }}`, "approved-pool");
-        const execute = (installExit = 0) =>
+        const execute = (installExit = 0, token = "") =>
           spawnSync("bash", ["-e", "-o", "pipefail", "-c", script], {
             cwd: root,
             encoding: "utf8",
@@ -140,6 +141,7 @@ process.exit(result.status ?? 1);
               ...process.env,
               PATH: `${bin}:${process.env.PATH}`,
               GH_REPO_TOKEN: "fixture-credential",
+              TURBO_TOKEN: token,
               GH_PLAN_REF: planReference,
               TEST_WORKFLOW_RESULT: resultFile,
               TEST_WORKFLOW_EXIT: String(code),
@@ -151,6 +153,7 @@ process.exit(result.status ?? 1);
         expect(run.status, run.stderr + run.stdout).toBe(code);
         expect(JSON.parse(readFileSync(resultFile, "utf8"))).toEqual({
           cwd: root,
+          cache: phase === "build" ? "local:rw" : null,
           args: [
             phase,
             "--tf-layer",
@@ -168,6 +171,11 @@ process.exit(result.status ?? 1);
         });
         expect(existsSync(sentinel)).toBe(false);
         if (phase === "build" && layer === "infrastructure") {
+          const reader = execute(0, "reader-fixture");
+          expect(reader.status, reader.stderr + reader.stdout).toBe(0);
+          expect(JSON.parse(readFileSync(resultFile, "utf8")).cache).toBe(
+            "local:rw,remote:r",
+          );
           rmSync(resultFile);
           const failed = execute(17);
           expect(failed.status, failed.stderr + failed.stdout).toBe(17);
