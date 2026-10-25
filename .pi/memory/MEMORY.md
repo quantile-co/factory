@@ -9,10 +9,21 @@ workspace in the existing bucket from `repository/prod` to
 readback, unchanged lineage/resources/outputs, expected serial increment of one
 and generation-bound retirement of the old live object were verified.
 OpenTofu may reserialize transient variable-check metadata; resource state is
-unchanged. Backups remain outside `plans/`. Normal protected workflows are
-restored and all temporary migration code, tests and templates are removed.
-No resource Plan/Apply, publication, rollout, IAM or credential change occurred.
-Old prefix references below are historical; old saved-plan approvals are stale.
+unchanged. The migration itself performed no resource Plan/Apply or publication.
+
+The subsequent authorized lifecycle retired only the unused `non-prod`
+environment and its branch policy (Apply `40175260155`). Both published Factory
+packages are live at `0.1.1` after Build `40175882660` and operator npm 2FA approval.
+Cold starter initialization may fetch pinned tool closures; source locking and
+subsequent warm-entry checks remain offline.
+
+Protected cleanup Apply `40177402792` deleted provenance-known migration backups,
+logs and obsolete state generations by exact generation URI. Current state,
+active plans, locks and bucket protections were excluded. GCS soft-delete
+retention still applies; it was not disabled to force physical purging. The
+original CLI is restored; no temporary migration/maintenance code, tests,
+templates or compatibility path remains. Old prefix references below are
+historical; consumed saved-plan approvals must never be replayed.
 
 Current source, tests and deployment skills take precedence over these notes.
 

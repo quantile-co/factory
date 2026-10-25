@@ -212,49 +212,6 @@ for (const phase of ["plan", "apply"] as const) {
             ],
         { logFile, append: true, signal },
       );
-      if (phase === "apply") {
-        const objects = JSON.parse(
-          await storage(
-            "gcloud",
-            [
-              "storage",
-              "ls",
-              "--all-versions",
-              "--json",
-              `gs://${options.gcpTfStateBucket}/**`,
-            ],
-            { signal },
-          ),
-        ) as {
-          url: string;
-          metadata?: { name: string; generation: string; timeDeleted?: string };
-        }[];
-        for (const { url, metadata: object } of objects) {
-          if (
-            !object ||
-            !(
-              object.name.startsWith("state-backups/") ||
-              ([
-                "repository/prod/default.tfstate",
-                "factory/prod/infrastructure/default.tfstate",
-              ].includes(object.name) &&
-                object.timeDeleted)
-            )
-          )
-            continue;
-          if (
-            !/^[1-9][0-9]*$/.test(object.generation) ||
-            url !==
-              `gs://${options.gcpTfStateBucket}/${object.name}#${object.generation}`
-          )
-            throw new Error("Expected exact-generation cleanup object");
-          await storage("gcloud", ["storage", "rm", url], {
-            logFile,
-            append: true,
-            signal,
-          });
-        }
-      }
     };
     const storage = processRunner(environment);
     if (phase === "plan") {
