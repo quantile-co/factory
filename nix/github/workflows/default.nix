@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 let
@@ -36,7 +35,7 @@ let
       && lib.hasInfix choices header
       && lib.hasInfix "        default: infrastructure\n" header
     ) "Workflow template sections changed.";
-    pkgs.writeText name (
+    builtins.toFile name (
       selectedHeader + "\njobs:\n" + lib.concatStringsSep "\n" (map (layer: jobs.${layer}) layers)
     );
 in

@@ -444,7 +444,9 @@ WIF, backend locks and non-cancelling concurrency. There are no owner-roster act
 or triggering-actor conditions in YAML. Platform authorization remains in GitHub
 repository/environment policy and the existing WIF/IAM configuration. Workflow reuse is file-based: Factory maintains native YAML under
 `etc/github/workflows/` and one Nix module with template options at
-`nix/github/workflows/default.nix`. Consumers other than independent Q0 materialize
+`nix/github/workflows/default.nix`. Rendered YAML is pure store data, readable
+without import-from-derivation or target-platform builders when consumers patch
+it during evaluation. Consumers other than independent Q0 materialize
 the files explicitly and own their task-specific input validation, release
 logic and post-Apply checks. Do not add downstream-application-specific logic
 to shared templates. Workflows pass the logical `--tf-layer` to repository-owned

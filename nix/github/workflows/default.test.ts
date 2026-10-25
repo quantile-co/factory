@@ -22,6 +22,45 @@ function workflow(path: string) {
   );
 }
 
+it("renders selected workflows as readable data without building for the target platform", () => {
+  const files = JSON.parse(
+    execFileSync(
+      "nix",
+      [
+        "eval",
+        "--impure",
+        "--json",
+        "--option",
+        "allow-import-from-derivation",
+        "false",
+        "--expr",
+        `let
+      flake = builtins.getFlake ${JSON.stringify(`git+file://${root}`)};
+      pkgs = import flake.inputs.nixpkgs { system = "aarch64-linux"; };
+      workflows = (pkgs.lib.evalModules {
+        specialArgs = { inherit pkgs; };
+        modules = [
+          ${root}/nix/github/workflows
+          { quantile-co.factory.github.workflows = {
+              layers = [ "infrastructure" ];
+              build.layers = [ "application" ];
+          }; }
+        ];
+      }).config.quantile-co.factory.github.workflows;
+    in builtins.mapAttrs (_: phase: builtins.readFile workflows.\${phase}.configFile) {
+      build = "build"; plan = "plan"; apply = "apply";
+    }`,
+      ],
+      { encoding: "utf8" },
+    ),
+  );
+  expect(files.build).toContain("\n  application:\n");
+  expect(files.build).not.toContain("\n  infrastructure:\n");
+  expect(files.plan).toContain("\n  infrastructure:\n");
+  expect(files.plan).not.toContain("\n  application:\n");
+  expect(files.apply).toContain("--gh-plan-ref");
+});
+
 it("runs layer-specific workflow tasks at the repository root and forwards failures", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-workflow-task-"));
   try {
