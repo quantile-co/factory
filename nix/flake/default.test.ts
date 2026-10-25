@@ -271,11 +271,8 @@ it("initializes the native downstream starter and preserves repository-owned wor
     );
     execFileSync("git", ["add", "flake.nix"], options);
     execFileSync("nix", ["flake", "lock", "--offline"], options);
-    const environment = execFileSync(
-      "nix",
-      ["print-dev-env", "--offline"],
-      options,
-    );
+    // Cold consumers may need pinned binary-cache tools not yet in this store.
+    const environment = execFileSync("nix", ["print-dev-env"], options);
     const enter = () =>
       execFileSync("bash", ["-c", environment], {
         ...options,
