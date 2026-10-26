@@ -37,7 +37,10 @@
               pnpm = tools.pnpm.package;
             };
             flake.devShell = {
-              shellHook = tools.files.shellHook;
+              shellHook = lib.concatStringsSep "\n" [
+                tools.files.shellHook
+                tools.turbo.shellHook
+              ];
               packages = [
                 pkgs.git
                 pkgs.git-lfs
@@ -50,10 +53,12 @@
             };
             files.entries = {
               ".envrc" = copy tools.direnv.configFile;
-              ".gitignore" = copy tools.git.ignoreFile;
+              ".gitignore" = seed tools.git.ignoreFile;
               ".husky/pre-push" = copy tools.husky.prePushFile;
               "biome.json" = copy tools.biome.configFile;
               "package.json" = seed tools.pnpm.packageJsonFile;
+              "apps/repo/package.json" = seed tools.pnpm.repoPackageJsonFile;
+              "apps/repo/cli.js" = seed tools.pnpm.repoCliFile;
               "pnpm-workspace.yaml" = seed tools.pnpm.workspaceFile;
               "turbo.json" = seed tools.turbo.configFile;
               "tsconfig.json" = seed tools.typescript.configFile;

@@ -125,6 +125,8 @@
               shellHook = lib.concatStringsSep "\n" [
                 factory.files.shellHook
                 factory.pi.shellHook
+                factory.uv.shellHook
+                factory.turbo.shellHook
               ];
               packages = [
                 pkgs.bash
@@ -368,6 +370,7 @@
         turbo = ./nix/turbo;
         typescript = ./nix/typescript;
         typos = ./nix/typos;
+        uv = ./nix/uv;
         vale = ./nix/vale;
         wabt = ./nix/wabt;
         wasm-tools = ./nix/wasm-tools;

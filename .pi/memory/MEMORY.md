@@ -101,7 +101,10 @@ A failed frozen install stops the block before the task. Build artifacts separat
 validation can rebuild declared prerequisites. Turbo caches only reproducible build outputs;
 checks, tests, fixes and Git/index/native-sensitive work remain uncached.
 Local caching is the default; CI may opt into Namespace remote caching through
-native TURBO_CACHE/TURBO_TOKEN. Protected Plan/Apply remain workflow-only.
+native TURBO_CACHE/TURBO_TOKEN. Opt-in `turbo.shellHook` owns the `local:rw`
+default and preserves caller-selected cache access; do not repeat that environment
+default in package scripts. Order task declarations dev → check → fix → test → build.
+Protected Plan/Apply remain workflow-only.
 `flake.nix` declares native destinations/sources/modes through the files module and
 explicitly selects `files.shellHook`, which runs the cold `factory-files write`
 command from the runtime Git checkout root. Copy overwrites
@@ -112,8 +115,14 @@ Git index and compares copies with their source and index so entry cannot hide
 committed drift. Q0 remains
 Factory-independent. Pi owns the opt-in `pi.shellHook` for runtime checkout-local
 memory exports. Factory explicitly selects it through `flake.devShell.shellHook`;
-module imports alone do not activate it. Compose file reconciliation before Pi
-memory setup. These native shell hooks run for both direnv and `nix develop`;
+module imports alone do not activate it. Hooks stay tool-specific: consumers
+explicitly compose `files.shellHook`, `pi.shellHook`, and optionally `uv.shellHook`
+through their own `flake.devShell.shellHook`; there is no umbrella hook or
+inherited Factory development shell. `uv.shellHook` pins the Python interpreter,
+disables uv interpreter downloads, and adds the C++/zlib wheel runtime on Linux
+while preserving existing library paths. Python dependencies remain explicitly
+installed by the consumer. Compose file reconciliation before Pi memory setup.
+These native shell hooks run for both direnv and `nix develop`;
 replaying the cached `nix print-dev-env` script also reruns them. Direnv retains
 only pre-evaluation local configuration/cache trust and `use flake`. Those settings
 cannot move into a shell hook that runs after Nix evaluation.
@@ -618,8 +627,11 @@ stage it before approving direnv. Package/workspace/Turbo configuration is seede
 not overwritten: repositories own later scripts, dependencies, layout and outputs.
 The new package-manifest seed derives its pnpm pin from the selected Nix package;
 Factory's own pin is aligned to 12.9.0. Flake and pnpm locks are generated per repo.
-The base tasks reference no unavailable Factory workspace package, and an empty
-workspace graph is not evidence of application validation.
+Root seeds only dispatch tasks. A minimal repository-owned `apps/repo/` seed
+performs managed-file check/write; consumers extend its checks and fixes instead
+of embedding implementation in root scripts. Script task order is preserved
+while injecting the pnpm pin. Generic repository bootstrap checks are not
+application validation; add meaningful application/package tasks explicitly.
 Plan/Apply templates offer Infrastructure and Application jobs. Consumers select
 available layers through `github.workflows.layers`; `tf_layer` selects one job per
 dispatch and is passed as `--tf-layer` to the repository-owned task/app. Factory

@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "husky",
-    "build": "TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run build",
-    "check": "factory-files check && TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run check",
-    "fix": "factory-files write && TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run fix",
-    "test": "pnpm run check && TURBO_CACHE=\"${TURBO_CACHE:-local:rw}\" turbo run test"
+    "dev": "turbo run dev",
+    "check": "turbo run check",
+    "fix": "turbo run fix",
+    "test": "pnpm run check && turbo run test",
+    "build": "turbo run build",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
