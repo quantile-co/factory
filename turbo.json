@@ -25,9 +25,9 @@
     "LANGFUSE_TRACING_ENABLED"
   ],
   "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+    "dev": {
+      "cache": false,
+      "persistent": true
     },
     "check": {
       "dependsOn": ["^build"],
@@ -39,6 +39,10 @@
     "test": {
       "dependsOn": ["build"],
       "cache": false
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
     }
   }
 }

@@ -96,6 +96,7 @@ it("wires explicit packages and local/generated files without repository policy"
             config.quantile-co.factory.files.shellHook
             config.quantile-co.factory.pi.shellHook
             config.quantile-co.factory.uv.shellHook
+            config.quantile-co.factory.turbo.shellHook
           ];
           quantile-co.factory.files.entries = {
               "copy.txt" = { source = pkgs.writeText "generated" "generated\\n"; mode = "copy"; };
@@ -201,13 +202,13 @@ it("wires explicit packages and local/generated files without repository policy"
       ],
       { encoding: "utf8", timeout: 120_000 },
     );
-    const enter = () =>
+    const enter = (cache?: string) =>
       execFileSync(
         "bash",
         [
           "-c",
           `${environment}
-printf '%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" "$UV_PYTHON" "$UV_PYTHON_DOWNLOADS" "$LD_LIBRARY_PATH"
+printf '%s\\0%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" "$UV_PYTHON" "$UV_PYTHON_DOWNLOADS" "$LD_LIBRARY_PATH" "$TURBO_CACHE"
 `,
         ],
         {
@@ -222,6 +223,7 @@ printf '%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" "$UV_
             UV_PYTHON: "/wrong/python",
             UV_PYTHON_DOWNLOADS: "automatic",
             LD_LIBRARY_PATH: "/existing/library",
+            TURBO_CACHE: cache,
           },
         },
       ).split("\0");
@@ -231,8 +233,14 @@ printf '%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" "$UV_
       wiring.python,
       "never",
       `${wiring.libraries}/existing/library`,
+      "local:rw",
     ];
     expect(enter()).toEqual(expectedEnvironment);
+    expect(enter("")).toEqual(expectedEnvironment);
+    expect(enter("local:rw,remote:r")).toEqual([
+      ...expectedEnvironment.slice(0, -1),
+      "local:rw,remote:r",
+    ]);
     const run = (action: string) =>
       execFileSync(join(output, "bin/factory-files"), [action], {
         cwd: root,
@@ -309,10 +317,22 @@ it("initializes the native downstream starter and preserves repository-owned wor
     ).trim();
     expect(manifest.packageManager).toBe(`pnpm@${version}`);
     expect(manifest.private).toBe(true);
+    expect(Object.keys(manifest.scripts).slice(0, 5)).toEqual([
+      "dev",
+      "check",
+      "fix",
+      "test",
+      "build",
+    ]);
+    expect(manifest.scripts.check).toBe("turbo run check");
+    expect(manifest.scripts.fix).toBe("turbo run fix");
+    expect(existsSync(join(root, "apps/repo/cli.js"))).toBe(true);
     expect(readFileSync(join(root, ".envrc"), "utf8")).toContain("use flake");
     const selected = {
       "package.json": `${JSON.stringify({ ...manifest, name: "reviewed-project" }, null, 2)}\n`,
       "pnpm-workspace.yaml": `${readFileSync(join(root, "pnpm-workspace.yaml"), "utf8")}# Repository-owned workspace.\n`,
+      ".gitignore": `${readFileSync(join(root, ".gitignore"), "utf8")}# Repository-owned ignores.\n`,
+      "apps/repo/cli.js": `${readFileSync(join(root, "apps/repo/cli.js"), "utf8")}// Repository-owned checks.\n`,
       "turbo.json": `${JSON.stringify({ ...JSON.parse(readFileSync(join(root, "turbo.json"), "utf8")), ui: "stream" }, null, 2)}\n`,
     };
     execFileSync("git", ["add", "."], options);
@@ -325,6 +345,11 @@ it("initializes the native downstream starter and preserves repository-owned wor
       options,
     ).trim();
     execFileSync(join(files, "bin/factory-files"), ["check"], options);
+    execFileSync(
+      "bash",
+      ["-c", `${environment}\nnode apps/repo/cli.js check`],
+      options,
+    );
     for (const [name, contents] of Object.entries(selected))
       expect(readFileSync(join(root, name), "utf8")).toBe(contents);
   } finally {

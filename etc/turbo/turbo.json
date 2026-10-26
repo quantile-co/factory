@@ -16,9 +16,9 @@
     "npm_config_offline"
   ],
   "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+    "dev": {
+      "cache": false,
+      "persistent": true
     },
     "check": {
       "dependsOn": ["^build"],
@@ -30,6 +30,10 @@
     "test": {
       "dependsOn": ["build"],
       "cache": false
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
     }
   }
 }

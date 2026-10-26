@@ -18,15 +18,24 @@ in
       type = lib.types.path;
       default = config.quantile-co.factory.biome.formatFile "package.json" (
         pkgs.writeText "package.json" (
-          builtins.toJSON (
-            (builtins.fromJSON (builtins.readFile ../../etc/pnpm/package.json))
-            // {
-              packageManager = "pnpm@${cfg.package.version}";
-            }
-          )
+          # Preserve the native task order while pinning the selected runtime.
+          builtins.replaceStrings
+            [ "\"scripts\": {" ]
+            [ "\"packageManager\": \"pnpm@${cfg.package.version}\",\n  \"scripts\": {" ]
+            (builtins.readFile ../../etc/pnpm/package.json)
         )
       );
       description = "Native package.json seed; existing project scripts, dependencies and pins stay repository-owned.";
+    };
+    repoPackageJsonFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/pnpm/apps/repo/package.json;
+      description = "Repository-owned app manifest seed for managed-file checks and fixes.";
+    };
+    repoCliFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/pnpm/apps/repo/cli.js;
+      description = "Minimal repository CLI seed; consumers extend their own checks and fixes.";
     };
     workspaceFile = lib.mkOption {
       type = lib.types.path;

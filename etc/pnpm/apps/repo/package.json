@@ -1,0 +1,9 @@
+{
+  "name": "project-repo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node cli.js check",
+    "fix": "node cli.js fix"
+  }
+}

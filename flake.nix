@@ -126,6 +126,7 @@
                 factory.files.shellHook
                 factory.pi.shellHook
                 factory.uv.shellHook
+                factory.turbo.shellHook
               ];
               packages = [
                 pkgs.bash
