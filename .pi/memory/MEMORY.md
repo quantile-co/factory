@@ -112,8 +112,14 @@ Git index and compares copies with their source and index so entry cannot hide
 committed drift. Q0 remains
 Factory-independent. Pi owns the opt-in `pi.shellHook` for runtime checkout-local
 memory exports. Factory explicitly selects it through `flake.devShell.shellHook`;
-module imports alone do not activate it. Compose file reconciliation before Pi
-memory setup. These native shell hooks run for both direnv and `nix develop`;
+module imports alone do not activate it. Hooks stay tool-specific: consumers
+explicitly compose `files.shellHook`, `pi.shellHook`, and optionally `uv.shellHook`
+through their own `flake.devShell.shellHook`; there is no umbrella hook or
+inherited Factory development shell. `uv.shellHook` pins the Python interpreter,
+disables uv interpreter downloads, and adds the C++/zlib wheel runtime on Linux
+while preserving existing library paths. Python dependencies remain explicitly
+installed by the consumer. Compose file reconciliation before Pi memory setup.
+These native shell hooks run for both direnv and `nix develop`;
 replaying the cached `nix print-dev-env` script also reruns them. Direnv retains
 only pre-evaluation local configuration/cache trust and `use flake`. Those settings
 cannot move into a shell hook that runs after Nix evaluation.

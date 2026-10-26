@@ -55,6 +55,7 @@
     ./turbo
     ./typescript
     ./typos
+    ./uv
     ./vale
     ./wabt
     ./wasm-tools
