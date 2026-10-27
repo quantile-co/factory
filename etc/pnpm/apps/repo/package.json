@@ -1,5 +1,5 @@
 {
-  "name": "project-repo",
+  "name": "@org/repo-repo-cli",
   "private": true,
   "type": "module",
   "scripts": {
