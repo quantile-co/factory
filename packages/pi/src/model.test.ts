@@ -507,8 +507,9 @@ it("traces only the bounded classifier, with actual model/usage and no fabricate
         input: 10,
         output: 1,
       }),
-      [`${Attr.OBSERVATION_METADATA}.tool_call_id`]: "codemode/1",
-      [`${Attr.OBSERVATION_METADATA}.cost_source`]: "unknown",
+      [`${Attr.OBSERVATION_METADATA}.tool_call_id`]:
+        JSON.stringify("codemode/1"),
+      [`${Attr.OBSERVATION_METADATA}.cost_source`]: JSON.stringify("unknown"),
     });
     expect(span.attributes[Attr.OBSERVATION_COST_DETAILS]).toBeUndefined();
     expect(span.attributes[Attr.OBSERVATION_INPUT]).toBeUndefined();
@@ -521,7 +522,7 @@ it("traces only the bounded classifier, with actual model/usage and no fabricate
     await provider.forceFlush();
     const failed = exporter.getFinishedSpans()[1];
     expect(failed.attributes[`${Attr.OBSERVATION_METADATA}.stop_reason`]).toBe(
-      "error",
+      JSON.stringify("error"),
     );
     expect(JSON.stringify(failed.attributes)).not.toContain("private provider");
 
