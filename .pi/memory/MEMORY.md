@@ -44,6 +44,12 @@ directories, test sprawl and repeated broad checks; remove one-off tooling after
 
 ## Architecture and consumer conventions
 
+#decision [[package-names]]
+JS/TS roots use `@org/repo`; apps and libraries use `@org/repo-package`.
+CLI apps add `-cli`. Normalize `.github` to `github`, retaining interior dots.
+Python distributions use `org-repo-package` with separator normalization;
+imports use underscores. Keep published names aligned with this convention.
+
 #decision [[factory-config-layout]] [[factory-native-config]]
 Factory is a shared Nix flake, not a shared shell-task framework. Use tool-owned
 `nix/<tool>/default.nix` modules with meaningful colocated tests and native assets
