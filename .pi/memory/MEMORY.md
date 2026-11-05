@@ -470,20 +470,22 @@ Namespace volume caches are best-effort; a cache-action message does not prove a
 Turbo persists .turbo/cache alongside /nix, with existing repository/profile volume
 isolation and main-only snapshot publication. One remote Turbo team main is shared
 within each caller workspace. Use one expiring, cache-only read/write TURBO_TOKEN
-organization secret restricted to selected repositories, without repository or
-environment shadowing copies. As with Cachix, authorized repository workflow
-writers are trusted across the shared remote cache. Main-only publication is
+organization secret with GitHub visibility `all` for every current and future
+repository in the matching organization. Never share tokens across workspaces
+or shadow them with repository/environment copies. As with Cachix, authorized
+workflow writers are trusted across the shared remote cache. Main-only publication is
 workflow policy, not a secret-release boundary. Check keeps client remote:r;
 trusted main Test/Build may use remote:rw. External/fork PRs receive no remote
 token. Developers use user-bound server-scoped readers; client read-only flags
 alone are not authorization. Existing prod/provider protections and platform
 main-only volume publication remain unchanged. Credential changes require separate
-approval and live verification; this policy does not establish live migration.
+approval and live verification. The current organization CI writer expires on
+2027-02-03; replacing GitHub bindings does not revoke old Namespace tokens.
 Restricted-runner authentication and real remote hits were verified with a scoped
 reader; read-only uploads were denied. The temporary qualification writer was
 revoked. The original 2026-10-25 setup installed CI readers and cache-only prod
-writers; rotate those 90-day credentials before 2027-01-23. On 2026-10-25,
-population run 40190329593 and verification run 40191374855 qualified
+writers with a 2027-01-23 expiry; those prod overrides are no longer used by CI.
+On 2026-10-25, population run 40190329593 and verification run 40191374855 qualified
 all four layers on quantile-4x8: Turbo local-only and remote-only hits,
 changed-input misses, Nix store reuse with builds/substitutions disabled, and
 signed Cachix imports into an empty isolated store. Early volume misses gave way

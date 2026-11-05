@@ -67,9 +67,10 @@ Turbo uses local caching by default. CI persists `.turbo/cache` on the existing
 Namespace volume and uses remote team `main` in the caller's workspace.
 Keep Restricted runners and main-only volume publication.
 
-Use one expiring, cache-only read/write `TURBO_TOKEN` organization secret,
-restricted to explicitly selected repositories in the same Namespace workspace.
-Do not shadow it with repository or environment copies. As with Cachix,
+Use one expiring, cache-only read/write `TURBO_TOKEN` organization secret
+per Namespace workspace, with GitHub visibility `all` for every current and
+future repository in its matching organization. Never share a token across
+workspaces or shadow it with repository or environment copies. As with Cachix,
 authorized repository workflow writers are trusted across the shared remote cache:
 an organization secret is not branch-restricted, and modified workflows can obtain
 it before main review. Main-only publication is workflow policy, not a
@@ -80,10 +81,10 @@ Internal Check keeps client `remote:r`; trusted main Test/Build may use
 Test, Build, Plan and Apply retain existing `prod` environments and branch
 restrictions wherever they exist; provider/WIF protections are unchanged.
 Keep expiring token payloads CLI-managed, outside Terraform, Git and Nix.
-Credential changes need separate approval and live verification; this policy
-does not prove that live bindings have migrated. Missing tokens fall back to
-local caching. Fork PRs and PR authors outside OWNER/MEMBER/COLLABORATOR receive
-no remote token.
+Credential changes need separate approval and live verification.
+Replacing GitHub bindings does not revoke old Namespace tokens; retire those
+separately after checking remaining uses. Missing tokens fall back to local caching.
+Fork PRs and PR authors outside OWNER/MEMBER/COLLABORATOR receive no remote token.
 
 Local developers use a reader-scoped credential, not a general login token:
 
