@@ -67,16 +67,23 @@ Turbo uses local caching by default. CI persists `.turbo/cache` on the existing
 Namespace volume and uses remote team `main` in the caller's workspace.
 Keep Restricted runners and main-only volume publication.
 
-Use the native `TURBO_TOKEN` secret name at both scopes: an organization/repository
-read-only cache token for internal Check, and a cache-only read/write token
-overriding it in `prod` for trusted main Test and Build. Test, Build, Plan and Apply
-use the existing `prod` environment wherever those workflows exist; there is no
-separate cache environment. Preserve its branch restrictions. Never store a writer
-token at organization/repository scope.
-Environment policies control credential delivery; Namespace token grants enforce
-read/write access. Keep expiring token payloads CLI-managed, outside Terraform,
-Git and Nix. Missing tokens fall back to local caching. Fork PRs and PR authors
-outside OWNER/MEMBER/COLLABORATOR receive no remote token.
+Use one expiring, cache-only read/write `TURBO_TOKEN` organization secret,
+restricted to explicitly selected repositories in the same Namespace workspace.
+Do not shadow it with repository or environment copies. As with Cachix,
+authorized repository workflow writers are trusted across the shared remote cache:
+an organization secret is not branch-restricted, and modified workflows can obtain
+it before main review. Main-only publication is workflow policy, not a
+protected-environment secret-release boundary.
+
+Internal Check keeps client `remote:r`; trusted main Test/Build may use
+`remote:rw`. Client flags express workflow policy, not server authorization.
+Test, Build, Plan and Apply retain existing `prod` environments and branch
+restrictions wherever they exist; provider/WIF protections are unchanged.
+Keep expiring token payloads CLI-managed, outside Terraform, Git and Nix.
+Credential changes need separate approval and live verification; this policy
+does not prove that live bindings have migrated. Missing tokens fall back to
+local caching. Fork PRs and PR authors outside OWNER/MEMBER/COLLABORATOR receive
+no remote token.
 
 Local developers use a reader-scoped credential, not a general login token:
 

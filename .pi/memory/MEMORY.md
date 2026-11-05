@@ -459,8 +459,9 @@ never put resolved values in Nix outputs. Keep backend coordinates and exact
 saved-plan identity checks. Forward named secrets explicitly, not `secrets: inherit`.
 
 #decision [[factory-cachix-policy]]
-Check receives no production or cache-writer credentials and never publishes remote caches.
-Credentialed main workflows
+Check receives no production provider credentials and never publishes remote caches.
+Its Turbo reads use the organization cache credential with a client read-only
+flag, not a server-enforced reader grant. Credentialed main workflows
 select the cache named after the caller's GitHub owner, configure authenticated
 reads, and publish through the pinned Cachix action. Private derivations must
 never be uploaded to a public cache. Cache credentials never enter source, state
@@ -468,16 +469,20 @@ or Nix outputs. Preserve signatures and repository/profile cache isolation.
 Namespace volume caches are best-effort; a cache-action message does not prove a hit.
 Turbo persists .turbo/cache alongside /nix, with existing repository/profile volume
 isolation and main-only snapshot publication. One remote Turbo team main is shared
-within each caller workspace. The native TURBO_TOKEN name selects a read-only
-organization/repository secret or a writer override in the existing prod
-environment. Test, Build, Plan and Apply use prod wherever they exist, with no
-separate cache environment. Trusted main Test/Build may write; internal Check
-receives a reader and external/fork PRs no remote token. Developers use
-server-scoped readers; client read-only flags alone are not authorization.
+within each caller workspace. Use one expiring, cache-only read/write TURBO_TOKEN
+organization secret restricted to selected repositories, without repository or
+environment shadowing copies. As with Cachix, authorized repository workflow
+writers are trusted across the shared remote cache. Main-only publication is
+workflow policy, not a secret-release boundary. Check keeps client remote:r;
+trusted main Test/Build may use remote:rw. External/fork PRs receive no remote
+token. Developers use user-bound server-scoped readers; client read-only flags
+alone are not authorization. Existing prod/provider protections and platform
+main-only volume publication remain unchanged. Credential changes require separate
+approval and live verification; this policy does not establish live migration.
 Restricted-runner authentication and real remote hits were verified with a scoped
 reader; read-only uploads were denied. The temporary qualification writer was
-revoked. CI readers and expiring, cache-only prod writers are installed;
-rotate the current 90-day credentials before 2027-01-23. On 2026-10-25,
+revoked. The original 2026-10-25 setup installed CI readers and cache-only prod
+writers; rotate those 90-day credentials before 2027-01-23. On 2026-10-25,
 population run 40190329593 and verification run 40191374855 qualified
 all four layers on quantile-4x8: Turbo local-only and remote-only hits,
 changed-input misses, Nix store reuse with builds/substitutions disabled, and
