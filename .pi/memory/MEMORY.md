@@ -64,6 +64,11 @@ directly from the checkout's `etc/`. Source linting and template tests still
 inspect those sources. All exported Nix options live under `config.quantile-co.factory`;
 `nixModules.default` combines named modules without installing tools or hooks.
 Consumers select packages, native configuration and task orchestration explicitly.
+Python projects may pin Ruff and Pylint together in uv development dependencies,
+with Nix supplying Python and uv. `ruff.configFile` and `pylint.configFile` expose
+native defaults; existing optional Ruff Nix executables remain available. Pylint
+is config-only and leaves import ordering to Ruff. No Python manifest starter or
+generic TOML configuration merger is provided.
 Keep reusable source formatting in the owning tool module: `biome.formatFile`
 accepts a destination filename and store-backed source for native root copies.
 Consumers inline trivial JSON reading rather than adding local helper libraries.

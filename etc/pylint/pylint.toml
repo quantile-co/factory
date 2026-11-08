@@ -1,0 +1,19 @@
+[tool.pylint.main]
+persistent = false
+
+[tool.pylint.messages_control]
+# Keep docstrings and class design purposeful; Ruff owns import ordering.
+disable = [
+  "missing-module-docstring",
+  "missing-class-docstring",
+  "missing-function-docstring",
+  "too-few-public-methods",
+  "wrong-import-order",
+  "ungrouped-imports",
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.reports]
+score = false

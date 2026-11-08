@@ -356,6 +356,7 @@
         prek = ./nix/prek;
         prettier = ./nix/prettier;
         protoc = ./nix/protoc;
+        pylint = ./nix/pylint;
         qmd = ./nix/qmd;
         readme = ./nix/readme;
         resend-cli = ./nix/resend-cli;
