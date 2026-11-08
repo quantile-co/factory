@@ -1,6 +1,14 @@
 {
   "version": 1,
   "skills": {
+    "a-philosophy-of-software-design": {
+      "source": "ciembor/agent-rules-books",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "sourceType": "github",
+      "skillPath": "a-philosophy-of-software-design/SKILL.md",
+      "computedHash": "0abb6e5dd4568beba79150908492df9396d493fe224a59857cca123cff0d3893",
+      "via": "@quantile-co/factory-pi"
+    },
     "accessibility": {
       "source": "addyosmani/web-quality-skills",
       "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
@@ -25,12 +33,28 @@
       "computedHash": "ca00ef2671d65a7442bc796e8744cd3d759f92c01640f2fbcab638889c494424",
       "via": "@quantile-co/factory-pi"
     },
+    "clean-architecture": {
+      "source": "ciembor/agent-rules-books",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "sourceType": "github",
+      "skillPath": "clean-architecture/SKILL.md",
+      "computedHash": "84fd3d3edd262c968d49c8b57c51370974feb0e28832a8dcc8049f1347e50da8",
+      "via": "@quantile-co/factory-pi"
+    },
     "clickhouse-best-practices": {
       "source": "ClickHouse/agent-skills",
       "ref": "69a8354b05b5942e5cea77b6c87be7788303fc18",
       "sourceType": "github",
       "skillPath": "skills/clickhouse-best-practices/SKILL.md",
       "computedHash": "4523a31bd5911ec70b68533d7d15bc445bca2e77b1bd6f649d5a36d52bdcc099",
+      "via": "@quantile-co/factory-pi"
+    },
+    "code-complete": {
+      "source": "ciembor/agent-rules-books",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "sourceType": "github",
+      "skillPath": "code-complete/SKILL.md",
+      "computedHash": "30b88bae88b379a86b8d5443bf274d00c8006204f9627c98849df6eb01929a04",
       "via": "@quantile-co/factory-pi"
     },
     "code-review": {
@@ -117,6 +141,14 @@
       "sourceType": "github",
       "skillPath": "skills/docker-compose-patterns/SKILL.md",
       "computedHash": "391f366bb0e60f5c7c48ecc814b917e7dae797edbb58625d228cb951d7a538ee",
+      "via": "@quantile-co/factory-pi"
+    },
+    "domain-driven-design-distilled": {
+      "source": "ciembor/agent-rules-books",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "sourceType": "github",
+      "skillPath": "domain-driven-design-distilled/SKILL.md",
+      "computedHash": "8a9aa1a8c5ddcdcdfb4bc6c6ca6f976796bd7807b57e384956988c676f0b6b98",
       "via": "@quantile-co/factory-pi"
     },
     "duckdb-docs": {
@@ -247,6 +279,14 @@
       "computedHash": "16607eb0d4dc7e2ff8d92e2bdba6bedb67aedb1189f66249a46ed672ca1782c4",
       "via": "@quantile-co/factory-pi"
     },
+    "refactoring": {
+      "source": "ciembor/agent-rules-books",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "sourceType": "github",
+      "skillPath": "refactoring/SKILL.md",
+      "computedHash": "670b52574be2041152611ece9fd717fe5c95873926f92ca9375ccd317ee4e7c2",
+      "via": "@quantile-co/factory-pi"
+    },
     "resend-cli": {
       "source": "resend/resend-cli",
       "ref": "cb6244c79757832628c3de3ee60a328cea538039",
@@ -349,6 +389,14 @@
       "sourceType": "github",
       "skillPath": "plugins/terraform/skills/terraform-style-guide/SKILL.md",
       "computedHash": "3b914c5ae01a7101d45b5222fbc38e0be6eb7412deba5f54d471905f22af70c6",
+      "via": "@quantile-co/factory-pi"
+    },
+    "the-pragmatic-programmer": {
+      "source": "ciembor/agent-rules-books",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "sourceType": "github",
+      "skillPath": "the-pragmatic-programmer/SKILL.md",
+      "computedHash": "4a38e71d6d29134d086ae35e9e41fb0dcf7f86b265ed6c9809f519264c79021e",
       "via": "@quantile-co/factory-pi"
     },
     "to-tickets": {

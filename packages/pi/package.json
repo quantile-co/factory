@@ -41,6 +41,48 @@
   },
   "skills": [
     {
+      "source": "ciembor/agent-rules-books/a-philosophy-of-software-design",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "skills": [
+        "a-philosophy-of-software-design"
+      ]
+    },
+    {
+      "source": "ciembor/agent-rules-books/the-pragmatic-programmer",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "skills": [
+        "the-pragmatic-programmer"
+      ]
+    },
+    {
+      "source": "ciembor/agent-rules-books/code-complete",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "skills": [
+        "code-complete"
+      ]
+    },
+    {
+      "source": "ciembor/agent-rules-books/refactoring",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "skills": [
+        "refactoring"
+      ]
+    },
+    {
+      "source": "ciembor/agent-rules-books/clean-architecture",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "skills": [
+        "clean-architecture"
+      ]
+    },
+    {
+      "source": "ciembor/agent-rules-books/domain-driven-design-distilled",
+      "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
+      "skills": [
+        "domain-driven-design-distilled"
+      ]
+    },
+    {
       "source": "marimo-team/marimo-pair/skills/marimo-pair",
       "ref": "5368e127e736881fedd6bd7db315f6f974290230",
       "skills": [
