@@ -470,7 +470,9 @@ stay runtime-owned. Consumers explicitly select `nixcache.shellHook` with an
 expected workspace and public key to manage local reader proxy startup; imports
 alone do not start it. The hook skips CI, never prompts for login, preserves
 existing caches/keys and refuses unmanaged listeners or mismatched workspaces.
-Multi-user trust remains administrator-owned; cold evaluation precedes the hook.
+Multi-user trust remains administrator-owned; an untrusted client may select
+an administrator-allowlisted URL only when its public key is already trusted.
+It never installs client-side signing trust. Cold evaluation precedes the hook.
 Public Factory keeps Cachix. Consumers may select
 `github.workflows.nixCache = "namespace"` for trusted-main workflows, export
 `nixcache` and configure their own public trust. Check never starts a writer

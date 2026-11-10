@@ -110,6 +110,11 @@ A lock left by a forcibly killed setup can be removed only after verifying no
 setup is active. Credentials stay in the existing Namespace keychain, never in
 this cache. Multi-user installations require administrator trust and a proxy
 reachable by the daemon; the hook does not rewrite daemon configuration.
+For untrusted clients, an administrator permits the loopback URL with
+`extra-trusted-substituters` and adds the public key with
+`extra-trusted-public-keys`, retaining `require-sigs = true`, then restarts the
+daemon. The hook recognizes this allowlist and sets only the substituter, never
+client-side signing trust. Do not grant broad `trusted-users` access just for caching.
 `local-only` disables automatic upstream publication, not explicit uploads or
 the credential's server permissions.
 See [Namespace's Nix integration](https://namespace.so/docs/integrations/nix).

@@ -60,6 +60,7 @@ in
               _nixcache_substituters=$(${lib.getExe pkgs.nix} config show substituters)
               _nixcache_keys=$(${lib.getExe pkgs.nix} config show trusted-public-keys)
               _nixcache_changed=false
+              _nixcache_key_missing=false
               case " $_nixcache_substituters " in
                 *" $_nixcache_url "*) ;;
                 *)
@@ -73,6 +74,7 @@ in
                   *)
                     _nixcache_keys=${lib.escapeShellArg cfg.publicKey}" $_nixcache_keys"
                     _nixcache_changed=true
+                    _nixcache_key_missing=true
                     ;;
                 esac
               ''}
@@ -81,12 +83,18 @@ in
                   printf -v NIX_CONFIG '%s\nsubstituters = %s\ntrusted-public-keys = %s' "''${NIX_CONFIG:-}" "$_nixcache_substituters" "$_nixcache_keys"
                   export NIX_CONFIG
                 else
-                  echo 'Namespace Nix cache: the proxy is ready; ask your Nix administrator to configure its substituter and signing key.' >&2
+                  _nixcache_allowed=$(${lib.getExe pkgs.nix} config show trusted-substituters)
+                  if [ "$_nixcache_key_missing" = false ] && [[ " $_nixcache_allowed " == *" $_nixcache_url "* ]]; then
+                    printf -v NIX_CONFIG '%s\nsubstituters = %s' "''${NIX_CONFIG:-}" "$_nixcache_substituters"
+                    export NIX_CONFIG
+                  else
+                    echo 'Namespace Nix cache: the proxy is ready; ask your Nix administrator to configure its substituter and signing key.' >&2
+                  fi
                 fi
               fi
             fi
           fi
-          unset _nixcache_url _nixcache_substituters _nixcache_keys _nixcache_changed
+          unset _nixcache_url _nixcache_substituters _nixcache_keys _nixcache_changed _nixcache_key_missing _nixcache_allowed
         fi
       '';
       description = "Opt-in authenticated local reader proxy; skip CI, preserve caches and never prompt for login.";
