@@ -463,6 +463,20 @@ shell as local development, then pass credentials to process environment only;
 never put resolved values in Nix outputs. Keep backend coordinates and exact
 saved-plan identity checks. Forward named secrets explicitly, not `secrets: inherit`.
 
+#decision [[factory-namespace-nix-cache]]
+The opt-in `nixcache` module packages fixed-hash official Namespace binaries;
+`namespace-cli` is selected directly from Nixpkgs. Authentication, daemon setup
+and proxy lifecycle stay runtime-owned, never implicit shell-entry operations.
+Public Factory keeps Cachix. Consumers may select
+`github.workflows.nixCache = "namespace"` for trusted-main workflows, export
+`nixcache` and configure their own public trust. Check never starts a writer
+proxy. Namespace instance authentication is separate from native Nix signing:
+only publication receives the private signing secret, validates its public half
+and removes the temporary key file. Publish restored paths too; volume reuse
+does not establish remote publication. Namespace blobstorage permissions are
+separate from main-only volume commits. No cache integration authorizes prod
+dispatch, credential provisioning or a broader runner access level.
+
 #decision [[factory-cachix-policy]]
 Check receives no production provider credentials and never publishes remote caches.
 Its Turbo reads use the organization cache credential with a client read-only

@@ -77,6 +77,8 @@
               git = pkgs.git;
               jq = pkgs.jq;
               nix = pkgs.nix;
+              namespace-cli = pkgs.namespace-cli;
+              nixcache = factory.nixcache.package;
               shfmt = pkgs.shfmt;
               age = pkgs.age;
               gh = pkgs.gh;
@@ -139,6 +141,8 @@
                 pkgs.git-lfs
                 pkgs.jq
                 pkgs.nix
+                pkgs.namespace-cli
+                factory.nixcache.package
                 pkgs.nodejs_24
                 pkgs.pnpm
                 pkgs.conftest
@@ -347,6 +351,7 @@
         license = ./nix/license;
         markdownlint-cli2 = ./nix/markdownlint-cli2;
         mypy = ./nix/mypy;
+        nixcache = ./nix/nixcache;
         nixfmt = ./nix/nixfmt;
         opa = ./nix/opa;
         opentofu = ./nix/opentofu;

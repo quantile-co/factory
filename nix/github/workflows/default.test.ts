@@ -61,6 +61,137 @@ it("renders selected workflows as readable data without building for the target 
   expect(files.apply).toContain("--gh-plan-ref");
 });
 
+it("selects Namespace only for trusted jobs and keeps signing credentials on publication", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "factory-namespace-workflow-"));
+  try {
+    const files = JSON.parse(
+      execFileSync(
+        "nix",
+        [
+          "eval",
+          "--impure",
+          "--json",
+          "--option",
+          "allow-import-from-derivation",
+          "false",
+          "--expr",
+          `let
+        flake = builtins.getFlake ${JSON.stringify(`git+file://${root}`)};
+        pkgs = import flake.inputs.nixpkgs { system = "aarch64-linux"; };
+        workflows = (pkgs.lib.evalModules {
+          specialArgs = { inherit pkgs; };
+          modules = [
+            ${root}/nix/github/workflows
+            { quantile-co.factory.github.workflows.nixCache = "namespace"; }
+          ];
+        }).config.quantile-co.factory.github.workflows;
+      in builtins.mapAttrs (name: _: builtins.readFile workflows.\${name}.configFile) {
+        check = null; test = null; build = null; plan = null; apply = null;
+      }`,
+        ],
+        { encoding: "utf8" },
+      ),
+    );
+    for (const [name, source] of Object.entries(files)) {
+      const path = join(temporary, `${name}.yaml`);
+      writeFileSync(path, source as string);
+      const data = workflow(path);
+      for (const job of Object.values(data.jobs) as Array<{
+        if: string;
+        steps: Array<{
+          name: string;
+          if?: string;
+          env?: Record<string, string>;
+          run?: string;
+        }>;
+      }>) {
+        const setup = job.steps.find(
+          (step) => step.name === "Set up Namespace Nix cache",
+        );
+        const publish = job.steps.find(
+          (step) => step.name === "Publish Namespace Nix cache",
+        );
+        if (name === "check") {
+          expect(setup).toBeUndefined();
+          expect(publish).toBeUndefined();
+          continue;
+        }
+        expect(job.if).toContain("github.ref == 'refs/heads/main'");
+        expect(source).not.toContain("cachix/cachix-action@");
+        expect(setup?.env).toEqual({
+          NIX_CACHE_PUBLIC_KEY: `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
+        });
+        expect(setup?.run).toContain("'.#nixcache'");
+        expect(publish?.if).toContain("github.ref == 'refs/heads/main'");
+        expect(publish?.env?.NIX_CACHE_PRIVATE_KEY).toBe(
+          `\${{ secrets.NIX_CACHE_PRIVATE_KEY }}`,
+        );
+        expect(publish?.run).toContain("trap 'rm -f \"$key_file\"' EXIT");
+        expect(publish?.run).toContain(
+          "nix path-info --all | nix copy --stdin",
+        );
+        expect(job.steps.at(-1)?.if).toBe("always()");
+        expect(
+          job.steps.filter((step) => step.env?.NIX_CACHE_PRIVATE_KEY),
+        ).toHaveLength(1);
+      }
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+it("removes the signing key even when Namespace publication fails", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "factory-nixcache-publish-"));
+  try {
+    const bin = join(temporary, "bin");
+    mkdirSync(bin);
+    const nix = join(bin, "nix");
+    writeFileSync(
+      nix,
+      `#!${process.execPath}
+const fs = require("node:fs");
+const args = process.argv.slice(2);
+if (args[0] === "key") {
+  process.stdout.write("fixture-public\\n");
+} else if (args[0] === "path-info") {
+  process.stdout.write("/nix/store/fixture\\n");
+} else if (args[0] === "copy") {
+  const key = new URL(args[3]).searchParams.get("secret-key");
+  if (fs.readFileSync(key, "utf8") !== "fixture-private\\n") process.exit(81);
+  if ((fs.statSync(key).mode & 0o777) !== 0o600) process.exit(82);
+  if (process.env.NIX_CACHE_PRIVATE_KEY) process.exit(83);
+  process.exit(17);
+} else process.exit(84);
+`,
+    );
+    chmodSync(nix, 0o755);
+    const result = spawnSync(
+      "bash",
+      [join(root, "etc/github/workflows/nixcache-publish.sh")],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${bin}:${process.env.PATH}`,
+          RUNNER_TEMP: temporary,
+          NIX_CACHE_PRIVATE_KEY: "fixture-private",
+          NIX_CACHE_PUBLIC_KEY: "fixture-public",
+        },
+      },
+    );
+    expect(result.status, result.stderr + result.stdout).toBe(17);
+    expect(result.stdout + result.stderr).not.toContain("fixture-private");
+    expect(
+      execFileSync("find", [temporary, "-name", "nixcache-key.*"], {
+        encoding: "utf8",
+      }),
+    ).toBe("");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 it("runs layer-specific workflow tasks at the repository root and forwards failures", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-workflow-task-"));
   try {
