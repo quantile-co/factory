@@ -92,7 +92,7 @@ it("renders selected workflows as readable data without building for the target 
   expect(files.apply).toContain("--gh-plan-ref");
 });
 
-it("selects Namespace only for trusted jobs and keeps signing credentials on publication", () => {
+it("keeps Namespace lifecycle inside trusted GitHub task commands and leaves Check unchanged", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-namespace-workflow-"));
   try {
     const files = namespaceWorkflows();
@@ -110,35 +110,33 @@ it("selects Namespace only for trusted jobs and keeps signing credentials on pub
           run?: string;
         }>;
       }>) {
-        const setup = job.steps.find(
-          (step) => step.name === "Set up Namespace Nix cache",
-        );
-        const publish = job.steps.find(
-          (step) => step.name === "Publish Namespace Nix cache",
+        const tasks = job.steps.filter(
+          (step) => step.env?.NIX_CACHE_PROVIDER === "namespace",
         );
         if (name === "check") {
-          expect(setup).toBeUndefined();
-          expect(publish).toBeUndefined();
+          expect(tasks).toHaveLength(0);
+          expect(source).not.toContain("NIX_CACHE_PRIVATE_KEY");
           continue;
         }
         expect(job.if).toContain("github.ref == 'refs/heads/main'");
         expect(source).not.toContain("cachix/cachix-action@");
-        expect(setup?.env).toEqual({
-          NIX_CACHE_PUBLIC_KEY: `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
-        });
-        expect(setup?.run).toContain("'.#nixcache'");
-        expect(publish?.if).toContain("github.ref == 'refs/heads/main'");
-        expect(publish?.env?.NIX_CACHE_PRIVATE_KEY).toBe(
+        expect(tasks).toHaveLength(1);
+        expect(tasks[0].env?.NIX_CACHE_PUBLIC_KEY).toBe(
+          `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
+        );
+        expect(tasks[0].env?.NIX_CACHE_PRIVATE_KEY).toBe(
           `\${{ secrets.NIX_CACHE_PRIVATE_KEY }}`,
         );
-        expect(publish?.run).toContain("env -u NIX_CACHE_PRIVATE_KEY");
-        expect(publish?.run).toContain(
-          '"$direnv" exec . pnpm run github:cache-publish',
+        expect(tasks[0].run).toContain(
+          'env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile',
         );
-        expect(job.steps.at(-1)?.if).toBe("always()");
+        expect(tasks[0].run).toContain(`pnpm run github:${name}`);
         expect(
           job.steps.filter((step) => step.env?.NIX_CACHE_PRIVATE_KEY),
         ).toHaveLength(1);
+        expect(
+          job.steps.some((step) => step.name === "Publish Namespace Nix cache"),
+        ).toBe(false);
       }
     }
   } finally {

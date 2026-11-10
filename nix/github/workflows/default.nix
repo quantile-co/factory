@@ -18,70 +18,44 @@ let
         authToken: ''${{ secrets.CACHIX_AUTH_TOKEN }}
         useDaemon: false
   '';
-  namespaceSetup = indent 6 ''
-    - name: Set up Namespace Nix cache
-      env:
-        NIX_CACHE_PUBLIC_KEY: ''${{ vars.NIX_CACHE_PUBLIC_KEY }}
-      run: |
-        set -euo pipefail
-
-        : "''${RUNNER_TEMP:?}"
-        : "''${GITHUB_ENV:?}"
-
-        : "''${NIX_CACHE_PUBLIC_KEY:?Configure the cache public signing key}"
-        umask 077
-        proxy="$(nix build --no-link --print-out-paths '.#nixcache')/bin/nixcache"
-        "$proxy" -foreground -cache_dir "$RUNNER_TEMP/nixcache" \
-            >"$RUNNER_TEMP/nixcache.log" 2>&1 &
-        pid=$!
-        printf '%s\n' "$pid" >"$RUNNER_TEMP/nixcache.pid"
-        ready=false
-        for _ in {1..30}; do
-            if curl --silent --fail http://127.0.0.1:18765/nix-cache-info >/dev/null; then
-                ready=true
-                break
-            fi
-            kill -0 "$pid"
-            sleep 1
-        done
-        if [ "$ready" != true ]; then
-            echo "Namespace Nix cache did not become ready; inspect $RUNNER_TEMP/nixcache.log" >&2
-            exit 1
-        fi
-        mkdir -p "$HOME/.config/nix"
-        printf '\nextra-substituters = http://127.0.0.1:18765\nextra-trusted-public-keys = %s\n' \
-            "$NIX_CACHE_PUBLIC_KEY" >>"$HOME/.config/nix/nix.conf"
-        printf 'NIX_CACHE_SUBSTITUTER=http://127.0.0.1:18765\n' >>"$GITHUB_ENV"
-  '';
-  namespaceFinish =
-    "\n"
-    + indent 6 ''
-      - name: Publish Namespace Nix cache
-        if: success() && github.ref == 'refs/heads/main'
-        env:
-          NIX_CACHE_PRIVATE_KEY: ''${{ secrets.NIX_CACHE_PRIVATE_KEY }}
-          NIX_CACHE_PUBLIC_KEY: ''${{ vars.NIX_CACHE_PUBLIC_KEY }}
-        run: |
-          direnv="$(env -u NIX_CACHE_PRIVATE_KEY nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
-          env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile
-          "$direnv" exec . pnpm run github:cache-publish
-    ''
-    + "\n"
-    + indent 6 ''
-      - name: Stop Namespace Nix cache
-        if: always()
-        run: |
-          if [ -f "$RUNNER_TEMP/nixcache.pid" ]; then
-            kill -TERM "$(cat "$RUNNER_TEMP/nixcache.pid")"
-          fi
-    '';
   cacheJob =
     source:
+    let
+      marker = lib.findFirst (value: lib.hasInfix value source) null (
+        map (name: "      - name: ${name}\n        env:\n") [
+          "Build"
+          "Plan"
+          "Apply"
+          "Run checks, then tests"
+        ]
+      );
+    in
     if cfg.nixCache == "cachix" then
       source
     else
       assert lib.assertMsg (lib.hasInfix cachixSetup source) "Workflow Cachix setup changed";
-      builtins.replaceStrings [ cachixSetup ] [ namespaceSetup ] source + namespaceFinish;
+      assert lib.assertMsg (marker != null) "Workflow task environment changed";
+      builtins.replaceStrings
+        [
+          cachixSetup
+          marker
+          "nix build --no-link --print-out-paths"
+          "\"$direnv\" allow ."
+          "\"$direnv\" exec . pnpm install --frozen-lockfile"
+        ]
+        [
+          ""
+          (
+            marker
+            + "          NIX_CACHE_PROVIDER: namespace\n"
+            + "          NIX_CACHE_PUBLIC_KEY: \${{ vars.NIX_CACHE_PUBLIC_KEY }}\n"
+            + "          NIX_CACHE_PRIVATE_KEY: \${{ secrets.NIX_CACHE_PRIVATE_KEY }}\n"
+          )
+          "env -u NIX_CACHE_PRIVATE_KEY nix build --no-link --print-out-paths"
+          "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" allow ."
+          "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" exec . pnpm install --frozen-lockfile"
+        ]
+        source;
   render =
     name: source: layers:
     let
@@ -126,7 +100,7 @@ in
         "namespace"
       ];
       default = "cachix";
-      description = "Remote cache for trusted main jobs; Namespace requires the consumer github:cache-publish task. Check keeps volume/public reads.";
+      description = "Remote cache for trusted main jobs; GitHub TypeScript commands orchestrate Namespace after dependency installation. Check keeps volume/public reads.";
     };
     layers = lib.mkOption {
       type = lib.types.listOf (

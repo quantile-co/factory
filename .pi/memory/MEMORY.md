@@ -482,13 +482,16 @@ It never installs client-side signing trust. Cold evaluation precedes the hook.
 Public Factory keeps Cachix. Consumers may select
 `github.workflows.nixCache = "namespace"` for trusted-main workflows, export
 `nixcache` and configure their own public trust. Check never starts a writer
-proxy. Namespace-specific lifecycle, configuration and publishing belong to
-`packages/namespace`, with a thin `apps/namespace` CLI. Publish the compiled npm
-artifact and pin that same release in Nix; never load checkout TypeScript as a
-second distribution path. Workflow setup and finalization call the packaged CLI,
-not a repository GitHub command. Use `namespace:nixcache:proxy` and
-`namespace:nixcache:publish` for package aliases. Keep the shell hook as a small
-parent-environment export bridge; the TypeScript helper performs the work.
+proxy. Keep local authentication, workspace verification, proxy reuse and Nix
+configuration inline in the shell hook; local startup does not require npm.
+The Namespace TypeScript package owns CI proxy startup, signed publication and
+cleanup only; do not duplicate local-shell behavior there. Install its published
+release as an ordinary pinned app dependency, not a second Nix npm-artifact pin.
+GitHub TypeScript commands for Test/Build/Plan/Apply wrap their existing tasks
+with the Namespace API after dependency installation, publish only on success,
+and always clean up. Each workflow uses one task step; setup does not require a
+pre-install bootstrap helper or separate publication step. Use
+`namespace:nixcache:proxy` and `namespace:nixcache:publish` for cache aliases.
 The GitHub 0.1.3 publisher export remains available for compatibility, but is not
 the Namespace integration boundary. Native subprocesses never receive the
 private signing secret in their environment.

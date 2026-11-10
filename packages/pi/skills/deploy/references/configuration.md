@@ -68,11 +68,13 @@ main Test/Build/Plan/Apply jobs. Export `nixcache` from the consumer flake and s
 `factory.nixcache.package` and Nixpkgs `namespace-cli` in its development shell.
 Check retains its existing volume and public-cache reads without a writer proxy.
 Public Factory continues to use Cachix by default.
-Expose the consumer-owned `github:cache-publish` task through its existing GitHub
-TypeScript CLI, delegating to `publishNixCache` from a published Factory GitHub
-package that exports it. Updating the flake pin alone does not update that npm
-API. Keep exact package pins and frozen dependency installation; do not add a
-second source-loading fallback to work around an unreleased API.
+The consumer GitHub TypeScript app pins the published Namespace npm package.
+Its `github:test`, `github:build`, `github:plan` and `github:apply` commands wrap
+their existing tasks with `withNixCache`: start the proxy after frozen dependency
+installation, publish on success and always clean up within the same job step.
+The inline local shell hook is independent of npm and retains local authentication,
+workspace and trust checks. No extra npm-artifact pin in Nix is required.
+Use `namespace:nixcache:proxy` and `namespace:nixcache:publish` for cache aliases.
 
 The proxy uses Namespace instance credentials on runners and `nsc login` locally.
 Verify workspace identity before access. Keep runner profiles Restricted and

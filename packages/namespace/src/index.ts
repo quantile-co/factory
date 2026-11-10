@@ -7,16 +7,13 @@ import {
   constants,
   existsSync,
   lstatSync,
-  mkdirSync,
   mkdtempSync,
   openSync,
   readFileSync,
   realpathSync,
-  rmdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
@@ -40,6 +37,7 @@ interface State extends Proxy {
 function childEnvironment(env: Environment): Environment {
   const result = { ...env };
   delete result.NIX_CACHE_PRIVATE_KEY;
+  delete result.NIX_CACHE_PROVIDER;
   return result;
 }
 
@@ -224,130 +222,6 @@ async function start(
   }
 }
 
-async function configuration(
-  proxy: Proxy,
-  publicKey: string,
-  context: Context,
-): Promise<string> {
-  const original = context.env.NIX_CONFIG ?? "";
-  const settings = async (name: string) =>
-    (await run("nix", ["config", "show", name], context))
-      .split(/\s+/)
-      .filter(Boolean);
-  const substituters = await settings("substituters");
-  const keys = await settings("trusted-public-keys");
-  const missingURL = !substituters.includes(proxy.url);
-  const missingKey = !!publicKey && !keys.includes(publicKey);
-  if (!missingURL && !missingKey) return original;
-  const trusted =
-    JSON.parse(await run("nix", ["store", "info", "--json"], context))
-      .trusted === true;
-  if (
-    !trusted &&
-    (missingKey ||
-      !(await settings("trusted-substituters")).includes(proxy.url))
-  )
-    throw new Error(
-      "Ask your Nix administrator to allow the loopback substituter and public signing key",
-    );
-  let config = `${original}\nsubstituters = ${[...(missingURL ? [proxy.url] : []), ...substituters].join(" ")}`;
-  if (missingKey)
-    config += `\ntrusted-public-keys = ${[publicKey, ...keys].join(" ")}`;
-  if (trusted) config += "\nrequire-sigs = true";
-  return config;
-}
-
-async function localConfig(
-  workspace: string,
-  publicKey: string,
-  port: number,
-  context: Context,
-): Promise<string> {
-  const original = context.env.NIX_CONFIG ?? "";
-  if (context.env.CI) return original;
-  try {
-    try {
-      await run("nsc", ["auth", "check-login"], context);
-    } catch {
-      throw new Error(`Run nsc login for ${workspace}, then reload the shell`);
-    }
-    const identity = JSON.parse(
-      await run("nsc", ["workspace", "describe", "--output", "json"], context),
-    );
-    if (identity.name !== workspace)
-      throw new Error(
-        `Select Namespace workspace ${workspace}, then reload the shell`,
-      );
-    if (
-      typeof identity.tenant_id !== "string" ||
-      !/^[A-Za-z0-9_-]+$/.test(identity.tenant_id)
-    )
-      throw new Error("Invalid Namespace workspace identity");
-    const home = context.env.HOME || homedir();
-    const cache =
-      context.env.XDG_CACHE_HOME ||
-      (process.platform === "darwin"
-        ? join(home, "Library/Caches")
-        : join(home, ".cache"));
-    const directory = join(cache, "nixcache", identity.tenant_id, String(port));
-    mkdirSync(directory, { recursive: true, mode: 0o700 });
-    if (!lstatSync(directory).isDirectory())
-      throw new Error("Cache path is not a directory");
-    const lock = join(directory, "start.lock");
-    let locked = false;
-    for (let i = 0; i < 100; i++) {
-      try {
-        mkdirSync(lock, { mode: 0o700 });
-        locked = true;
-        break;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      }
-      await delay(100, undefined, { signal: context.signal });
-    }
-    if (!locked) throw new Error(`Cache startup is locked at ${lock}`);
-    let proxy: Proxy;
-    try {
-      const record = join(directory, "proxy");
-      const match = regularFile(record)
-        ? /^([1-9][0-9]*) (.+)\n?$/.exec(readFileSync(record, "utf8"))
-        : null;
-      const existing = match
-        ? {
-            pid: Number(match[1]),
-            binary: match[2],
-            url: `http://127.0.0.1:${port}`,
-          }
-        : undefined;
-      if (existing && (await owned(existing, context.env))) {
-        if (
-          existing.binary !== executable(context.env, "nixcache") ||
-          !(await ready(existing.url))
-        )
-          throw new Error(
-            `Managed proxy ${existing.pid} needs attention; inspect ${directory}`,
-          );
-        proxy = existing;
-      } else {
-        if (existsSync(record) && !regularFile(record))
-          throw new Error("Cache record is not a regular file");
-        proxy = await start(directory, port, "local-only", context);
-        writeFileSync(record, `${proxy.pid} ${proxy.binary}\n`, {
-          mode: 0o600,
-        });
-      }
-    } finally {
-      rmdirSync(lock);
-    }
-    return await configuration(proxy, publicKey, context);
-  } catch (error) {
-    console.error(
-      `Namespace Nix cache: ${error instanceof Error ? error.message : "setup failed"}. Configuration unchanged.`,
-    );
-    return original;
-  }
-}
-
 function state(
   env: Environment,
 ): { directory: string; record: State } | undefined {
@@ -382,17 +256,11 @@ function state(
     throw new Error("Invalid cache scratch record");
   return { directory, record };
 }
-function environmentFile(path: string, name: string, value: string): void {
-  if (!isAbsolute(path)) throw new Error("Environment file must be absolute");
-  const delimiter = `NIXCACHE_${randomBytes(16).toString("hex")}`;
-  appendFileSync(path, `${name}<<${delimiter}\n${value}\n${delimiter}\n`, {
-    mode: 0o600,
-  });
-}
 async function ciStart(port: number, context: Context): Promise<void> {
   const scratch = required(context.env, "RUNNER_TEMP");
-  const envFile = required(context.env, "GITHUB_ENV");
   const publicKey = required(context.env, "NIX_CACHE_PUBLIC_KEY").trim();
+  if (!/^[\w.-]+:[A-Za-z0-9+/=]+$/.test(publicKey))
+    throw new Error("Invalid cache public key");
   if (!isAbsolute(scratch)) throw new Error("Runner scratch must be absolute");
   const directory = mkdtempSync(join(scratch, "namespace-nixcache-"));
   let record: State = {
@@ -407,7 +275,7 @@ async function ciStart(port: number, context: Context): Promise<void> {
       mode: 0o600,
       flag: "wx",
     });
-    environmentFile(envFile, "NIXCACHE_STATE", directory);
+    context.env.NIXCACHE_STATE = directory;
     record = {
       ...record,
       ...(await start(directory, port, "persist", context)),
@@ -415,11 +283,7 @@ async function ciStart(port: number, context: Context): Promise<void> {
     writeFileSync(join(directory, "state.json"), JSON.stringify(record), {
       mode: 0o600,
     });
-    environmentFile(
-      envFile,
-      "NIX_CONFIG",
-      await configuration(record, publicKey, context),
-    );
+    context.env.NIX_CONFIG = `${context.env.NIX_CONFIG ?? ""}\nextra-substituters = ${record.url}\nextra-trusted-public-keys = ${publicKey}\nrequire-sigs = true`;
   } catch (error) {
     await stop(record, context.env);
     rmSync(directory, { recursive: true, force: true });
@@ -480,16 +344,12 @@ export async function namespaceCli(
 ): Promise<string | undefined> {
   const [command, action, ...rest] = args;
   if (command !== "nixcache")
-    throw new Error(
-      "Usage: factory-namespace nixcache proxy|publish|cleanup|local-config",
-    );
+    throw new Error("Usage: factory-namespace nixcache proxy|publish|cleanup");
   const { values, positionals } = parseArgs({
     args: rest,
     allowPositionals: true,
     options: {
-      workspace: { type: "string" },
-      "public-key": { type: "string", default: "" },
-      port: { type: "string", default: "18765" },
+      port: { type: "string", default: environment.NIX_CACHE_PORT ?? "18765" },
     },
   });
   if (positionals.length) throw new Error("Unexpected cache arguments");
@@ -502,10 +362,6 @@ export async function namespaceCli(
   )
     throw new Error("Invalid loopback port");
   const context = { env: environment, signal };
-  if (action === "local-config") {
-    if (!values.workspace) throw new Error("Missing --workspace");
-    return localConfig(values.workspace, values["public-key"], port, context);
-  }
   if (action === "cleanup") {
     await ciCleanup(context);
     return;
@@ -514,7 +370,25 @@ export async function namespaceCli(
     throw new Error("CI cache writes require main");
   if (action === "proxy") await ciStart(port, context);
   else if (action === "publish") await ciFinish(context);
-  else throw new Error("Expected proxy, publish, cleanup or local-config");
+  else throw new Error("Expected proxy, publish or cleanup");
+}
+
+export async function withNixCache<T>(
+  task: (environment: Environment) => Promise<T>,
+  environment: Environment = process.env,
+  signal?: AbortSignal,
+): Promise<T> {
+  const env = { ...environment };
+  if (env.NIX_CACHE_PROVIDER !== "namespace")
+    return task(childEnvironment(env));
+  try {
+    await namespaceCli(["nixcache", "proxy"], env, signal);
+    const result = await task(childEnvironment(env));
+    await namespaceCli(["nixcache", "publish"], env, signal);
+    return result;
+  } finally {
+    await ciCleanup({ env });
+  }
 }
 
 export async function main(): Promise<void> {
@@ -528,6 +402,16 @@ export async function main(): Promise<void> {
       process.env,
       abort.signal,
     );
+    if (process.argv[3] === "proxy" && process.env.GITHUB_ENV) {
+      for (const name of ["NIXCACHE_STATE", "NIX_CONFIG"]) {
+        const delimiter = `NIXCACHE_${randomBytes(16).toString("hex")}`;
+        appendFileSync(
+          process.env.GITHUB_ENV,
+          `${name}<<${delimiter}\n${process.env[name]}\n${delimiter}\n`,
+          { mode: 0o600 },
+        );
+      }
+    }
     if (output !== undefined) process.stdout.write(output);
   } catch (error) {
     console.error(
