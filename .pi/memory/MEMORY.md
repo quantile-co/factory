@@ -697,6 +697,17 @@ prefix; shared templates contain no directory or backend-prefix arguments.
 Apply must select the same layer as its reviewed Plan. If Infrastructure changes
 inputs used by Application, apply it first and create a new Application Plan.
 
+## Namespace package release
+
+#deployment [[namespace-npm-release]]
+`@quantile-co/factory-namespace@0.1.0` is published after protected Build
+`42781366409` qualified and staged source `effcabfe3d37d4c2941795f913c3997239bdc1d7`
+and the maintainer completed npm approval. Registry SHA-1
+`4fc0104675c0b793cb01945c570b20fb22a1278c` matches the staged artifact.
+Consumers install the normal npm dependency; local shell startup stays inline
+and independent of npm. This release does not establish live signed cache
+publication or cross-run reuse; no consumer qualification dispatch was performed.
+
 ## Retained implementation decisions and open issues
 
 - Public repositories require all-external-contributor workflow approval. GitHub
