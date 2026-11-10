@@ -721,7 +721,11 @@ Restricted as disabling workload API access; do not silently widen shared
 profiles or increase readiness timeouts. An approved cache-scoped credential or
 reviewed workload authorization change is required before signed publication and
 fresh-store reuse can be qualified. No cache credential was provisioned or
-profile access changed during this investigation.
+profile access changed during this investigation. A subsequently approved
+namespace-specific revokable token attempt was rejected by Namespace because
+`blobs:read` and `blobs:write` are not allowed in revokable tokens. No token was
+created. Do not assume that this credential type supports the early-access Nix
+cache; obtain the supported scoped-authentication contract before provisioning.
 
 ## Retained implementation decisions and open issues
 

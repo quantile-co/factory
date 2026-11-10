@@ -76,8 +76,12 @@ The inline local shell hook is independent of npm and retains local authenticati
 workspace and trust checks. No extra npm-artifact pin in Nix is required.
 Use `namespace:nixcache:proxy` and `namespace:nixcache:publish` for cache aliases.
 
-The proxy uses Namespace instance credentials on runners and `nsc login` locally.
-Verify workspace identity before access. Keep runner profiles Restricted and
+The proxy uses `nsc login` locally; CI needs credentials authorized for the blob
+namespace. Restricted instance credentials returned HTTP 403 in qualification,
+and Namespace rejected `blobs:read`/`blobs:write` in revokable tokens. Confirm a
+supported scoped-authentication flow before provisioning; never substitute broad
+tokens or widen runner profiles implicitly. Verify workspace identity before
+access. Keep runner profiles Restricted and
 existing main-only volume commits; blob-cache authorization is separate.
 Local client flags do not turn a broad credential into a server-enforced reader.
 Never expose a writer proxy or its local cache directory to untrusted jobs.
