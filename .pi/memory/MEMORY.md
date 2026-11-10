@@ -431,9 +431,14 @@ never automatically approved or bypassed.
 
 ## Dependencies, credentials and caches
 
+#preference [[checked-direct-main]]
+When repository protections permit, push checked task commits directly to main
+rather than opening PRs. Preserve linked task checkouts, required checks and
+fast-forward history; never bypass protections.
+
 #decision [[factory-npm-distribution]]
-Publish Factory Pi and GitHub packages publicly through npm; the root workspace
-and remaining packages stay private. Package builds and staging run on Namespace,
+Publish Factory Pi, GitHub and Namespace packages publicly through npm; the root
+workspace and Nix package stay private. Package builds and staging run on Namespace,
 not GitHub-hosted runners. Artifact building/publication uses `build.yaml`, named
 Build, with Infrastructure and Application jobs. Callers select applicable layers;
 `github.workflows.build.layers` can differ from the shared deployment selection.
@@ -706,7 +711,17 @@ and the maintainer completed npm approval. Registry SHA-1
 `4fc0104675c0b793cb01945c570b20fb22a1278c` matches the staged artifact.
 Consumers install the normal npm dependency; local shell startup stays inline
 and independent of npm. This release does not establish live signed cache
-publication or cross-run reuse; no consumer qualification dispatch was performed.
+publication or cross-run reuse; later live qualification found the blocker below.
+
+#bug [[restricted-runner-blob-auth]]
+Live qualification found that the proxy binds normally but serves HTTP 403 from
+blobstorage for `/nix-cache-info` under Restricted runner workload credentials.
+This is authorization failure, not slow listener startup. Namespace documents
+Restricted as disabling workload API access; do not silently widen shared
+profiles or increase readiness timeouts. An approved cache-scoped credential or
+reviewed workload authorization change is required before signed publication and
+fresh-store reuse can be qualified. No cache credential was provisioned or
+profile access changed during this investigation.
 
 ## Retained implementation decisions and open issues
 
