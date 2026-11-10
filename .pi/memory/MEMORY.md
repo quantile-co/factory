@@ -496,7 +496,7 @@ The GitHub 0.1.3 publisher export remains available for compatibility, but is no
 the Namespace integration boundary. Native subprocesses never receive the
 private signing secret in their environment.
 Namespace instance authentication is separate from native Nix signing:
-only publication receives the private signing secret, validates its public half
+only Namespace publication consumes the private signing secret, validates its public half
 and removes the temporary key file. Publish restored paths too; volume reuse
 does not establish remote publication. Namespace blobstorage permissions are
 separate from main-only volume commits. No cache integration authorizes prod
