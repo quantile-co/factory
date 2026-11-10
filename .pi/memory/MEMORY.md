@@ -726,6 +726,17 @@ namespace-specific revokable token attempt was rejected by Namespace because
 `blobs:read` and `blobs:write` are not allowed in revokable tokens. No token was
 created. Do not assume that this credential type supports the early-access Nix
 cache; obtain the supported scoped-authentication contract before provisioning.
+An approved in-place Custom runner-profile attempt with verified CLI 0.0.594
+was rejected by the same blob-permission validator; full API readback confirmed
+no profile change. API schema support does not establish backend grant support.
+The older pinned CLI lacks Custom fields and discards unknown fields/enum names;
+use a newer client and full API readback for any separately approved experiment.
+Structured blob API denials subsequently confirmed ContainsBlob, ReadBlobs and
+CreateBlob need `exists`, `read`, `create` respectively on resource ID `nix-cache`;
+this does not qualify multipart uploads. The corrected
+Custom-profile grant was still rejected without changing profiles. Distinguish
+runtime permission tuples from permissions accepted by the grant validator;
+conceptual read/write labels and schema presence are not acceptance evidence.
 
 ## Retained implementation decisions and open issues
 
