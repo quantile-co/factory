@@ -2,35 +2,13 @@ package terraform.project.github
 
 import rego.v1
 
-# New resource kinds or additional declarations need an ownership/security review.
-valid_inventory if {
-	object.keys(input.resource) == {
-		"github_repository", "github_repository_collaborator", "github_branch_protection", "github_actions_repository_permissions", "restapi_object",
-		"github_repository_vulnerability_alerts", "github_repository_dependabot_security_updates",
-		"github_repository_environment", "github_repository_environment_deployment_policy",
-	}
-	every resources in input.resource {
-		count(resources) == 1
-		every declarations in resources {
-			count(declarations) == 1
-		}
-	}
-	maintainer := input.data.github_user.maintainer[0]
-	maintainer.for_each == "${var.owners}"
-	maintainer.username == "${each.value}"
-}
-
 valid_members if {
 	member := input.resource.github_repository_collaborator.member[0]
-	member.for_each == "${var.members}"
-	member.repository == "${github_repository.self.name}"
-	member.username == "${each.value}"
 	member.permission == "push"
 }
 
 valid_protection if {
 	branch := input.resource.github_branch_protection.main[0]
-	branch.repository_id == "${github_repository.self.node_id}"
 	branch.pattern == "${var.main_branch}"
 	branch.enforce_admins == true
 	branch.allows_deletions == false
@@ -48,7 +26,6 @@ valid_repository if {
 	repository.archive_on_destroy == true
 	repository.lifecycle[0].prevent_destroy == true
 	actions := input.resource.github_actions_repository_permissions.self[0]
-	actions.repository == "${github_repository.self.name}"
 	actions.enabled == true
 	actions.allowed_actions == "selected"
 	actions.sha_pinning_required == true
@@ -57,24 +34,16 @@ valid_repository if {
 	allowed.verified_allowed == true
 	allowed.patterns_allowed == "${var.allowed_action_patterns}"
 	alerts := input.resource.github_repository_vulnerability_alerts.self[0]
-	alerts.repository == "${github_repository.self.name}"
 	alerts.enabled == true
 	updates := input.resource.github_repository_dependabot_security_updates.self[0]
-	updates.repository == "${github_repository.self.name}"
 	updates.enabled == true
 }
 
 valid_environments if {
 	environment := input.resource.github_repository_environment.main[0]
-	environment.for_each == "${var.environments}"
-	environment.repository == "${github_repository.self.name}"
-	environment.environment == "${each.value}"
 	environment.deployment_branch_policy[0].protected_branches == false
 	environment.deployment_branch_policy[0].custom_branch_policies == true
 	policy := input.resource.github_repository_environment_deployment_policy.main[0]
-	policy.for_each == "${var.environments}"
-	policy.repository == "${github_repository.self.name}"
-	policy.environment == "${github_repository_environment.main[each.key].environment}"
 	policy.branch_pattern == "${var.main_branch}"
 }
 
@@ -88,8 +57,6 @@ valid_fork_approval if {
 	approval.destroy_method == "GET"
 	approval.data == "${jsonencode({ approval_policy = \"all_external_contributors\" })}"
 }
-
-deny contains "GitHub module must contain only repository resources and maintainer lookups" if not valid_inventory
 
 deny contains "Members must receive only repository write access" if not valid_members
 

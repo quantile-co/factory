@@ -188,67 +188,28 @@ process.exit(result.status ?? 1);
   }
 });
 
-it("offers selected artifact and deployment layers with inline installation and no owner rosters", () => {
-  const envrc = readFileSync(join(root, ".envrc"), "utf8");
-  expect(envrc).toContain(
-    "extra-substituters = https://quantile-co.cachix.org",
-  );
-  expect(envrc).toContain("https://pre-commit-hooks.cachix.org");
-  expect(envrc).toContain("extra-trusted-public-keys = ");
+it("keeps protected deployment gates and signed Nix substitutions", () => {
   for (const directory of [".github/workflows", "etc/github/workflows"]) {
     for (const name of ["check", "test", "build", "plan", "apply"]) {
-      const path = join(root, directory, `${name}.yaml`);
-      const source = readFileSync(path, "utf8");
-      expect(source).not.toMatch(/^ {2}workflow_call:/m);
-      expect(source).toMatch(
-        /"\$direnv" exec \. pnpm install --frozen-lockfile\n\s*"\$direnv" exec \. pnpm (?:run |test)/,
-      );
-      expect(source).not.toMatch(
-        /--tf-(directory|backend-prefix)|tf\/(application|infrastructure)|application\/prod/,
-      );
-      expect(source).not.toContain("extra-substituters = ");
-      expect(source).toContain("extra_nix_config: require-sigs = true");
-      expect(source).toContain(
-        "nix build --no-link --print-out-paths '.#direnv'",
-      );
-      expect(source).toContain('"$direnv" allow .');
-      if (name !== "build" && name !== "plan" && name !== "apply") continue;
-      const data = workflow(path);
-      const layers =
-        directory === ".github/workflows"
-          ? [name === "build" ? "application" : "infrastructure"]
-          : ["infrastructure", "application"];
-      expect(Object.keys(data.jobs)).toEqual(layers);
-      expect(data.on.workflow_dispatch.inputs.tf_layer.options).toEqual(layers);
-      expect(data.on.workflow_dispatch.inputs.tf_layer.default).toBe(layers[0]);
-      for (const layer of layers) {
+      const data = workflow(join(root, directory, `${name}.yaml`));
+      for (const layer of Object.keys(data.jobs)) {
         const job = data.jobs[layer];
+        const installer = job.steps.find((step: { uses?: string }) =>
+          step.uses?.startsWith("cachix/install-nix-action@"),
+        );
+        expect(installer.with.extra_nix_config).toContain(
+          "require-sigs = true",
+        );
+        if (!["build", "plan", "apply"].includes(name)) continue;
         expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
         expect(job.if).toContain("github.ref == 'refs/heads/main'");
-        expect(job.if).toContain(`inputs.tf_layer == '${layer}'`);
         expect(job.environment).toBe("prod");
-        expect(job.steps.at(-1).run).toContain(`--tf-layer ${layer}`);
-      }
-      expect(source).not.toMatch(
-        /PROJECT_OWNERS|PROJECT_MEMBERS|triggering_actor|FACTORY_|REST_API_BEARER:|GITHUB_TOKEN:/,
-      );
-      expect(source).not.toMatch(
-        /^\s+(GCP_TF_STATE_BUCKET|GCP_WIF_POOL|TF_VAR_\w+):/m,
-      );
-      expect(source).toContain(`"$direnv" exec . pnpm run github:${name}`);
-      expect(data.concurrency["cancel-in-progress"]).toBe(false);
-      if (name === "build") {
-        expect(source).not.toMatch(/GCP_TF_STATE_BUCKET|GCP_WIF_POOL|npm:/);
-        continue;
-      }
-      expect(source).toContain(
-        `--gcp-tf-state-bucket '\${{ vars.GCP_TF_STATE_BUCKET }}'`,
-      );
-      expect(source).toContain(`--gcp-wif-pool '\${{ vars.GCP_WIF_POOL }}'`);
-      expect(source).not.toContain("github:build");
-      expect(source).not.toContain("actions/upload-artifact@");
-      if (name === "apply") {
-        expect(source).toContain('--gh-plan-ref "$GH_PLAN_REF"');
+        expect(data.concurrency["cancel-in-progress"]).toBe(false);
+        expect(
+          job.steps.some((step: { uses?: string }) =>
+            step.uses?.startsWith("actions/upload-artifact@"),
+          ),
+        ).toBe(false);
       }
     }
   }

@@ -187,8 +187,8 @@ export function metadataStamp(path: string): string {
   }
 }
 
-// shfmt's Bash AST supplies quoting and shell structure; this is deliberately
-// a conservative target resolver, not a shell interpreter or a sandbox.
+// shfmt identifies literal Git calls and directory changes. Dynamic targets,
+// wrappers and arbitrary programs are outside this accidental-action guard.
 type Node = {
   Type?: string;
   Value?: string;
@@ -269,67 +269,16 @@ export async function guardCommand(
     cwd: string | undefined,
     assigned: boolean,
   ): Promise<void> {
-    let executable = args.shift();
-    if (!executable)
-      throw new Error("Cannot safely resolve a dynamic shell executable.");
-    executable = basename(executable);
-    if (["command", "builtin", "exec", "nohup"].includes(executable)) {
-      if (args[0] === "--") args.shift();
-      return inspect(args, cwd, assigned);
-    }
-    if (executable === "direnv" && args[0] === "exec") {
-      const dir = args[1];
-      if (!dir || (!cwd && !isAbsolute(dir)))
-        throw new Error("Cannot resolve direnv exec directory.");
-      return inspect(args.slice(2), resolve(cwd ?? "/", dir), assigned);
-    }
-    if (executable === "nix" && ["develop", "shell"].includes(args[0] ?? "")) {
-      const start = args.findIndex(
-        (arg) => arg === "--command" || arg === "-c",
-      );
-      if (start >= 0) return inspect(args.slice(start + 1), cwd, assigned);
-      return;
-    }
-    if (executable === "sudo")
-      throw new Error(
-        "The checkout guard cannot resolve a sudo execution environment.",
-      );
-    if (executable === "env") {
-      if (!args.length) return;
-      while (args[0]?.includes("=") && !args[0]?.startsWith("-")) {
-        if (args.shift()?.startsWith("GIT_")) assigned = true;
-      }
-      if (args[0] === "--") args.shift();
-      if (args[0]?.startsWith("-"))
-        throw new Error(
-          "Use an explicit cwd instead of env options for guarded shell commands.",
-        );
-      return inspect(args, cwd, assigned);
-    }
-    if (["bash", "sh", "zsh"].includes(executable)) {
-      const flag = args.findIndex(
-        (arg) => arg?.startsWith("-") && arg.includes("c"),
-      );
-      if (flag >= 0) {
-        const script = args[flag + 1];
-        if (!script || !cwd)
-          throw new Error("Cannot resolve nested shell command/cwd.");
-        await guardCommand(script, cwd);
-      }
-      return;
-    }
+    const name = args.shift();
+    if (!name || assigned) return;
+    const executable = basename(name);
     if (executable !== "git" && executable !== "gh") return;
-    if (assigned)
-      throw new Error(
-        "Git environment overrides cannot be safely resolved by the checkout guard.",
-      );
     if (executable === "git") {
       while (args[0]?.startsWith("-")) {
         const option = args.shift();
         if (option === "-C") {
           const dir = args.shift();
-          if (!dir || (!cwd && !isAbsolute(dir)))
-            throw new Error("Cannot resolve git -C target.");
+          if (!dir || (!cwd && !isAbsolute(dir))) return;
           cwd = resolve(cwd ?? "/", dir);
         } else if (
           option === "--no-pager" ||
@@ -337,9 +286,8 @@ export async function guardCommand(
         ) {
           // These options do not change the checkout or command semantics.
         } else {
-          throw new Error(
-            `Unsupported Git global option ${option}; use a plain git command with -C.`,
-          );
+          // Unknown global options may change the target; leave them to Git.
+          return;
         }
       }
     } else {
@@ -350,48 +298,22 @@ export async function guardCommand(
       ) {
         args.splice(0, args[0]?.startsWith("--repo=") ? 1 : 2);
       }
-      if (args[0] !== "pr" || args[1] !== "checkout") {
-        if (args.includes("checkout"))
-          throw new Error(
-            "Cannot resolve gh checkout options; use plain gh pr checkout in a task checkout.",
-          );
-        return;
-      }
+      if (args[0] !== "pr" || args[1] !== "checkout") return;
     }
-    if (!cwd)
-      throw new Error(
-        "Cannot resolve checkout after shell control flow; use an absolute git -C path.",
-      );
+    if (!cwd || !args[0]) return;
     const repo = await repository(cwd);
-    if (!repo) throw new Error(`Cannot identify the Git checkout at ${cwd}.`);
+    if (!repo) return;
     const checkout = canonical(
       (await git(cwd, "rev-parse", "--show-toplevel")).trim(),
     );
     const subcommand = args[0];
-    // Unknown aliases can hide a checkout change, even when invoked from a child.
-    if (executable === "git" && subcommand && !readOnlyGit.has(subcommand)) {
-      const alias = (
-        await git(
-          cwd,
-          "config",
-          "--default",
-          "",
-          "--get",
-          `alias.${subcommand}`,
-        )
-      ).trim();
-      if (alias)
-        throw new Error(
-          `Git alias ${subcommand} is not inspected; use its explicit command.`,
-        );
-    }
     const staticArgs = args.filter((arg): arg is string => arg !== undefined);
     // Branch refs are shared: renaming main from a linked checkout also changes
     // the primary checkout's HEAD, without git -C pointing at that checkout.
     if (
       executable === "git" &&
       subcommand === "branch" &&
-      (args.includes("main") || args.includes(undefined)) &&
+      args.includes("main") &&
       staticArgs.some(
         (arg) =>
           /^-[^-]*[mMcCdDf]/.test(arg) ||
@@ -571,11 +493,8 @@ export async function guardCommand(
           ? canonical(resolve(cwd ?? "/", dir))
           : undefined;
       }
-      if (["pushd", "popd", "eval", "source", "."].includes(args[0] ?? "")) {
-        throw new Error(
-          "Use explicit commands and cd/absolute git -C paths for guarded shell operations.",
-        );
-      }
+      if (["pushd", "popd", "eval", "source", "."].includes(args[0] ?? ""))
+        return undefined;
       await inspect(
         args,
         cwd,

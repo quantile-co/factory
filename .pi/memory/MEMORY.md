@@ -201,7 +201,10 @@ Third-party Marimo skills are used unpatched.
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
 snapshots, tests of upstream behavior, unnecessary abstractions and repetitive
-validation. Minimize new files, directories and abstractions; add them only when
+validation. Terraform policies retain permission and state-safety invariants, not
+exact resource inventories or root module-expression wiring. Workflow tests
+exercise input forwarding, failure handling and deployment gates without freezing
+shell formatting or asserting the absence of historical variable names. Minimize new files, directories and abstractions; add them only when
 required and list the additions at task completion. Declare runtime dependencies
 through pinned inputs/locks; never weaken
 assertions or skip coverage to conceal missing dependencies.
@@ -403,18 +406,20 @@ Destinations must retain the primary checkout's ancestor context guides. Keep
 machine-specific roots in local configuration, including devbox provisioning,
 not shared repository files. This does not impose a workstation directory layout.
 
-The guard operates without Herdr, uses shfmt's Bash parser, and blocks primary
-checkout file edits and Git mutations, including switch/checkout and GitHub PR
-checkout. Verified `--ff-only` pull/merge syncs of main's configured remote main
-branch do not require a second confirmation, including without a terminal UI.
-Other refs/options and missing upstreams remain blocked; Git rejects divergence
-and conflicting local edits without resetting or stashing.
-Branch drift and unresolved Git targets stop mutations; never automatically
-switch back, stash, reset or copy uncommitted files. Bash, foreground-terminal
-calls and Pi's user shell input are checked; PowerShell is unsupported. This is
-an accidental-action guard, not an OS sandbox: arbitrary scripts, other tools,
-interactive subprocess input and external processes are not fully inspected.
-Read-only tools remain available for diagnosing drift.
+The guard operates without Herdr and blocks direct primary-checkout file edits.
+For Bash, foreground-terminal calls and Pi's user shell input, shfmt identifies
+literal Git/gh calls and static directory changes; known primary mutations,
+including switch/checkout and GitHub PR checkout, are blocked. Verified
+`--ff-only` pull/merge syncs of main's configured remote main branch remain allowed;
+Git rejects divergence and conflicting local edits without resetting or stashing.
+Dynamic executables/targets, Git environment overrides, wrapper commands and
+sourced scripts are outside this narrow check, not rejected merely because they
+cannot be resolved. Never expand this into a general shell interpreter.
+Primary branch drift still stops guarded mutations; never automatically switch
+back, stash, reset or copy uncommitted files. PowerShell remains unsupported.
+This prevents common accidents, not hostile execution: arbitrary scripts, other
+tools, interactive input and external processes are not sandboxed. Read-only
+tools remain available for diagnosing drift.
 
 Global-to-project cutovers are operator-local migrations, not personal extension
 paths or exclusions baked into shared settings. Remove global copies only after

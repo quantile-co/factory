@@ -159,7 +159,9 @@ it("rejects incomplete or exempted storage audit logging", () => {
       if (result.error) throw result.error;
       return { status: result.status, output: result.stdout + result.stderr };
     };
-    const valid = check(source);
+    const valid = check(
+      `${source}\nresource "random_id" "unrelated" { byte_length = 2 }\n`,
+    );
     expect(valid.status, valid.output).toBe(0);
     for (const replacement of [
       'log_type = "ADMIN_READ"',

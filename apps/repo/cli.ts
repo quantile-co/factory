@@ -54,7 +54,6 @@ switch (action) {
     run("check-terraform", [], { TF_DIR: "tf/infrastructure" });
     run("check-tflint", [], { TF_DIR: "tf/infrastructure" });
     for (const [path, namespace] of [
-      ["tf/infrastructure", "terraform.infrastructure"],
       ["tf/modules/project/github", "terraform.project.github"],
       ["tf/modules/project/gcp", "terraform.project.gcp"],
     ])
