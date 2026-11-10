@@ -94,6 +94,7 @@ it("selects Namespace only for trusted jobs and keeps signing credentials on pub
     );
     for (const [name, source] of Object.entries(files)) {
       const path = join(temporary, `${name}.yaml`);
+      expect(source).not.toMatch(/[ \\t]+\\n/);
       writeFileSync(path, source as string);
       const data = workflow(path);
       for (const job of Object.values(data.jobs) as Array<{

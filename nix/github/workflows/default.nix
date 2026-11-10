@@ -7,9 +7,9 @@ let
   cfg = config.quantile-co.factory.github.workflows;
   indent =
     spaces: value:
-    lib.concatMapStrings (line: lib.concatStrings (lib.replicate spaces " ") + line + "\n") (
-      lib.splitString "\n" (lib.removeSuffix "\n" value)
-    );
+    lib.concatMapStrings (
+      line: (if line == "" then "" else lib.concatStrings (lib.replicate spaces " ") + line) + "\n"
+    ) (lib.splitString "\n" (lib.removeSuffix "\n" value));
   script = path: indent 10 (builtins.readFile path);
   cachixSetup = indent 6 ''
     - name: Set up Cachix
