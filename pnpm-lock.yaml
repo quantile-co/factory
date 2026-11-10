@@ -230,6 +230,12 @@ importers:
         specifier: 15.0.0
         version: 15.0.0
 
+  apps/namespace:
+    dependencies:
+      '@quantile-co/factory-namespace':
+        specifier: workspace:*
+        version: link:../../packages/namespace
+
   apps/nix:
     dependencies:
       '@quantile-co/factory-nix':
@@ -239,6 +245,8 @@ importers:
   apps/repo: {}
 
   packages/github: {}
+
+  packages/namespace: {}
 
   packages/nix: {}
 

@@ -101,12 +101,19 @@ program
       .env("NPM_TOKEN")
       .makeOptionMandatory(),
   )
-  .action((options: { npmToken: string }) => {
+  .addOption(
+    new Option("--npm-package <package>", "Release selection")
+      .choices(["factory", "namespace"])
+      .env("NPM_PACKAGE")
+      .default("factory"),
+  )
+  .action((options: { npmToken: string; npmPackage: string }) => {
     const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
       encoding: "utf8",
     }).trim();
     const buildEnvironment = { ...process.env };
     delete buildEnvironment.NPM_TOKEN;
+    delete buildEnvironment.NPM_PACKAGE;
     delete buildEnvironment.NPM_CONFIG_USERCONFIG;
     delete buildEnvironment.npm_config_userconfig;
     const run = (task: string, env: NodeJS.ProcessEnv) => {
@@ -119,7 +126,12 @@ program
       if (result.status !== 0)
         throw new CommandFailure(result.status ?? 1, `${task} failed`);
     };
-    run("npm:pack", buildEnvironment);
+    run(
+      options.npmPackage === "namespace"
+        ? "namespace:nixcache:pack"
+        : "npm:pack",
+      buildEnvironment,
+    );
     execFileSync("git", ["diff", "--exit-code", "HEAD"], {
       cwd: root,
       env: buildEnvironment,
@@ -135,11 +147,16 @@ program
           mode: 0o600,
         },
       );
-      run("npm:stage", {
-        ...buildEnvironment,
-        NPM_TOKEN: options.npmToken,
-        NPM_CONFIG_USERCONFIG: config,
-      });
+      run(
+        options.npmPackage === "namespace"
+          ? "namespace:nixcache:stage"
+          : "npm:stage",
+        {
+          ...buildEnvironment,
+          NPM_TOKEN: options.npmToken,
+          NPM_CONFIG_USERCONFIG: config,
+        },
+      );
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

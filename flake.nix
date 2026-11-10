@@ -41,9 +41,19 @@
             ) "Factory expects one selected Build job";
             pkgs.writeText "build.yaml" (
               builtins.replaceStrings
-                [ marker ]
+                [ marker "    inputs:\n" ]
                 [
-                  "      - name: Build\n        env:\n          NPM_TOKEN: \${{ secrets.NPM_TOKEN }}\n"
+                  "      - name: Build\n        env:\n          NPM_TOKEN: \${{ secrets.NPM_TOKEN }}\n          NPM_PACKAGE: \${{ inputs.npm_package }}\n"
+                  (
+                    "    inputs:\n"
+                    + "      npm_package:\n"
+                    + "        description: Package group to release\n"
+                    + "        type: choice\n"
+                    + "        default: factory\n"
+                    + "        options:\n"
+                    + "          - factory\n"
+                    + "          - namespace\n"
+                  )
                 ]
                 source
             );

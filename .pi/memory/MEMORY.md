@@ -96,8 +96,8 @@ Remove migration scaffolding after successful adoption and prove convergence.
 #decision [[factory-flake-direnv]] [[factory-managed-files]]
 Factory uses a locked flake shell and the same `.envrc` through direnv locally and
 in CI. Pnpm/Turbo workspaces separate thin commands in `apps/` from importable
-behavior in `packages/`. The three apps are Nix, GitHub and repo; the three
-packages are Nix, GitHub and Pi. Code packages use `src/` with colocated tests and
+behavior in `packages/`. The apps are Nix, GitHub, Namespace and repo;
+the packages are Nix, GitHub, Namespace and Pi. Code packages use `src/` with colocated tests and
 `index.ts` for actual root public entry points. Nix exposes separate `files` and
 `semgrep` subpaths without a forwarding barrel. Single-file CLI apps use root `cli.ts` entry points.
 Build tooling, manifests and skill assets remain at package roots. Native
@@ -197,6 +197,10 @@ the reusable catalog and its tests. No Nix Semgrep pack is available; keep the
 existing Nix checks. OPA and Conftest independently select explicit Rego paths,
 reject empty checks and prevent policy traversal without a shared shell fragment.
 Third-party Marimo skills are used unpatched.
+
+#preference [[namespace-cache-command-names]]
+Use `namespace:nixcache:proxy` for proxy setup and `namespace:nixcache:publish`
+for publishing outputs. Keep cleanup internal; do not add GitHub cache aliases.
 
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
@@ -478,13 +482,16 @@ It never installs client-side signing trust. Cold evaluation precedes the hook.
 Public Factory keeps Cachix. Consumers may select
 `github.workflows.nixCache = "namespace"` for trusted-main workflows, export
 `nixcache` and configure their own public trust. Check never starts a writer
-proxy. Keep local startup inline in the Nix module and CI startup inline in the workflow
-renderer, before shell entry and dependency installation. Post-task publication
-uses the caller-owned `github:cache-publish` task and GitHub TypeScript library's
-`publishNixCache`; native subprocesses never receive its private signing secret
-in their environment. Consumers must pin a published package exporting the API;
-a flake update is not an npm update. The new publisher API needs a post-0.1.2
-release before downstream adoption. No automatic source fallback or publication.
+proxy. Namespace-specific lifecycle, configuration and publishing belong to
+`packages/namespace`, with a thin `apps/namespace` CLI. Publish the compiled npm
+artifact and pin that same release in Nix; never load checkout TypeScript as a
+second distribution path. Workflow setup and finalization call the packaged CLI,
+not a repository GitHub command. Use `namespace:nixcache:proxy` and
+`namespace:nixcache:publish` for package aliases. Keep the shell hook as a small
+parent-environment export bridge; the TypeScript helper performs the work.
+The GitHub 0.1.3 publisher export remains available for compatibility, but is not
+the Namespace integration boundary. Native subprocesses never receive the
+private signing secret in their environment.
 Namespace instance authentication is separate from native Nix signing:
 only publication receives the private signing secret, validates its public half
 and removes the temporary key file. Publish restored paths too; volume reuse
@@ -720,6 +727,19 @@ inputs used by Application, apply it first and create a new Application Plan.
   `39919872065`, approved exact-generation Apply `39923368441`. Only module
   addresses and output names changed; cloud resources, IAM and backend identity
   were retained. Do not replay this completed migration.
+
+## Factory 0.1.3 publication
+
+#deployment [[factory-nix-cache-publication]]
+Both public Factory packages were published at 0.1.3 after protected Build
+`42767105872` qualified and staged source
+`0298f837f0600f072f4c34f5935e4001c2a86b16` and the maintainer completed npm
+approval. Registry tarball SHA-1 values match the staged Build output:
+GitHub `7eea138f5608b22d149c8e4693fc23fba4154726`,
+Pi `05480110df043b7ea54c9f91043c079939f74efc`.
+The GitHub artifact exports `publishNixCache`; Pi includes the updated cache
+deployment guidance. This publication did not dispatch infrastructure Plan/Apply
+or qualify any consumer's private-cache publication/reuse.
 
 ## Native CLI packages
 
