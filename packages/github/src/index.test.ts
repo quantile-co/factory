@@ -22,6 +22,7 @@ import {
   CommandFailure,
   plan,
   processRunner,
+  publishNixCache,
 } from "./index.ts";
 
 it("packs a standalone JavaScript transport with declarations for downstreams", () => {
@@ -52,11 +53,145 @@ it("packs a standalone JavaScript transport with declarations for downstreams", 
       [
         "--input-type=module",
         "-e",
-        'import { plan, apply, processRunner } from "@quantile-co/factory-github"; if ([plan, apply, processRunner].some(value => typeof value !== "function")) process.exit(1);',
+        'import { plan, apply, processRunner, publishNixCache } from "@quantile-co/factory-github"; if ([plan, apply, processRunner, publishNixCache].some(value => typeof value !== "function")) process.exit(1);',
       ],
       { cwd: root, encoding: "utf8" },
     );
     expect(result.status, result.stderr).toBe(0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("cache publication validates keys and removes its private scratch after success, failure or cancellation", async () => {
+  const root = mkdtempSync(join(tmpdir(), "factory-nix-cache-"));
+  try {
+    for (const outcome of [
+      "success",
+      "failure",
+      "cancelled",
+      "mismatch",
+    ] as const) {
+      const abort = new AbortController();
+      let keyFile = "";
+      const options = {
+        scratchDirectory: root,
+        privateKey: "fixture-private",
+        publicKey: "fixture-public",
+        signal: abort.signal,
+      };
+      const running = publishNixCache(
+        options,
+        async (program, args, execution) => {
+          expect(program).toBe("nix");
+          expect(execution?.signal).toBe(abort.signal);
+          if (args[0] === "key") {
+            expect(execution?.input).toBe("fixture-private\n");
+            return outcome === "mismatch" ? "other-public" : "fixture-public";
+          }
+          if (args[0] === "path-info") {
+            expect(args).toEqual(["path-info", "--all"]);
+            return "/nix/store/restored\n/nix/store/built";
+          }
+          expect(args.slice(0, 3)).toEqual(["copy", "--stdin", "--to"]);
+          keyFile = new URL(args[3]).searchParams.get("secret-key") ?? "";
+          expect(readFileSync(keyFile, "utf8")).toBe("fixture-private\n");
+          expect(lstatSync(keyFile).mode & 0o777).toBe(0o600);
+          expect(lstatSync(dirname(keyFile)).mode & 0o777).toBe(0o700);
+          expect(execution?.input).toBe(
+            "/nix/store/restored\n/nix/store/built\n",
+          );
+          if (outcome === "failure")
+            throw new CommandFailure(17, "copy failed");
+          if (outcome === "cancelled") {
+            abort.abort();
+            throw new CommandFailure(130, "Command cancelled");
+          }
+          return "";
+        },
+      );
+      if (outcome === "success") await running;
+      else
+        await expect(running).rejects.toThrow(
+          outcome === "mismatch"
+            ? "keys do not match"
+            : outcome === "failure"
+              ? "copy failed"
+              : "Command cancelled",
+        );
+      if (outcome === "mismatch") expect(keyFile).toBe("");
+      else expect(existsSync(dirname(keyFile))).toBe(false);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("cache CLI passes stdin privately, excludes the signing secret from children and requires main", () => {
+  const root = mkdtempSync(join(tmpdir(), "factory-cache-cli-"));
+  try {
+    const bin = join(root, "bin");
+    mkdirSync(bin);
+    const nix = join(bin, "nix");
+    const log = join(root, "key-path");
+    writeFileSync(
+      nix,
+      `#!${process.execPath}
+const fs = require("node:fs"), args = process.argv.slice(2);
+if (process.env.NIX_CACHE_PRIVATE_KEY) process.exit(80);
+const input = fs.readFileSync(0, "utf8");
+if (args[0] === "key") {
+  if (input !== "fixture-private\\n") process.exit(81);
+  process.stdout.write("fixture-public\\n");
+} else if (args[0] === "path-info") {
+  if (input) process.exit(82);
+  process.stdout.write("/nix/store/restored\\n");
+} else if (args[0] === "copy") {
+  const key = new URL(args[3]).searchParams.get("secret-key");
+  if (fs.readFileSync(key, "utf8") !== "fixture-private\\n") process.exit(83);
+  if (input !== "/nix/store/restored\\n") process.exit(84);
+  fs.writeFileSync(process.env.TEST_CACHE_LOG, key);
+  process.exit(Number(process.env.TEST_COPY_EXIT));
+} else process.exit(85);
+`,
+    );
+    chmodSync(nix, 0o755);
+    for (const [ref, copyExit, expected] of [
+      ["refs/heads/topic", 0, 1],
+      ["refs/heads/main", 17, 17],
+      ["refs/heads/main", 0, 0],
+    ] as const) {
+      rmSync(log, { force: true });
+      const result = spawnSync(
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          fileURLToPath(
+            new URL("../../../apps/github/cli.ts", import.meta.url),
+          ),
+          "cache-publish",
+        ],
+        {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            PATH: `${bin}:${process.env.PATH}`,
+            GITHUB_REF: ref,
+            RUNNER_TEMP: root,
+            NIX_CACHE_PRIVATE_KEY: "fixture-private",
+            NIX_CACHE_PUBLIC_KEY: "fixture-public",
+            TEST_CACHE_LOG: log,
+            TEST_COPY_EXIT: String(copyExit),
+          },
+        },
+      );
+      expect(result.status, result.stderr + result.stdout).toBe(expected);
+      expect(result.stdout + result.stderr).not.toContain("fixture-private");
+      if (ref === "refs/heads/main")
+        expect(existsSync(dirname(readFileSync(log, "utf8")))).toBe(false);
+      else expect(existsSync(log)).toBe(false);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

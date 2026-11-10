@@ -9,6 +9,7 @@ import {
   CommandFailure,
   plan,
   processRunner,
+  publishNixCache,
   type TransportOptions,
 } from "@quantile-co/factory-github";
 import { Command, Option } from "commander";
@@ -59,8 +60,35 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
 const program = new Command()
   .name("factory-github")
   .description(
-    "Repository artifacts and saved-plan transport; use approved workflows.",
+    "Repository artifacts, cache publication and saved-plan transport; use approved workflows.",
   );
+program
+  .command("cache-publish")
+  .addOption(
+    new Option("--private-key <key>", "Prefer NIX_CACHE_PRIVATE_KEY")
+      .env("NIX_CACHE_PRIVATE_KEY")
+      .makeOptionMandatory(),
+  )
+  .addOption(
+    new Option("--public-key <key>", "Cache public signing key")
+      .env("NIX_CACHE_PUBLIC_KEY")
+      .makeOptionMandatory(),
+  )
+  .action(async (options: { privateKey: string; publicKey: string }) => {
+    if (requiredEnvironment("GITHUB_REF") !== "refs/heads/main")
+      throw new Error("Nix cache publication requires main");
+    const cacheEnvironment = { ...process.env };
+    delete cacheEnvironment.NIX_CACHE_PRIVATE_KEY;
+    await publishNixCache(
+      {
+        scratchDirectory: requiredEnvironment("RUNNER_TEMP"),
+        privateKey: options.privateKey,
+        publicKey: options.publicKey,
+        signal: abort.signal,
+      },
+      processRunner(cacheEnvironment),
+    );
+  });
 program
   .command("build")
   .addOption(

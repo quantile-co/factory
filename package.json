@@ -13,6 +13,7 @@
     "skills:sync": "skills experimental_sync --agent pi --copy --yes",
     "npm:pack": "pnpm test && pnpm --filter @quantile-co/factory-github pack --out dist/npm/factory-github.tgz && pnpm --filter @quantile-co/factory-pi pack --out dist/npm/factory-pi.tgz",
     "npm:stage": "npm stage publish dist/npm/factory-github.tgz --access public && npm stage publish dist/npm/factory-pi.tgz --access public",
+    "github:cache-publish": "tsx apps/github/cli.ts cache-publish",
     "github:build": "tsx apps/github/cli.ts build",
     "github:plan": "tsx apps/github/cli.ts plan",
     "github:apply": "tsx apps/github/cli.ts apply"

@@ -2,7 +2,7 @@
   "name": "@quantile-co/factory-github",
   "version": "0.1.2",
   "license": "MIT",
-  "description": "Private saved-plan transport for repository-owned deployment commands.",
+  "description": "Saved-plan transport and signed Nix cache publication for repository workflows.",
   "type": "module",
   "engines": {
     "node": ">=24"

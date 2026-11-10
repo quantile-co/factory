@@ -68,6 +68,11 @@ main Test/Build/Plan/Apply jobs. Export `nixcache` from the consumer flake and s
 `factory.nixcache.package` and Nixpkgs `namespace-cli` in its development shell.
 Check retains its existing volume and public-cache reads without a writer proxy.
 Public Factory continues to use Cachix by default.
+Expose the consumer-owned `github:cache-publish` task through its existing GitHub
+TypeScript CLI, delegating to `publishNixCache` from a published Factory GitHub
+package that exports it. Updating the flake pin alone does not update that npm
+API. Keep exact package pins and frozen dependency installation; do not add a
+second source-loading fallback to work around an unreleased API.
 
 The proxy uses Namespace instance credentials on runners and `nsc login` locally.
 Verify workspace identity before access. Keep runner profiles Restricted and
@@ -90,7 +95,11 @@ source and configuration paths can be included. Cache credentials, state,
 plans and provider data must never enter the Nix store. No management token or
 signing key is needed in the setup step. The signing key is supplied only to
 publication, checked against the public key, and its temporary file is removed
-on success or failure. Cleanup stops the proxy even when the task fails.
+on success or failure. Publication and key cleanup live in the GitHub TypeScript
+library/app, not a shell-script file. The CLI requires native main-ref metadata
+and removes the signing secret from the environment of native Nix subprocesses.
+Frozen dependency installation does not receive the signing secret. Cleanup stops
+the proxy even when the task fails.
 
 For automatic local use, set `nixcache.workspace` to the expected workspace and
 `nixcache.publicKey` to its public signing key, then explicitly compose

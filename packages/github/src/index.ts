@@ -5,13 +5,16 @@ import {
   closeSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { constants } from "node:os";
 import { isAbsolute, join } from "node:path";
 
 export interface Execution {
+  input?: string;
   logFile?: string;
   append?: boolean;
   signal?: AbortSignal;
@@ -60,10 +63,15 @@ export function processRunner(environment: NodeJS.ProcessEnv): Execute {
       const child = spawn(program, [...args], {
         env: environment,
         detached: grouped,
-        stdio: ["ignore", fd ?? "pipe", fd ?? "pipe"],
+        stdio: [
+          options.input === undefined ? "ignore" : "pipe",
+          fd ?? "pipe",
+          fd ?? "pipe",
+        ],
       });
       let cancelled = false;
       let failedToSpawn = false;
+      let failedToWriteInput = false;
       let killTimer: ReturnType<typeof setTimeout> | undefined;
       const terminate = (signal: NodeJS.Signals) => {
         if (!child.pid) return;
@@ -85,6 +93,10 @@ export function processRunner(environment: NodeJS.ProcessEnv): Execute {
       child.stdout?.on("data", (data: Buffer) => output.push(data));
       // Diagnostics from unlogged storage commands are deliberately not forwarded.
       child.stderr?.resume();
+      child.stdin?.on("error", () => {
+        failedToWriteInput = true;
+      });
+      if (options.input !== undefined) child.stdin?.end(options.input);
       // Spawn/abort errors must not settle transport before the process closes.
       child.on("error", () => {
         failedToSpawn = true;
@@ -101,7 +113,7 @@ export function processRunner(environment: NodeJS.ProcessEnv): Execute {
               ? 128 + constants.signals[signal]
               : cancelled
                 ? 130
-                : failedToSpawn
+                : failedToSpawn || failedToWriteInput
                   ? 1
                   : 0;
         if (status === 0)
@@ -115,6 +127,48 @@ export function processRunner(environment: NodeJS.ProcessEnv): Execute {
           );
       });
     });
+}
+
+export async function publishNixCache(
+  options: {
+    scratchDirectory: string;
+    privateKey: string;
+    publicKey: string;
+    signal?: AbortSignal;
+  },
+  execute: Execute,
+): Promise<void> {
+  if (!isAbsolute(options.scratchDirectory))
+    throw new Error("Runner scratch directory must be absolute");
+  if (!options.privateKey.trim() || !options.publicKey.trim())
+    throw new Error("Missing Nix cache signing keys");
+  const publicKey = await execute("nix", ["key", "convert-secret-to-public"], {
+    input: `${options.privateKey.trim()}\n`,
+    signal: options.signal,
+  });
+  if (publicKey.trim() !== options.publicKey.trim())
+    throw new Error("Nix cache signing keys do not match");
+  // Include volume restores, not only paths created during the current job.
+  const paths = await execute("nix", ["path-info", "--all"], {
+    signal: options.signal,
+  });
+  if (!paths) return;
+  const directory = mkdtempSync(join(options.scratchDirectory, "nix-cache-"));
+  try {
+    const keyFile = join(directory, "secret.key");
+    writeFileSync(keyFile, `${options.privateKey.trim()}\n`, {
+      mode: 0o600,
+      flag: "wx",
+    });
+    const destination = new URL("http://127.0.0.1:18765");
+    destination.searchParams.set("secret-key", keyFile);
+    await execute("nix", ["copy", "--stdin", "--to", destination.href], {
+      input: `${paths}\n`,
+      signal: options.signal,
+    });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 function validate(options: TransportOptions) {

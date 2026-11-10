@@ -202,7 +202,9 @@ Third-party Marimo skills are used unpatched.
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
 snapshots, tests of upstream behavior, unnecessary abstractions and repetitive
 validation. Minimize new files, directories and abstractions; add them only when
-required and list the additions at task completion. Declare runtime dependencies
+required and list the additions at task completion. Prefer inlining small shell
+glue in its owning Nix module or native workflow rather than adding separate
+shell-script files. Declare runtime dependencies
 through pinned inputs/locks; never weaken
 assertions or skip coverage to conceal missing dependencies.
 Keep comments about current behavior, not historical migration narratives.
@@ -476,7 +478,14 @@ It never installs client-side signing trust. Cold evaluation precedes the hook.
 Public Factory keeps Cachix. Consumers may select
 `github.workflows.nixCache = "namespace"` for trusted-main workflows, export
 `nixcache` and configure their own public trust. Check never starts a writer
-proxy. Namespace instance authentication is separate from native Nix signing:
+proxy. Keep local startup inline in the Nix module and CI startup inline in the workflow
+renderer, before shell entry and dependency installation. Post-task publication
+uses the caller-owned `github:cache-publish` task and GitHub TypeScript library's
+`publishNixCache`; native subprocesses never receive its private signing secret
+in their environment. Consumers must pin a published package exporting the API;
+a flake update is not an npm update. The new publisher API needs a post-0.1.2
+release before downstream adoption. No automatic source fallback or publication.
+Namespace instance authentication is separate from native Nix signing:
 only publication receives the private signing secret, validates its public half
 and removes the temporary key file. Publish restored paths too; volume reuse
 does not establish remote publication. Namespace blobstorage permissions are

@@ -10,7 +10,6 @@ let
     lib.concatMapStrings (
       line: (if line == "" then "" else lib.concatStrings (lib.replicate spaces " ") + line) + "\n"
     ) (lib.splitString "\n" (lib.removeSuffix "\n" value));
-  script = path: indent 10 (builtins.readFile path);
   cachixSetup = indent 6 ''
     - name: Set up Cachix
       uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
@@ -19,14 +18,41 @@ let
         authToken: ''${{ secrets.CACHIX_AUTH_TOKEN }}
         useDaemon: false
   '';
-  namespaceSetup =
-    indent 6 ''
-      - name: Set up Namespace Nix cache
-        env:
-          NIX_CACHE_PUBLIC_KEY: ''${{ vars.NIX_CACHE_PUBLIC_KEY }}
-        run: |
-    ''
-    + script ../../../etc/github/workflows/nixcache-setup.sh;
+  namespaceSetup = indent 6 ''
+    - name: Set up Namespace Nix cache
+      env:
+        NIX_CACHE_PUBLIC_KEY: ''${{ vars.NIX_CACHE_PUBLIC_KEY }}
+      run: |
+        set -euo pipefail
+
+        : "''${RUNNER_TEMP:?}"
+        : "''${GITHUB_ENV:?}"
+
+        : "''${NIX_CACHE_PUBLIC_KEY:?Configure the cache public signing key}"
+        umask 077
+        proxy="$(nix build --no-link --print-out-paths '.#nixcache')/bin/nixcache"
+        "$proxy" -foreground -cache_dir "$RUNNER_TEMP/nixcache" \
+            >"$RUNNER_TEMP/nixcache.log" 2>&1 &
+        pid=$!
+        printf '%s\n' "$pid" >"$RUNNER_TEMP/nixcache.pid"
+        ready=false
+        for _ in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:18765/nix-cache-info >/dev/null; then
+                ready=true
+                break
+            fi
+            kill -0 "$pid"
+            sleep 1
+        done
+        if [ "$ready" != true ]; then
+            echo "Namespace Nix cache did not become ready; inspect $RUNNER_TEMP/nixcache.log" >&2
+            exit 1
+        fi
+        mkdir -p "$HOME/.config/nix"
+        printf '\nextra-substituters = http://127.0.0.1:18765\nextra-trusted-public-keys = %s\n' \
+            "$NIX_CACHE_PUBLIC_KEY" >>"$HOME/.config/nix/nix.conf"
+        printf 'NIX_CACHE_SUBSTITUTER=http://127.0.0.1:18765\n' >>"$GITHUB_ENV"
+  '';
   namespaceFinish =
     "\n"
     + indent 6 ''
@@ -36,8 +62,10 @@ let
           NIX_CACHE_PRIVATE_KEY: ''${{ secrets.NIX_CACHE_PRIVATE_KEY }}
           NIX_CACHE_PUBLIC_KEY: ''${{ vars.NIX_CACHE_PUBLIC_KEY }}
         run: |
+          direnv="$(env -u NIX_CACHE_PRIVATE_KEY nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
+          env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile
+          "$direnv" exec . pnpm run github:cache-publish
     ''
-    + script ../../../etc/github/workflows/nixcache-publish.sh
     + "\n"
     + indent 6 ''
       - name: Stop Namespace Nix cache
@@ -98,7 +126,7 @@ in
         "namespace"
       ];
       default = "cachix";
-      description = "Remote Nix cache for trusted main jobs; Check retains volume/public-cache reads only.";
+      description = "Remote cache for trusted main jobs; Namespace requires the consumer github:cache-publish task. Check keeps volume/public reads.";
     };
     layers = lib.mkOption {
       type = lib.types.listOf (
