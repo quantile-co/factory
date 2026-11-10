@@ -466,7 +466,11 @@ saved-plan identity checks. Forward named secrets explicitly, not `secrets: inhe
 #decision [[factory-namespace-nix-cache]]
 The opt-in `nixcache` module packages fixed-hash official Namespace binaries;
 `namespace-cli` is selected directly from Nixpkgs. Authentication, daemon setup
-and proxy lifecycle stay runtime-owned, never implicit shell-entry operations.
+stay runtime-owned. Consumers explicitly select `nixcache.shellHook` with an
+expected workspace and public key to manage local reader proxy startup; imports
+alone do not start it. The hook skips CI, never prompts for login, preserves
+existing caches/keys and refuses unmanaged listeners or mismatched workspaces.
+Multi-user trust remains administrator-owned; cold evaluation precedes the hook.
 Public Factory keeps Cachix. Consumers may select
 `github.workflows.nixCache = "namespace"` for trusted-main workflows, export
 `nixcache` and configure their own public trust. Check never starts a writer

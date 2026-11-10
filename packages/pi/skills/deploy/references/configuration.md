@@ -92,16 +92,26 @@ signing key is needed in the setup step. The signing key is supplied only to
 publication, checked against the public key, and its temporary file is removed
 on success or failure. Cleanup stops the proxy even when the task fails.
 
-For local use, start the packaged proxy after `nsc login`:
+For automatic local use, set `nixcache.workspace` to the expected workspace and
+`nixcache.publicKey` to its public signing key, then explicitly compose
+`nixcache.shellHook` after `files.shellHook`. After `nsc login`, re-enter the shell.
+The hook starts or reuses its managed, workspace-scoped `local-only` proxy and
+adds it and its public key to effective Nix configuration without removing public
+caches or upstream keys. No `.envrc.local` setting or interactive login is needed.
+It skips CI and unauthenticated/wrong-workspace sessions, refuses unmanaged
+listeners and reports startup failures without preventing shell entry.
+`nixcache.port` defaults to 18765; different workspaces need distinct ports.
+The first cold flake evaluation precedes the hook and still uses bootstrap caches.
 
-```sh
-nixcache -cache_dir "${XDG_CACHE_HOME:-$HOME/.cache}/nixcache" -cache-upstream=local-only
-```
-
-Configure the loopback substituter and the consumer's public signing key using
-native Nix settings. Multi-user installations require administrator trust and a
-proxy reachable by the daemon. `local-only` disables automatic upstream
-publication, not explicit uploads or the credential's server permissions.
+The proxy keeps archives and its PID/binary record beneath the OS user cache
+in `nixcache/TENANT/PORT/`; concurrent shell entries serialize startup. Stop the
+recorded PID before clearing that directory or replacing a running proxy binary.
+A lock left by a forcibly killed setup can be removed only after verifying no
+setup is active. Credentials stay in the existing Namespace keychain, never in
+this cache. Multi-user installations require administrator trust and a proxy
+reachable by the daemon; the hook does not rewrite daemon configuration.
+`local-only` disables automatic upstream publication, not explicit uploads or
+the credential's server permissions.
 See [Namespace's Nix integration](https://namespace.so/docs/integrations/nix).
 
 ### Turbo cache access
