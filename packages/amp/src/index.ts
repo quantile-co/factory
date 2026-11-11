@@ -74,7 +74,7 @@ export type Peer = {
   Online?: boolean;
   Tags?: string[];
   TailscaleIPs?: string[];
-  SSH_HostKeys?: string[];
+  sshHostKeys?: string[];
 };
 
 export function orbPeers(status: { Peer?: Record<string, Peer> }): Peer[] {
@@ -170,7 +170,7 @@ export function connect(orb: Orb, user = "user"): void {
   if (!host || !/^[a-z0-9][a-z0-9.-]*$/i.test(host))
     throw new Error("Orb has no usable DNS name or IPv4 address.");
   const target = `${user}@${host}`;
-  pinHostKeys(host, peers[0].SSH_HostKeys ?? []);
+  pinHostKeys(host, peers[0].sshHostKeys ?? []);
   // Respect user SSH configuration, but never prompt or accept an unknown key.
   // A custom known_hosts path must include the pinned native store.
   output("ssh", [
@@ -283,8 +283,9 @@ if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ] && [ -n "\${FACTORY_AMP_OTEL_CLI:-}" ]; 
   mkdir -p "$install"
   cp -R "$(dirname "$FACTORY_AMP_OTEL_CLI")/." "$install/"
   printf '%s\\n' '{"type":"module"}' > "$install/package.json"
-  cp "$OTEL_COLLECTOR_CONFIG" "$install/host.yaml"
-  cp "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
+  # Refresh read-only copies inherited from a prepared Nix snapshot.
+  install -m 0644 "$OTEL_COLLECTOR_CONFIG" "$install/host.yaml"
+  install -m 0644 "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
   # Store-backed Node and collector executables must survive orb GC too.
   for tool in node otelcol-contrib; do
     target=$node

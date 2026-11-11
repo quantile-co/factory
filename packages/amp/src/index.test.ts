@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -160,6 +161,14 @@ it.each(["1.104.5", "1.104.1"])(
       writeFileSync(join(home, "artifacts/chunk.js"), "export {};");
       writeFileSync(join(home, "host.yaml"), "host fixture");
       writeFileSync(join(home, "docker.yaml"), "docker fixture");
+      const collector = join(home, ".local/share/factory-amp/otel");
+      mkdirSync(collector, { recursive: true });
+      for (const name of ["host", "docker"]) {
+        chmodSync(join(home, `${name}.yaml`), 0o444);
+        writeFileSync(join(collector, `${name}.yaml`), "stale config", {
+          mode: 0o444,
+        });
+      }
       // Mock privileged operations; only the temporary HOME is written.
       const result = spawnSync(
         "bash",
@@ -210,6 +219,11 @@ ${setupScript}
         return;
       }
       expect(result.status, result.stdout + result.stderr).toBe(0);
+      for (const name of ["host", "docker"]) {
+        const config = join(collector, `${name}.yaml`);
+        expect(readFileSync(config, "utf8")).toBe(`${name} fixture`);
+        expect(statSync(config).mode & 0o777).toBe(0o644);
+      }
       const units = readFileSync(join(home, "units"), "utf8");
       expect(units).toContain("Environment=TS_SSH_DISABLE_FORWARDING=1");
       expect(units).toContain("InaccessiblePaths=-/etc/ssh/ssh_host_rsa_key");
@@ -305,7 +319,7 @@ it("verifies Tailscale-pinned SSH before native Herdr setup and stops on SSH fai
       DNSName: "amp-fixture.tail.example.",
       Online: true,
       Tags: ["tag:amp-orb"],
-      SSH_HostKeys: [key],
+      sshHostKeys: [key],
     };
     const record = join(home, "operations");
     for (const command of ["tailscale", "ssh", "herdr"]) {
