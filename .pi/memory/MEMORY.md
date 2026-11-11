@@ -982,3 +982,15 @@ workspace identity/trust and administrative credential permissions, native plugi
 installation, SSH account/host-key behavior, mobile terminal keys, model login,
 pause/resume/reconnect and issue spawners before adoption/publication. No automatic
 npm release-pipeline expansion is included in the pilot.
+
+#todo [[amp-orb-login-friction]]
+- Explore lower-friction Pi/model authentication for new orbs: native remote/device
+  login, scoped runtime secret injection or safe per-user credential reuse.
+  Compare subscription versus API billing and credential scope explicitly. Keep
+  credentials out of source and shared snapshots; manual per-orb login remains
+  the current choice pending review.
+- Explore lower-friction SSH host-key verification when saving Herdr profiles:
+  obtain the expected key through authenticated orb metadata and compare it before
+  trusting the SSH endpoint. Preserve verification across reconnects and handle
+  recreated orbs, stale profiles and key rotation without blind acceptance or
+  disabling host-key checks. These are investigation items, not approved changes.
