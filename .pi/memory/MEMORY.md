@@ -304,6 +304,21 @@ Keep these upstream sources unchanged, including their host-specific invocation
 wording. Skill selection does not install a Claude-style Skill tool or a generic
 background-agent tool in Pi. TDD skills are intentionally not selected.
 
+The catalog also selects React composition, Docker scaffolding/cleanup,
+ClickHouse architecture, Python typing/async/profiling, TypeScript types,
+Go style/errors/testing/gRPC, Resend API and Stripe docs/upgrade guidance.
+Testing guidance is not a requirement to adopt test-first development. Apply
+skills only to matching work; preserve project language versions, dependencies,
+formatters, type checkers, service ownership and deployment workflows.
+Upstream instructions to install tools, use the latest SDK/CLI, add a helper
+library or upgrade an API are not authorization to change pinned toolchains.
+Ask before such changes; retain Nix-owned runtimes and explicit dependency installs.
+Do not copy examples that log signing secrets, email content or raw sensitive
+payloads into agent output. Verify snippets against installed APIs and tooling.
+Resend's separate `email-best-practices` remains excluded for flawed webhook and
+timeout examples. Terraform's test/refactor candidates remain unselected pending
+correctness and OpenTofu review; existing style guidance remains available.
+
 `etc/pi/settings.json` is the only native settings template. Factory overrides
 only its local package source when materializing `.pi/settings.json`.
 Preserve the exact pinned upstream npm selections. SDK-only settings entries

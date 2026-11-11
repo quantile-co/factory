@@ -17,6 +17,14 @@
       "computedHash": "612f913bcb03f0787b103c848cd7664b676a9aaf31f25d3270cc69cf5caaab95",
       "via": "@quantile-co/factory-pi"
     },
+    "async-python-patterns": {
+      "source": "wshobson/agents",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/async-python-patterns/SKILL.md",
+      "computedHash": "35bc80697c3ba879e32cee7e2728ed2db0d16499875bb718736fd1160fddc2d6",
+      "via": "@quantile-co/factory-pi"
+    },
     "bash-defensive-patterns": {
       "source": "wshobson/agents",
       "ref": "0874a27b17a22e2b7c2e2bcd725768e0803cad06",
@@ -39,6 +47,14 @@
       "sourceType": "github",
       "skillPath": "clean-architecture/SKILL.md",
       "computedHash": "84fd3d3edd262c968d49c8b57c51370974feb0e28832a8dcc8049f1347e50da8",
+      "via": "@quantile-co/factory-pi"
+    },
+    "clickhouse-architecture-advisor": {
+      "source": "ClickHouse/agent-skills",
+      "ref": "d3b2b5ba43a8b80c2d08858b68d53edc701b5ace",
+      "sourceType": "github",
+      "skillPath": "skills/clickhouse-architecture-advisor/SKILL.md",
+      "computedHash": "5cecc53a1aa47ff41f84b7f984c1242d70af09b8bbce4f52d423dd5a06f5ae0b",
       "via": "@quantile-co/factory-pi"
     },
     "clickhouse-best-practices": {
@@ -143,6 +159,22 @@
       "computedHash": "391f366bb0e60f5c7c48ecc814b917e7dae797edbb58625d228cb951d7a538ee",
       "via": "@quantile-co/factory-pi"
     },
+    "docker-destructive-guardrails": {
+      "source": "docker/skills",
+      "ref": "56001ac500fef948ee2e48459090a62b9c6c28b5",
+      "sourceType": "github",
+      "skillPath": "skills/docker-destructive-guardrails/SKILL.md",
+      "computedHash": "f6c72f2ba003b2d6dc480f97beb0e166a61b5acfb1f0f6f31af2fa21a66bd9f2",
+      "via": "@quantile-co/factory-pi"
+    },
+    "docker-project-foundations": {
+      "source": "docker/skills",
+      "ref": "56001ac500fef948ee2e48459090a62b9c6c28b5",
+      "sourceType": "github",
+      "skillPath": "skills/docker-project-foundations/SKILL.md",
+      "computedHash": "6b2334b2c24910d177e1f80a0cc1f5135f2a9b33b722673873435736de36128f",
+      "via": "@quantile-co/factory-pi"
+    },
     "domain-driven-design-distilled": {
       "source": "ciembor/agent-rules-books",
       "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
@@ -197,6 +229,38 @@
       "sourceType": "github",
       "skillPath": "skills/gh/SKILL.md",
       "computedHash": "f2c4b15043980ca7d31b52d694e589e44b0924ebcff3f9d35cb1825e79ff370f",
+      "via": "@quantile-co/factory-pi"
+    },
+    "golang-code-style": {
+      "source": "samber/cc-skills-golang",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-code-style/SKILL.md",
+      "computedHash": "8ce09e462ef435cedc78307c124adb0c83848366b4bc51cd0942d3c79fff1e71",
+      "via": "@quantile-co/factory-pi"
+    },
+    "golang-error-handling": {
+      "source": "samber/cc-skills-golang",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-error-handling/SKILL.md",
+      "computedHash": "7b872085d11457427db2d5559f530d9a7c4d93e09c4709a030731868084db6d3",
+      "via": "@quantile-co/factory-pi"
+    },
+    "golang-grpc": {
+      "source": "samber/cc-skills-golang",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-grpc/SKILL.md",
+      "computedHash": "fc7d8796283bfea95264a37ec6208033c39fcea31affd8007574963f614e498e",
+      "via": "@quantile-co/factory-pi"
+    },
+    "golang-testing": {
+      "source": "samber/cc-skills-golang",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "sourceType": "github",
+      "skillPath": "skills/golang-testing/SKILL.md",
+      "computedHash": "31b691f568f4c00d8d7bedc65a38d9966d9f3d353712929a1a8805eaa3f88b00",
       "via": "@quantile-co/factory-pi"
     },
     "grilling": {
@@ -287,6 +351,22 @@
       "computedHash": "d3fc74689bd993e39c44bfae510d014eecffbeec2922764b065377fd1327c0f6",
       "via": "@quantile-co/factory-pi"
     },
+    "python-performance-optimization": {
+      "source": "wshobson/agents",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/python-performance-optimization/SKILL.md",
+      "computedHash": "243da92a768075dd98001e0fc43a2e845a0a91e67946fd4efcc806fd5f603f1b",
+      "via": "@quantile-co/factory-pi"
+    },
+    "python-type-safety": {
+      "source": "wshobson/agents",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/python-type-safety/SKILL.md",
+      "computedHash": "16314aa8a4a465773be809c517f62f8ef704f5ab1bb237e8c9b8a759689fcb21",
+      "via": "@quantile-co/factory-pi"
+    },
     "query": {
       "source": "duckdb/duckdb-skills",
       "ref": "7feda8e01e22bc0886c86123f3884947e36d8c69",
@@ -317,6 +397,14 @@
       "sourceType": "github",
       "skillPath": "refactoring/SKILL.md",
       "computedHash": "670b52574be2041152611ece9fd717fe5c95873926f92ca9375ccd317ee4e7c2",
+      "via": "@quantile-co/factory-pi"
+    },
+    "resend": {
+      "source": "resend/resend-skills",
+      "ref": "f3e86d84960887bfc6e76e504c642ab6bc748f0c",
+      "sourceType": "github",
+      "skillPath": "skills/resend/SKILL.md",
+      "computedHash": "c20f45efdc890f4e642c3fb2daf118d5d9a03dd6a04f985482cff2c8e59e2ea0",
       "via": "@quantile-co/factory-pi"
     },
     "resend-cli": {
@@ -391,6 +479,14 @@
       "computedHash": "03fdea4421897072ad549d72d1e49202962c0a69ed8554c53c66fb635a8f8387",
       "via": "@quantile-co/factory-pi"
     },
+    "stripe-docs": {
+      "source": "stripe/ai",
+      "ref": "8570d472fbc4ff2c84329af1d15030ecfdea3570",
+      "sourceType": "github",
+      "skillPath": "skills/stripe-docs/SKILL.md",
+      "computedHash": "ee4a51d34f11386fe6c9f991d5b2d32da69c851124a78a01403412bcf87e73d7",
+      "via": "@quantile-co/factory-pi"
+    },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
       "ref": "c9be0e931b7930f7d02126d04774d904c381e7d7",
@@ -439,12 +535,36 @@
       "computedHash": "5f871bdc46a9212222214ba399be4965374208af1bd7f48f1271bef72841dd31",
       "via": "@quantile-co/factory-pi"
     },
+    "typescript-advanced-types": {
+      "source": "wshobson/agents",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "sourceType": "github",
+      "skillPath": "plugins/javascript-typescript/skills/typescript-advanced-types/SKILL.md",
+      "computedHash": "8cbf2bf600f392d7260e476e3202932a876e2281cda3b15a8b6a5a43f383252d",
+      "via": "@quantile-co/factory-pi"
+    },
     "unslop": {
       "source": "backnotprop/pstack",
       "ref": "18b6c36e6e201b110acc62472de987416ac4e23b",
       "sourceType": "github",
       "skillPath": "skills/unslop/SKILL.md",
       "computedHash": "eca0ad9fa3a3867c83f3aaf3a058e247a569c8976a68ca423a569b93eb86de5d",
+      "via": "@quantile-co/factory-pi"
+    },
+    "upgrade-stripe": {
+      "source": "stripe/ai",
+      "ref": "8570d472fbc4ff2c84329af1d15030ecfdea3570",
+      "sourceType": "github",
+      "skillPath": "skills/upgrade-stripe/SKILL.md",
+      "computedHash": "d3ff67bc5d18fc75ec634c7bf8e32ca0d0731c96b8d6641f22bff3120d05569f",
+      "via": "@quantile-co/factory-pi"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "ref": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "f98931159fa9c7fed043bcd18a891a46dcf89ababa38df13a4c5b7b30dc0ce07",
       "via": "@quantile-co/factory-pi"
     },
     "vercel-react-best-practices": {

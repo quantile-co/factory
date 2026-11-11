@@ -466,6 +466,111 @@
       "skills": [
         "narrow-react-prop-types"
       ]
+    },
+    {
+      "source": "vercel-labs/agent-skills/skills/composition-patterns",
+      "ref": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "skills": [
+        "vercel-composition-patterns"
+      ]
+    },
+    {
+      "source": "docker/skills/skills/docker-destructive-guardrails",
+      "ref": "56001ac500fef948ee2e48459090a62b9c6c28b5",
+      "skills": [
+        "docker-destructive-guardrails"
+      ]
+    },
+    {
+      "source": "docker/skills/skills/docker-project-foundations",
+      "ref": "56001ac500fef948ee2e48459090a62b9c6c28b5",
+      "skills": [
+        "docker-project-foundations"
+      ]
+    },
+    {
+      "source": "ClickHouse/agent-skills/skills/clickhouse-architecture-advisor",
+      "ref": "d3b2b5ba43a8b80c2d08858b68d53edc701b5ace",
+      "skills": [
+        "clickhouse-architecture-advisor"
+      ]
+    },
+    {
+      "source": "wshobson/agents/plugins/python-development/skills/python-type-safety",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "skills": [
+        "python-type-safety"
+      ]
+    },
+    {
+      "source": "wshobson/agents/plugins/python-development/skills/async-python-patterns",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "skills": [
+        "async-python-patterns"
+      ]
+    },
+    {
+      "source": "wshobson/agents/plugins/python-development/skills/python-performance-optimization",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "skills": [
+        "python-performance-optimization"
+      ]
+    },
+    {
+      "source": "wshobson/agents/plugins/javascript-typescript/skills/typescript-advanced-types",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "skills": [
+        "typescript-advanced-types"
+      ]
+    },
+    {
+      "source": "samber/cc-skills-golang/skills/golang-code-style",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "skills": [
+        "golang-code-style"
+      ]
+    },
+    {
+      "source": "samber/cc-skills-golang/skills/golang-error-handling",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "skills": [
+        "golang-error-handling"
+      ]
+    },
+    {
+      "source": "samber/cc-skills-golang/skills/golang-testing",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "skills": [
+        "golang-testing"
+      ]
+    },
+    {
+      "source": "samber/cc-skills-golang/skills/golang-grpc",
+      "ref": "d68d80aec298e1b74b37c2a472c002b5217248b3",
+      "skills": [
+        "golang-grpc"
+      ]
+    },
+    {
+      "source": "resend/resend-skills/skills/resend",
+      "ref": "f3e86d84960887bfc6e76e504c642ab6bc748f0c",
+      "skills": [
+        "resend"
+      ]
+    },
+    {
+      "source": "stripe/ai/skills/stripe-docs",
+      "ref": "8570d472fbc4ff2c84329af1d15030ecfdea3570",
+      "skills": [
+        "stripe-docs"
+      ]
+    },
+    {
+      "source": "stripe/ai/skills/upgrade-stripe",
+      "ref": "8570d472fbc4ff2c84329af1d15030ecfdea3570",
+      "skills": [
+        "upgrade-stripe"
+      ]
     }
   ],
   "dependencies": {
