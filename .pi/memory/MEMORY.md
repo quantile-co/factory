@@ -1252,6 +1252,28 @@ post-archive peer read still showed online, so do not claim an independently
 confirmed offline transition. No retry, additional orb or infrastructure phase
 was run; the test approval is consumed.
 
+#deployment [[amp-cold-lifecycle-qualification-in-progress]]
+The operator approved deleting only Factory's cached `a1.medium` snapshot and
+one new Medium orb for cold-start, UI and pause/wake qualification. Deletion
+returned success and an empty snapshot list. Test thread
+`T-01a1ccc9-3f21-723c-9e74-3fdc0d0273b0` runs clean `f3be934`. Cold setup completed
+in about 71 seconds (12 builds, none cached); Nix copied from Numtide, Quantile
+and NixOS caches. Resume completed in about 16 seconds. Native tailscaled is
+active with zero restarts; no legacy Factory sshd or Pi auth file exists, and
+collector configs are 0644. Herdr has one workspace and zero agents. The plugin
+registered Auto with no lease events; its initial unavailable-activity message
+preceded Herdr readiness. A provider redactor 401 warning did not fail setup.
+
+Published `amp connect` succeeded and saved temporary profile
+`2617ae64c3ef33247a7971243b3fdf1d`, labelled
+`quantile-co/factory · Lifecycle test · T-0d0273b0`, session `orb`.
+Operator UI and native Auto/On/Off confirmation are pending, followed by the
+approved idle pause/wake test. No manual hold, Pi login or model prompt was
+started. This test is intentionally not archived yet; finish the approved checks
+or stop safely, then archive only this thread and remove only its test profile
+and newly pinned hostname records. Preserve the original pilot/profile/login.
+Do not launch a replacement orb or delete another snapshot under this approval.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
