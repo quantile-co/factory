@@ -932,8 +932,12 @@ binds. SSH uses per-orb runtime host keys and public-key authentication, disabli
 passwords, SSH forwarding and root login. Existing host daemon settings are not
 replaced. E2B's envd automatically bridges the loopback port to its host-side
 interface, so loopback binding is not proof of exclusive tailnet reachability.
-The pilot had no public Amp portals, but raw provider ingress remains unverified;
-retain SSH key authentication and do not claim provider-side network isolation.
+An external check of the pilot's documented E2B HTTPS endpoint for port 2222
+returned 403 with the matching sandbox ID and an explicit missing traffic-token
+error; an invalid token was also rejected. Plain HTTP reset the connection. No
+public Amp portal was configured. This verifies token-protected provider ingress
+for that pilot, not exclusive tailnet reachability or a guarantee for every future
+orb. Retain SSH key authentication; provider-authorized access remains separate.
 Herdr runs as the orb user in named session `orb`, inheriting the runtime
 environment. Browser/mobile Terminal attach command:
 `~/.local/bin/herdr --session orb`; start Pi in its repository pane with
@@ -957,11 +961,16 @@ SSH cannot wake paused orbs; open the thread in Amp first. Inspect changed host
 keys, name collisions and stale profiles rather than bypassing SSH checks.
 
 `packages/amp/src/plugin.ts` builds to a standalone, import-free
-`dist/plugin.js`. Deploy that built artifact as a native Amp plugin file (project
-or workspace plugin repository) after review; do not assume remote npm imports
-work. Factory source remains canonical. Its explicit command toggles a billed,
-best-effort keep-awake lease, released on toggle or plugin process exit. It does
-not infer Pi busy state, wake machines or hold leases for saved Herdr profiles.
+`dist/plugin.js`. Factory's orb setup installs that artifact as the per-orb system
+plugin `${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins/factory-orb-awake.js` after
+successful dormant setup. No workstation, personal or workspace-global plugin is
+installed. Factory source remains canonical; do not assume remote npm imports
+work. The pilot's installed artifact was hash-verified and loaded by Amp's native
+plugin manager. Its explicit `Factory orb: Toggle keep awake` command toggles a
+billed, best-effort lease, released on toggle or plugin process exit. It starts
+off and does not infer Pi busy state, wake machines or hold leases for saved Herdr
+profiles. Registered commands need the operator palette; native plugin listing
+or one-off event execution does not prove the live toggle was tested.
 
 The initial pilot installs the three runtime values as Factory project-level
 environment variables, not workspace/personal overrides. Only an explicitly
@@ -994,3 +1003,9 @@ npm release-pipeline expansion is included in the pilot.
   trusting the SSH endpoint. Preserve verification across reconnects and handle
   recreated orbs, stale profiles and key rotation without blind acceptance or
   disabling host-key checks. These are investigation items, not approved changes.
+- Clean up completed task worktrees after checking for uncommitted work, unmerged
+  commits and active agents. Preserve ongoing work; do not force-remove checkouts.
+- At completion, account for every added file and directory, separating tracked
+  source additions from modifications/deletions, unrelated upstream work, and
+  ignored/generated or runtime artifacts (including local and orb configuration).
+  Identify temporary artifacts that were removed and any remaining cleanup.
