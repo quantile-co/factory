@@ -3,10 +3,29 @@ import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+interface ImportResult {
+  bank: string;
+  source: string;
+  document_id: string;
+  sha256: string;
+  bytes: number;
+  operation_id: string;
+  replay?: string;
+  submitted?: boolean;
+  verified?: boolean;
+  reason?: string;
+  recovery?: string;
+}
+
+const sha256 = (value: string | Uint8Array) =>
+  createHash("sha256").update(value).digest("hex");
 
 /** Explicit one-document migration/correction; never scans directories or archives. */
-export async function main(args, env = process.env, request = fetch) {
+export async function main(
+  args: string[],
+  env: NodeJS.ProcessEnv = process.env,
+  request: (url: string, init: RequestInit) => Promise<Response> = fetch,
+): Promise<ImportResult> {
   const { positionals, values } = parseArgs({
     args,
     allowPositionals: true,
@@ -28,7 +47,7 @@ export async function main(args, env = process.env, request = fetch) {
       !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(values.replay))
   ) {
     throw new Error(
-      "Usage: import.mjs plan|apply|verify organization--repository source-key FILE [--approve SHA256] [--replace REMOTE_SHA256] [--replay ID]",
+      "Usage: import.ts plan|apply|verify organization--repository source-key FILE [--approve SHA256] [--replace REMOTE_SHA256] [--replay ID]",
     );
   }
   const bytes = await readFile(file);
@@ -71,7 +90,12 @@ export async function main(args, env = process.env, request = fetch) {
   const token = env.HINDSIGHT_API_TOKEN?.trim();
   if (!token) throw new Error("A runtime HINDSIGHT_API_TOKEN is required.");
   const base = `https://api.hindsight.vectorize.io/v1/default/banks/${encodeURIComponent(bank)}`;
-  async function api(path, method = "GET", body, allowMissing = false) {
+  async function api(
+    path: string,
+    method = "GET",
+    body?: unknown,
+    allowMissing = false,
+  ): Promise<Record<string, unknown> | undefined> {
     const response = await request(base + path, {
       method,
       headers: {
@@ -111,7 +135,7 @@ export async function main(args, env = process.env, request = fetch) {
         "Remote source content does not match the approved file.",
       );
     const operation = await api(`/operations/${operationId}`);
-    if (operation.status !== "completed")
+    if (operation?.status !== "completed")
       throw new Error(
         "Extraction has not completed successfully; preserve the local source.",
       );
@@ -150,7 +174,7 @@ export async function main(args, env = process.env, request = fetch) {
       },
     ],
   });
-  if (submitted.operation_id !== operationId)
+  if (submitted?.operation_id !== operationId)
     throw new Error(
       "Server did not acknowledge the stable operation ID. Stop and inspect operations before retrying.",
     );

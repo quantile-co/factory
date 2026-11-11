@@ -34,7 +34,7 @@ in
     };
     repoCliFile = lib.mkOption {
       type = lib.types.path;
-      default = ../../etc/pnpm/apps/repo/cli.js;
+      default = ../../etc/pnpm/apps/repo/cli.ts;
       description = "Minimal repository CLI seed; consumers extend their own checks and fixes.";
     };
     workspaceFile = lib.mkOption {

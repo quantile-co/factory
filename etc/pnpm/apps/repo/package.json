@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node cli.js check",
-    "fix": "node cli.js fix"
+    "check": "node cli.ts check",
+    "fix": "node cli.ts fix"
   }
 }

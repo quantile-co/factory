@@ -326,13 +326,13 @@ it("initializes the native downstream starter and preserves repository-owned wor
     ]);
     expect(manifest.scripts.check).toBe("turbo run check");
     expect(manifest.scripts.fix).toBe("turbo run fix");
-    expect(existsSync(join(root, "apps/repo/cli.js"))).toBe(true);
+    expect(existsSync(join(root, "apps/repo/cli.ts"))).toBe(true);
     expect(readFileSync(join(root, ".envrc"), "utf8")).toContain("use flake");
     const selected = {
       "package.json": `${JSON.stringify({ ...manifest, name: "reviewed-project" }, null, 2)}\n`,
       "pnpm-workspace.yaml": `${readFileSync(join(root, "pnpm-workspace.yaml"), "utf8")}# Repository-owned workspace.\n`,
       ".gitignore": `${readFileSync(join(root, ".gitignore"), "utf8")}# Repository-owned ignores.\n`,
-      "apps/repo/cli.js": `${readFileSync(join(root, "apps/repo/cli.js"), "utf8")}// Repository-owned checks.\n`,
+      "apps/repo/cli.ts": `${readFileSync(join(root, "apps/repo/cli.ts"), "utf8")}// Repository-owned checks.\n`,
       "turbo.json": `${JSON.stringify({ ...JSON.parse(readFileSync(join(root, "turbo.json"), "utf8")), ui: "stream" }, null, 2)}\n`,
     };
     execFileSync("git", ["add", "."], options);
@@ -347,7 +347,7 @@ it("initializes the native downstream starter and preserves repository-owned wor
     execFileSync(join(files, "bin/factory-files"), ["check"], options);
     execFileSync(
       "bash",
-      ["-c", `${environment}\nnode apps/repo/cli.js check`],
+      ["-c", `${environment}\nnode apps/repo/cli.ts check`],
       options,
     );
     for (const [name, contents] of Object.entries(selected))

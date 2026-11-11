@@ -117,13 +117,16 @@ guarantee. Never silently upload historical sources to repair a deletion.
     processing. Create a private, access-restricted recovery copy outside Git,
     Nix outputs, Terraform state and shared snapshots. Record source provenance
     and SHA256 in a private migration manifest. Do not delete originals yet.
-3. The adjacent `import.mjs` helper handles **one explicit UTF-8 file**. Resolve
-    its path relative to this skill. `plan` is offline and prints metadata only:
+3. The adjacent `import.ts` helper handles **one explicit UTF-8 file**. Resolve
+    its path relative to this skill. Run with the repository's pinned `tsx` after
+    normal dependency installation; no build is needed. This also works under
+    `node_modules`, where Node's native TypeScript stripping is disabled.
+    `plan` is offline and prints metadata only:
 
     ```sh
-    node import.mjs plan BANK SOURCE_KEY /private/reviewed-source.txt
-    node import.mjs apply BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
-    node import.mjs verify BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
+    pnpm exec tsx import.ts plan BANK SOURCE_KEY /private/reviewed-source.txt
+    pnpm exec tsx import.ts apply BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
+    pnpm exec tsx import.ts verify BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
     ```
 
     SOURCE_KEY is a stable repository-relative identity, not a temporary filename
