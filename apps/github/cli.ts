@@ -11,7 +11,7 @@ import {
   processRunner,
   type TransportOptions,
 } from "@quantile-co/factory-github";
-import { withNixCache } from "@quantile-co/factory-namespace";
+import { withCollector, withNixCache } from "@quantile-co/factory-namespace";
 import { Command, Option } from "commander";
 
 const deployments = {
@@ -57,6 +57,17 @@ for (const name of [
 const abort = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.once(signal, () => abort.abort());
+function withRunner<T>(
+  task: (env: NodeJS.ProcessEnv) => Promise<T>,
+  env: NodeJS.ProcessEnv,
+  signal: AbortSignal,
+): Promise<T> {
+  return withCollector(
+    (clean) => withNixCache(task, clean, signal),
+    env,
+    signal,
+  );
+}
 const program = new Command()
   .name("factory-github")
   .description(
@@ -81,7 +92,7 @@ program
       .default("factory"),
   )
   .action((options: { npmToken: string; npmPackage: string }) =>
-    withNixCache(
+    withRunner(
       async (taskEnvironment) => {
         const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
           encoding: "utf8",
@@ -176,7 +187,7 @@ for (const phase of ["plan", "apply"] as const) {
       ).makeOptionMandatory(),
     );
   command.action(async (custom: string[], options: Options) =>
-    withNixCache(
+    withRunner(
       async (taskEnvironment) => {
         const deployment = deployments[options.tfLayer];
         const transport: TransportOptions = {
@@ -268,7 +279,7 @@ for (const phase of ["plan", "apply"] as const) {
   );
 }
 program.command("test").action(() =>
-  withNixCache(
+  withRunner(
     async (environment) => {
       await new Promise<void>((resolve, reject) => {
         const child = spawn("pnpm", ["test"], {

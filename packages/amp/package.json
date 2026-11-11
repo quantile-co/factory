@@ -20,12 +20,14 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       },
-      "./plugin": "./dist/plugin.js"
+      "./plugin": "./dist/plugin.js",
+      "./telemetry": "./dist/telemetry.js"
     }
   },
   "exports": {
     ".": "./src/index.ts",
-    "./plugin": "./src/plugin.ts"
+    "./plugin": "./src/plugin.ts",
+    "./telemetry": "./src/telemetry.ts"
   },
   "files": [
     "dist"

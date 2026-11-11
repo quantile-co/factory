@@ -60,8 +60,11 @@
         in
         {
           quantile-co.factory = {
-            github.workflows.layers = [ "infrastructure" ];
-            github.workflows.build.layers = [ "application" ];
+            github.workflows = {
+              layers = [ "infrastructure" ];
+              build.layers = [ "application" ];
+              clickstackJobs = [ "test" ];
+            };
 
             # Public package outputs.
             flake.packages = {
@@ -89,6 +92,8 @@
               nix = pkgs.nix;
               namespace-cli = pkgs.namespace-cli;
               nixcache = factory.nixcache.package;
+              opentelemetry-collector-contrib = factory.opentelemetry.collectorPackage;
+              factory-otelcol = factory.opentelemetry.package;
               shfmt = pkgs.shfmt;
               age = pkgs.age;
               gh = pkgs.gh;
@@ -154,6 +159,7 @@
                 pkgs.nix
                 pkgs.namespace-cli
                 factory.nixcache.package
+                factory.opentelemetry.package
                 pkgs.nodejs_24
                 pkgs.pnpm
                 pkgs.conftest
@@ -371,6 +377,7 @@
         nixfmt = ./nix/nixfmt;
         opa = ./nix/opa;
         opentofu = ./nix/opentofu;
+        opentelemetry = ./nix/opentelemetry;
         pi = ./nix/pi;
         playwright = ./nix/playwright;
         pnpm = ./nix/pnpm;

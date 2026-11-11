@@ -135,6 +135,7 @@ export function connect(orb: Orb, user = "user"): void {
 // Caller installs pinned tools explicitly (e.g. its Nix shell/profile). Setup
 // writes only dormant service definitions; it never authenticates or starts them.
 export const setupScript: string = `set +x
+unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY CLICKSTACK_DOCKER_STATS
 [ "\${AMP_ORB:-}" = 1 ] || { echo 'Setup is only for an Amp orb.' >&2; exit 1; }
 [ ! -e "$HOME/.local/state/factory-amp" ] || { echo 'Refusing to snapshot an already activated Factory orb.' >&2; exit 1; }
 # Debian omits administrative tools from the unprivileged user's PATH.
@@ -154,8 +155,9 @@ for path in "$TAILSCALED" "$SSHD"; do
   [[ "$path" =~ ^/[a-zA-Z0-9/._+-]+$ ]] || { echo 'Service executable must have a plain absolute path.' >&2; exit 1; }
 done
 sudo -n true
+sudo test ! -e /run/factory-amp/otel.env || { echo 'Refusing to snapshot collector runtime credentials.' >&2; exit 1; }
 sudo test ! -e /var/lib/factory-amp/tailscaled.state || { echo 'Refusing to snapshot an existing Tailscale identity.' >&2; exit 1; }
-if sudo systemctl is-active --quiet factory-amp-tailscaled.service || sudo systemctl is-active --quiet factory-amp-sshd.service; then
+if sudo systemctl is-active --quiet factory-amp-tailscaled.service || sudo systemctl is-active --quiet factory-amp-sshd.service || sudo systemctl is-active --quiet factory-amp-otel.service; then
   echo 'Refusing to rewrite running Factory orb services.' >&2; exit 1
 fi
 sudo tee /etc/systemd/system/factory-amp-tailscaled.service >/dev/null <<EOF
@@ -203,6 +205,23 @@ for tool in herdr pi; do
     nix-store --add-root "$HOME/.local/share/factory-amp/$tool" --indirect --realise "$store" >/dev/null
   fi
 done
+# Optional package selection prepares a dormant agent only. No setup credentials.
+if command -v factory-otelcol >/dev/null; then
+  collector=$(command -v factory-otelcol)
+  [[ "$collector" =~ ^/[a-zA-Z0-9/._+-]+$ ]] || exit 1
+  sudo tee /etc/systemd/system/factory-amp-otel.service >/dev/null <<EOF
+[Unit]
+Description=Factory host metrics to managed Observability
+[Service]
+User=$(id -un)
+EnvironmentFile=/run/factory-amp/otel.env
+ExecStart=$collector
+TimeoutStopSec=5
+KillMode=control-group
+StandardOutput=null
+StandardError=null
+EOF
+fi
 sudo systemctl daemon-reload
 `;
 
@@ -279,6 +298,74 @@ export function setup(): void {
     "-c",
     setupScript,
   ]);
+}
+
+// /run is volatile runtime storage, never the setup snapshot or checkout. Remove
+// the environment file after systemd loads it; resume refreshes credentials.
+export function resumeCollector(
+  repository: string | undefined,
+  thread: string,
+): void {
+  if (process.env.AMP_ORB !== "1") return;
+  const file = "/run/factory-amp/otel.env";
+  const run = (args: string[], input?: string) =>
+    execFileSync("sudo", ["-n", ...args], {
+      input,
+      timeout: 8_000,
+      stdio: [input === undefined ? "ignore" : "pipe", "ignore", "ignore"],
+    });
+  const disabled =
+    !process.env.CLICKSTACK_OTLP_ENDPOINT && !process.env.CLICKSTACK_API_KEY;
+  if (disabled) {
+    try {
+      run(["systemctl", "is-active", "--quiet", "factory-amp-otel.service"]);
+    } catch {
+      return;
+    } // An absent/inactive optional service is not a resume failure.
+  }
+  try {
+    run(["systemctl", "stop", "factory-amp-otel.service"]);
+    if (disabled) return;
+    const endpoint = new URL(process.env.CLICKSTACK_OTLP_ENDPOINT ?? "");
+    const key = process.env.CLICKSTACK_API_KEY;
+    if (
+      process.env.CLICKSTACK_OTLP_ENDPOINT !==
+        process.env.CLICKSTACK_OTLP_ENDPOINT?.trim() ||
+      endpoint.protocol !== "https:" ||
+      endpoint.username ||
+      endpoint.password ||
+      endpoint.search ||
+      endpoint.hash ||
+      endpoint.pathname !== "/" ||
+      !key ||
+      !/^[\x21-\x7e]{1,4096}$/.test(key)
+    )
+      throw new Error();
+    const values = {
+      AMP_ORB: "1",
+      FACTORY_AMP_THREAD: thread,
+      FACTORY_AMP_TELEMETRY_REPOSITORY: repository ?? "",
+      CLICKSTACK_OTLP_ENDPOINT: endpoint.origin,
+      CLICKSTACK_API_KEY: key,
+      CLICKSTACK_DOCKER_STATS:
+        process.env.CLICKSTACK_DOCKER_STATS === "1" ? "1" : "0",
+    };
+    run(
+      ["install", "-m", "0600", "/dev/stdin", file],
+      `${Object.entries(values)
+        .map(([name, value]) => `${name}=${JSON.stringify(value)}`)
+        .join("\n")}\n`,
+    );
+    run(["systemctl", "restart", "factory-amp-otel.service"]);
+  } catch {
+    console.error("ClickStack orb collector unavailable; resume continues.");
+  } finally {
+    try {
+      run(["rm", "-f", file]);
+    } catch {
+      /* No raw sudo diagnostics. */
+    }
+  }
 }
 
 export async function resume(
@@ -413,6 +500,7 @@ export async function resume(
       ],
       { env, stdio: "ignore" },
     );
+  resumeCollector(orb.repository, thread);
   console.log(
     `Ready: ${hostname}. Attach with ~/.local/bin/herdr --session orb; in the repository pane run nix develop --command pi. Existing agents were not replaced or prompted.`,
   );

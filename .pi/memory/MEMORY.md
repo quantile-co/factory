@@ -1025,6 +1025,54 @@ installation, SSH account/host-key behavior, mobile terminal keys, model login,
 pause/resume/reconnect and issue spawners before adoption/publication. No automatic
 npm release-pipeline expansion is included in the pilot.
 
+## Managed Observability agents
+
+#decision [[factory-managed-observability]]
+Current scope is existing Amp orbs and Namespace runners only. Website/hosting
+instrumentation is deferred pending the hosting decision. Agents export directly
+to fully managed ClickHouse Observability; no central collector/server is deployed.
+Select `opentelemetry.package` (`factory-otelcol`) explicitly; `configFile` and
+`dockerConfigFile` expose native YAML, and `collectorPackage` selects the pinned
+contrib binary. Imports/shell entry start nothing. The locked 0.155.0 binary
+supports `host_metrics`, `docker_stats` and `otlp_http`; revalidate on upgrades.
+
+Runtime-only `CLICKSTACK_OTLP_ENDPOINT` is an HTTPS origin/base endpoint (optional
+trailing slash, no signal path, userinfo, query or fragment); `CLICKSTACK_API_KEY`
+is the raw ingestion key, sent as `Authorization: Bearer …`. Both absent disables;
+partial/invalid configuration is rejected without echoing values. Never put these
+values in Nix, source, cache inputs, shared setup snapshots or logs. Host metrics
+cover CPU, memory, disk/filesystem and network, with a generated service instance
+and bounded runner/orb/repository identity. No ambient `OTEL_RESOURCE_ATTRIBUTES`,
+process scraper, logs or arbitrary container/environment labels are forwarded.
+`CLICKSTACK_DOCKER_STATS=1` explicitly adds Docker stats: access to the Docker
+socket is effectively host-root authority, not a read-only privilege. Never grant
+that access by default.
+
+`github.workflows.clickstackJobs` defaults empty and accepts Test/Build/Plan/Apply
+phase names in lowercase. Factory selects Test only. These remain protected
+manual-main jobs; Check/PRs never receive ingestion credentials. All job and
+production gates remain unchanged. Consumers select the native package in their
+shell and configure the endpoint variable/key secret at runtime. Rendered tasks
+run `factory-otelcol -- <command>` after credential-free Nix/shell evaluation and
+frozen installation; no new Namespace npm release is required. The wrapper removes
+ingestion credentials from workload/cache subprocesses, owns bounded collector
+cleanup, preserves task exit status and emits one duration/outcome span containing
+only allowlisted repository/run identity. Optional source API `withCollector`
+wraps outside `withNixCache`. No command, arguments, stdout, plan data or raw errors
+enter telemetry. Missing/failed ingestion never gates the workload.
+
+Amp setup prepares a dormant systemd agent only when the package is selected and
+installs the independent standalone `dist/telemetry.js` plugin. Resume refreshes
+credentials through a private volatile `/run` environment file, removed after
+systemd loads it; no automatic restart with stale credentials. The awake plugin
+remains separate: telemetry never acquires a lease, starts a new orb or wakes one.
+Native agent/tool events emit timing/outcome spans without prompt/message content,
+arguments, results or raw errors. Actual optional message usage is deduplicated by
+thread/message in bounded process memory; the pinned public message API currently
+omits usage, so missing usage is not estimated. Queues, acknowledgements, retries
+and flushes are bounded; partial OTLP rejection produces only a sanitized warning.
+Delivery and deduplication are best-effort, not durable billing accounting.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugin in `packages/amp` are source-reusable;

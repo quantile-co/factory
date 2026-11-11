@@ -36,6 +36,7 @@
     ./nixfmt
     ./opa
     ./opentofu
+    ./opentelemetry
     ./pi
     ./playwright
     ./pnpm
