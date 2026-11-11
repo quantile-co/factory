@@ -87,7 +87,7 @@ let
           )
           # Shell-local until shell evaluation and frozen install have finished.
           "        run: |\n          export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n"
-          "shell=$(\"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n          pnpm otel -- pnpm run github:"
+          "shell=$(env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n          pnpm otel -- pnpm run github:"
         ]
         source;
   render =

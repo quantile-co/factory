@@ -1061,8 +1061,11 @@ validates managed configuration, `collector` owns bounded process lifecycle,
 standard Node OTel with the official HTTP exporter. `apps/otel/cli.ts` is thin;
 root `pnpm otel -- <command>` and the packed `factory-otel` bin need no consumer
 copy of Factory source. `factory-otel collector` is the foreground agent mode.
-Publication remains separately approved; consumers must wait for a real registry
-release before adding a dependency. Build offers an explicit OTel package group.
+`@quantile-co/factory-otel@0.1.0` is public after protected Build `42985831089`
+from `873e8f49bb4086938cbfab9ee9eaf1664f47a8dd` and maintainer 2FA approval.
+Registry tarball SHA-1 `23c05774754f7c9df00b166e57bf1efe17628c96` matches staging.
+Future publication remains separately approved. Build offers an explicit OTel
+package group; consumers pin published versions and lockfile integrity.
 Packed-consumer smoke installs prefer cached packages but allow registry metadata
 fetches: a clean frozen workspace install does not populate pnpm's metadata cache.
 Namespace retains cache/platform ownership; Amp retains event/orb integration.
@@ -1081,6 +1084,8 @@ effectively host-root authority and is never granted by default.
 `github.workflows.otelJobs` defaults empty; Factory selects only manual Test.
 Protected main/environment/All gates remain; Check/PRs never receive ingestion
 keys. Frozen installation and secret-free Nix/shell evaluation precede `pnpm otel`.
+The additional direnv export excludes the Namespace signing key too; it remains
+available only to the subsequent task’s existing cache-publication lifecycle.
 The wrapper strips ingestion credentials from workload/cache subprocesses,
 preserves workload status and emits only task duration/outcome and allowlisted
 identity, never commands, arguments, stdout, plan data or raw errors.
