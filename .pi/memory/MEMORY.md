@@ -939,6 +939,19 @@ work. Factory source remains canonical. Its explicit command toggles a billed,
 best-effort keep-awake lease, released on toggle or plugin process exit. It does
 not infer Pi busy state, wake machines or hold leases for saved Herdr profiles.
 
+The initial pilot installs the three runtime values as Factory project-level
+environment variables, not workspace/personal overrides. Only an explicitly
+approved public SSH key is included. No issue spawner, keep-awake lease, Pi login
+or saved Herdr machine is configured by those environment settings.
+
+With the pinned Amp CLI, `amp threads new --executor orb` creates an empty local
+placeholder, not a running orb. Native `amp -ox <prompt> --project org/repo`
+starts the orb; the first prompt is required. Use an explicit read-only diagnostic
+request for a pilot, not an automated prompt from the lifecycle hooks. A thread
+URL or VM metrics alone does not establish successful setup/enrollment;
+`amp top --stream-jsonl` exposes executor connection state. Hook failures still
+require their setup/resume logs before recovery, not a duplicate orb launch.
+
 These are source implementations, not a qualified live deployment. Still verify
 workspace identity/trust and administrative credential permissions, native plugin
 installation, SSH account/host-key behavior, mobile terminal keys, model login,
