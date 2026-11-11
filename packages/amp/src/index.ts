@@ -171,9 +171,11 @@ Restart=on-failure
 EOF
 sudo tee /etc/systemd/system/factory-amp-sshd.service >/dev/null <<EOF
 [Unit]
-Description=Factory Amp SSH on the tailnet only
+Description=Factory Amp SSH behind tailnet-only TCP forwarding
 After=factory-amp-tailscaled.service
 [Service]
+Type=notify
+TimeoutStartSec=15
 ExecStart=$SSHD -D -e -f /run/factory-amp/sshd_config
 KillMode=process
 Restart=on-failure
@@ -242,8 +244,8 @@ key="$state/ssh_host_ed25519_key"
 sudo install -d -m 0755 /run/sshd /var/empty
 sudo install -m 0644 -- "$FACTORY_AMP_AUTHORIZED_KEYS" /run/factory-amp/authorized_keys
 sudo tee /run/factory-amp/sshd_config >/dev/null <<EOF
-Port 22
-ListenAddress $ip
+Port 2222
+ListenAddress 127.0.0.1
 HostKey "$key"
 AuthorizedKeysFile /run/factory-amp/authorized_keys
 AllowUsers $(id -un)
@@ -260,7 +262,11 @@ Subsystem sftp internal-sftp
 PidFile /run/factory-amp/sshd.pid
 EOF
 sudo "$(command -v sshd)" -t -f /run/factory-amp/sshd_config
+# The pinned OpenSSH notifies systemd only after binding its listeners.
 sudo systemctl restart factory-amp-sshd.service
+# Amp owns the wildcard port-22 listener. Serve intercepts tailnet TCP traffic
+# without changing that daemon or exposing the loopback backend publicly.
+sudo "$TAILSCALE" --socket="$socket" serve --bg --tcp=22 tcp://127.0.0.1:2222
 ssh-keygen -lf "$key.pub"
 `;
 

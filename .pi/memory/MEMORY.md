@@ -903,7 +903,11 @@ account-creation tools only when `sshd` is absent. Focused mocked execution cove
 both account states without privileged host changes. A partial resume can leave
 `~/.local/state/factory-amp/thread` even when enrollment fails; do not clear that
 marker or bypass the activated-state guard to retry setup without explicit
-recovery approval. The corrected bootstrap still needs live qualification.
+recovery approval. The next pilot verified setup, Tailscale enrollment and Herdr
+startup, but its dedicated sshd collided with Amp's wildcard port-22 listener.
+The old simple systemd unit let resume print Ready before that bind failure.
+The loopback/Serve and notify-readiness correction below still needs live
+qualification; do not treat the earlier Ready message as an SSH success.
 
 Runtime requires the approved workspace's nonsecret `TAILSCALE_CLIENT_ID` and
 `TAILSCALE_AUDIENCE`. The pilot also requires `FACTORY_AMP_SSH_PUBLIC_KEYS`
@@ -915,9 +919,14 @@ the tailnet requires approval. Tailscale verifies identity; local JWT decoding i
 only naming metadata. Credentials never belong in setup snapshots.
 
 The dedicated tailscaled uses `/run/factory-amp/tailscaled.sock`; ordinary local
-discovery uses the workstation's daemon. SSH listens only on the tailnet IPv4,
-uses per-orb runtime host keys and public-key authentication, and disables
-passwords, forwarding and root login. Existing host daemon settings are not
+discovery uses the workstation's daemon. Factory sshd binds only to
+`127.0.0.1:2222`; native `tailscale serve --bg --tcp=22 tcp://127.0.0.1:2222`
+exposes it on the tailnet without colliding with Amp's built-in sshd or changing
+the external port/grant. This is Serve, not public Funnel. The pinned OpenSSH
+supports systemd readiness notification; `Type=notify` and a bounded startup
+timeout prevent a successful restart from being reported before the listener
+binds. SSH uses per-orb runtime host keys and public-key authentication, disabling
+passwords, SSH forwarding and root login. Existing host daemon settings are not
 replaced. Herdr runs as the orb user in named session `orb`, inheriting the
 runtime environment. Browser/mobile Terminal attach command:
 `~/.local/bin/herdr --session orb`; start Pi in its repository pane with

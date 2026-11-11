@@ -118,6 +118,9 @@ command() {
 getent() { [ "$ACCOUNT_EXISTS" = 1 ]; }
 sudo() {
   printf '%s\\n' "$*" >> "$HOME/operations"
+  if [ "$1" = tee ]; then
+    while IFS= read -r line; do printf '%s\\n' "$line" >> "$HOME/units"; done
+  fi
   if [ "$1" = systemctl ] && [ "$2" = is-active ]; then return 1; fi
   return 0
 }
@@ -140,6 +143,9 @@ ${setupScript}
       expect(result.status, result.stdout + result.stderr).toBe(0);
       const lookups = readFileSync(join(home, "lookups"), "utf8");
       const operations = readFileSync(join(home, "operations"), "utf8");
+      expect(readFileSync(join(home, "units"), "utf8")).toContain(
+        "Type=notify\nTimeoutStartSec=15\n",
+      );
       if (exists) {
         expect(lookups).toBe("");
         expect(operations).not.toContain("useradd");
