@@ -1055,6 +1055,13 @@ this change. Existing repositories receive the default on their next approved
 module update/deployment; repositories outside this module need separate adoption.
 No blanket cross-repository Apply is authorized by the default change.
 
+#decision [[moshi-not-adopted]]
+The user dropped Moshi after reviewing per-orb connection friction. Do not install
+Moshi hooks, authorize the proposed phone key, enable SSH forwarding, or pursue
+Moshi pairing/connection automation. No such runtime changes were made. Continue
+the Amp/Herdr/Pi pilot; this does not authorize deleting or replacing existing
+pilots or reverting unrelated shared infrastructure.
+
 #decision [[amp-orb-qualification-order]]
 Continue in this order: (1) current-pilot automatic keep-awake qualification,
 (2) shared-session and pause/wake/reconnect verification, (3) approved issue-spawner
