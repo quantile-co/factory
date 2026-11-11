@@ -1092,6 +1092,41 @@ omits usage, so missing usage is not estimated. Queues, acknowledgements, retrie
 and flushes are bounded; partial OTLP rejection produces only a sanitized warning.
 Delivery and deduplication are best-effort, not durable billing accounting.
 
+## Tailscale SSH transition (source prepared, not deployed)
+
+#decision [[amp-tailscale-ssh]]
+The user approved implementing Tailscale SSH only; model login, API credentials,
+Aperture and subscription federation are deferred. Keep per-orb Pi login unchanged.
+
+New snapshots prepare only the dedicated tailscaled service and existing Herdr/
+optional telemetry components. Resume enables native Tailscale SSH; there is no
+Factory sshd, TCP Serve listener or authorized-key input. Setup requires stable
+Tailscale >= 1.104.4. The separate locked `tailscale-nixpkgs` input selects 1.104.5
+and its upstream dependencies without updating unrelated shell packages; retire
+this extra input when the main Nixpkgs pin supplies the required version.
+`TS_SSH_DISABLE_FORWARDING=1` disables port, Unix-socket and agent forwarding.
+Systemd hides the three system SSH private-key paths only inside this service's
+namespace so native Tailscale generates dedicated keys in its runtime state
+directory instead of reusing Amp's keys. No host identity is generated in setup.
+
+`amp connect` requires a unique online tagged peer and public `SSH_HostKeys`
+from the authenticated local Tailscale daemon. It validates those public keys,
+pins them in native `~/.ssh/known_hosts`, then verifies a fresh strict,
+noninteractive SSH connection before native Herdr setup. No key scan, custom
+broker, background discovery or SSH verification bypass. Matching hashed entries
+are reused; changed keys and trust-marker entries fail without replacement.
+A custom SSH configuration must consult that native known-hosts file; the strict
+preflight fails rather than bypassing it. A recreated orb/key requires explicit
+identity review and operator reconciliation. Node identity is authenticated by
+Tailscale; a self-advertised hostname is not an independent Amp thread attestation.
+
+Setup and resume reject existing Factory sshd units rather than migrating active
+pilots. Existing pilots, sessions, login, local profiles and approved keys have
+not been changed. The matching centrally managed SSH policy must be deployed
+before publishing the new lifecycle for automatic spawners. Protected policy
+Apply and a new billed qualification orb still need separate approval. Source
+tests do not qualify live SSH, systemd namespace isolation or pause/reconnect.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
@@ -1101,8 +1136,9 @@ repository identity and explicit disposable checkout path. Factory's `.agents/`
 hooks are its pilot wiring, not generic files to copy unchanged.
 
 Shared workspace federation avoids per-repository Tailscale identity registration,
-but each Amp project still needs approved runtime enrollment values and SSH public
-keys. Native project mapping and issue spawners remain per-repository operator
+but each Amp project still needs approved runtime enrollment values. New Tailscale
+SSH orbs use the centrally approved SSH policy instead of project SSH public keys;
+legacy OpenSSH pilots retain their existing keys and profiles. Native project mapping and issue spawners remain per-repository operator
 configuration; neither a label nor a Terraform module creates an Amp spawner.
 Pi/model credentials remain per-user runtime data. Herdr profiles remain explicit
 workstation choices; no automatic sidebar population is introduced.

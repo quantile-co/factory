@@ -1,6 +1,7 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { realpathSync } from "node:fs";
-import { isAbsolute } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, realpathSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 export type Orb = {
@@ -71,6 +72,7 @@ export type Peer = {
   Online?: boolean;
   Tags?: string[];
   TailscaleIPs?: string[];
+  SSH_HostKeys?: string[];
 };
 
 export function orbPeers(status: { Peer?: Record<string, Peer> }): Peer[] {
@@ -87,6 +89,66 @@ export function list() {
     peers: orbPeers(JSON.parse(output("tailscale", ["status", "--json"]))),
     machines: JSON.parse(output("herdr", ["machine", "list", "--json"])),
   };
+}
+
+// Trust comes from the authenticated local Tailscale control plane, never a
+// network key scan. Pin once in OpenSSH's native store; changed keys fail closed.
+export function pinHostKeys(
+  host: string,
+  keys: string[],
+  file = join(homedir(), ".ssh", "known_hosts"),
+): void {
+  if (!/^[a-z0-9][a-z0-9.-]*$/i.test(host))
+    throw new Error("Expected a plain SSH hostname.");
+  if (!keys.length)
+    throw new Error(
+      "No Tailscale SSH host keys advertised; ordinary sshd or an unready orb is not eligible.",
+    );
+  for (const key of keys) {
+    if (
+      !/^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa) [A-Za-z0-9+/]+={0,2}$/.test(
+        key,
+      )
+    )
+      throw new Error("Invalid advertised SSH host key.");
+    execFileSync("ssh-keygen", ["-lf", "-"], {
+      input: `${key}\n`,
+      stdio: ["pipe", "ignore", "pipe"],
+      timeout: 5000,
+    });
+  }
+  if (existsSync(file)) {
+    const result = spawnSync("ssh-keygen", ["-F", host, "-f", file], {
+      encoding: "utf8",
+      timeout: 5000,
+    });
+    if (result.error || (result.status !== 0 && result.status !== 1))
+      throw new Error("Unable to check existing SSH host trust.");
+    const existing = result.stdout
+      .split("\n")
+      .filter((line) => line && !line.startsWith("#"));
+    if (existing.length) {
+      if (
+        existing.some((line) => {
+          const fields = line.trim().split(/\s+/);
+          return (
+            fields[0].startsWith("@") ||
+            !keys.includes(fields.slice(1, 3).join(" "))
+          );
+        })
+      )
+        throw new Error(
+          "SSH host key changed or has a trust marker; review the orb identity and existing known_hosts entry explicitly. Nothing replaced.",
+        );
+      return;
+    }
+  }
+  mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+  appendFileSync(
+    file,
+    `\n${keys.map((key) => `${host} ${key}`).join("\n")}\n`,
+    { mode: 0o600 },
+  );
 }
 
 export function connect(orb: Orb, user = "user"): void {
@@ -106,6 +168,23 @@ export function connect(orb: Orb, user = "user"): void {
   if (!host || !/^[a-z0-9][a-z0-9.-]*$/i.test(host))
     throw new Error("Orb has no usable DNS name or IPv4 address.");
   const target = `${user}@${host}`;
+  pinHostKeys(host, peers[0].SSH_HostKeys ?? []);
+  // Respect user SSH configuration, but never prompt or accept an unknown key.
+  // A custom known_hosts path must include the pinned native store.
+  output("ssh", [
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ForwardAgent=no",
+    "-o",
+    "ClearAllForwardings=yes",
+    "-o",
+    "ControlPath=none",
+    target,
+    "true",
+  ]);
   const machines = JSON.parse(
     output("herdr", ["machine", "list", "--json"]),
   ) as { target: string; session: string; label: string; enabled: boolean }[];
@@ -141,53 +220,38 @@ unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY CLICKSTACK_DOCKER_STATS
 # Debian omits administrative tools from the unprivileged user's PATH.
 # Keep caller-selected (e.g. pinned Nix) binaries ahead of system fallbacks.
 export PATH="$PATH:/usr/sbin:/sbin"
-for tool in tailscale tailscaled sshd ssh-keygen herdr pi sudo systemctl getent; do
+for tool in tailscale tailscaled herdr pi sudo systemctl sort; do
   command -v "$tool" >/dev/null || { echo "Install $tool explicitly before setup." >&2; exit 1; }
 done
-if ! getent passwd sshd >/dev/null; then
-  for tool in useradd nologin; do
-    command -v "$tool" >/dev/null || { echo "Install $tool explicitly before setup." >&2; exit 1; }
-  done
-fi
+version=$(tailscale version | head -n 1)
+[[ "$version" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]] && [ "$(printf '%s\\n' 1.104.4 "$version" | sort -V | head -n 1)" = 1.104.4 ] || {
+  echo 'Tailscale SSH requires a stable Tailscale >= 1.104.4.' >&2; exit 1
+}
 TAILSCALED=$(command -v tailscaled)
-SSHD=$(command -v sshd)
-for path in "$TAILSCALED" "$SSHD"; do
-  [[ "$path" =~ ^/[a-zA-Z0-9/._+-]+$ ]] || { echo 'Service executable must have a plain absolute path.' >&2; exit 1; }
-done
+[[ "$TAILSCALED" =~ ^/[a-zA-Z0-9/._+-]+$ ]] || { echo 'Service executable must have a plain absolute path.' >&2; exit 1; }
 sudo -n true
+sudo test ! -e /etc/systemd/system/factory-amp-sshd.service || { echo 'Legacy orb: do not migrate an existing SSH service in place.' >&2; exit 1; }
 sudo test ! -e /run/factory-amp/otel.env || { echo 'Refusing to snapshot collector runtime credentials.' >&2; exit 1; }
 sudo test ! -e /var/lib/factory-amp/tailscaled.state || { echo 'Refusing to snapshot an existing Tailscale identity.' >&2; exit 1; }
-if sudo systemctl is-active --quiet factory-amp-tailscaled.service || sudo systemctl is-active --quiet factory-amp-sshd.service || sudo systemctl is-active --quiet factory-amp-otel.service; then
+sudo test ! -e /var/lib/factory-amp/ssh || { echo 'Refusing to snapshot existing Tailscale SSH host keys.' >&2; exit 1; }
+if sudo systemctl is-active --quiet factory-amp-tailscaled.service || sudo systemctl is-active --quiet factory-amp-otel.service; then
   echo 'Refusing to rewrite running Factory orb services.' >&2; exit 1
 fi
 sudo tee /etc/systemd/system/factory-amp-tailscaled.service >/dev/null <<EOF
 [Unit]
-Description=Factory Amp private network
+Description=Factory Amp private network and Tailscale SSH
 After=network-online.target
 [Service]
-ExecStart=$TAILSCALED --state=/var/lib/factory-amp/tailscaled.state --socket=/run/factory-amp/tailscaled.sock
+ExecStart=$TAILSCALED --state=/var/lib/factory-amp/tailscaled.state --statedir=/var/lib/factory-amp --socket=/run/factory-amp/tailscaled.sock
+# Native Tailscale otherwise reuses readable system sshd keys. Hide only those
+# files in this service namespace, without modifying Amp's SSH service.
+InaccessiblePaths=-/etc/ssh/ssh_host_rsa_key -/etc/ssh/ssh_host_ecdsa_key -/etc/ssh/ssh_host_ed25519_key
 Environment=TS_ASSUME_NETWORK_UP_FOR_TEST=true
+Environment=TS_SSH_DISABLE_FORWARDING=1
 RuntimeDirectory=factory-amp
 StateDirectory=factory-amp
 Restart=on-failure
 EOF
-sudo tee /etc/systemd/system/factory-amp-sshd.service >/dev/null <<EOF
-[Unit]
-Description=Factory Amp SSH behind tailnet-only TCP forwarding
-After=factory-amp-tailscaled.service
-[Service]
-Type=notify
-TimeoutStartSec=15
-ExecStart=$SSHD -D -e -f /run/factory-amp/sshd_config
-KillMode=process
-Restart=on-failure
-EOF
-# Nix OpenSSH expects the sshd privilege-separation user and /var/empty;
-# it ships executables, not Debian account provisioning.
-sudo install -d -o root -g root -m 0755 /var/empty
-if ! getent passwd sshd >/dev/null; then
-  sudo "$(command -v useradd)" --system --no-create-home --home-dir /var/empty --shell "$(command -v nologin)" sshd
-fi
 # Native Herdr discovery checks ~/.local/bin even without the development shell.
 # Never replace a different user-owned entry.
 mkdir -p "$HOME/.local/bin" "$HOME/.local/share/factory-amp"
@@ -229,10 +293,10 @@ export const resumeScript: string = `set +x
 [ "\${AMP_ORB:-}" = 1 ] || { echo 'Resume is only for an Amp orb.' >&2; exit 1; }
 : "\${TAILSCALE_CLIENT_ID:?Set the workspace enrollment client ID}"
 : "\${TAILSCALE_AUDIENCE:?Set the workspace enrollment audience}"
-: "\${FACTORY_AMP_AUTHORIZED_KEYS:?Supply runtime SSH public keys}"
 : "\${FACTORY_AMP_THREAD:?Supply verified runtime thread metadata}"
 : "\${FACTORY_AMP_HOSTNAME:?Supply the thread-derived hostname}"
-[ -s "$FACTORY_AMP_AUTHORIZED_KEYS" ] || { echo 'Supply a nonempty runtime authorized_keys file.' >&2; exit 1; }
+sudo -n true
+sudo test ! -e /etc/systemd/system/factory-amp-sshd.service || { echo 'Legacy orb: preserve its SSH service and session; use a new approved orb.' >&2; exit 1; }
 umask 077
 state="$HOME/.local/state/factory-amp"
 mkdir -p "$state"
@@ -240,7 +304,6 @@ if [ -f "$state/thread" ] && [ "$(<"$state/thread")" != "$FACTORY_AMP_THREAD" ];
   echo 'Runtime identity belongs to another thread; do not reuse an activated snapshot.' >&2; exit 1
 fi
 printf '%s' "$FACTORY_AMP_THREAD" > "$state/thread"
-sudo -n true
 sudo systemctl start factory-amp-tailscaled.service
 socket=/run/factory-amp/tailscaled.sock
 for ((attempt=0; attempt<50; attempt++)); do
@@ -254,39 +317,10 @@ amp orb id-token --audience "$TAILSCALE_AUDIENCE" --subject-scope workspace > "$
 TAILSCALE=$(command -v tailscale)
 sudo "$TAILSCALE" --socket="$socket" up \\
   --client-id="\${TAILSCALE_CLIENT_ID}?ephemeral=true&preauthorized=true" \\
-  --id-token="file:$token_file" --advertise-tags=tag:amp-orb --hostname="$FACTORY_AMP_HOSTNAME"
+  --id-token="file:$token_file" --advertise-tags=tag:amp-orb --hostname="$FACTORY_AMP_HOSTNAME" --ssh
 rm -f "$token_file"
-ip=$(sudo "$TAILSCALE" --socket="$socket" ip -4)
-[[ "$ip" =~ ^100\\.[0-9]+\\.[0-9]+\\.[0-9]+$ ]] || { echo 'No tailnet IPv4 address.' >&2; exit 1; }
-key="$state/ssh_host_ed25519_key"
-[ -f "$key" ] || ssh-keygen -q -t ed25519 -N '' -f "$key"
-sudo install -d -m 0755 /run/sshd /var/empty
-sudo install -m 0644 -- "$FACTORY_AMP_AUTHORIZED_KEYS" /run/factory-amp/authorized_keys
-sudo tee /run/factory-amp/sshd_config >/dev/null <<EOF
-Port 2222
-ListenAddress 127.0.0.1
-HostKey "$key"
-AuthorizedKeysFile /run/factory-amp/authorized_keys
-AllowUsers $(id -un)
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PubkeyAuthentication yes
-AuthenticationMethods publickey
-PermitRootLogin no
-AllowAgentForwarding no
-AllowTcpForwarding no
-X11Forwarding no
-PermitTunnel no
-Subsystem sftp internal-sftp
-PidFile /run/factory-amp/sshd.pid
-EOF
-sudo "$(command -v sshd)" -t -f /run/factory-amp/sshd_config
-# The pinned OpenSSH notifies systemd only after binding its listeners.
-sudo systemctl restart factory-amp-sshd.service
-# Amp owns the wildcard port-22 listener. Serve adds a tailnet-only route
-# without changing that daemon; provider-side forwarding remains separate.
-sudo "$TAILSCALE" --socket="$socket" serve --bg --tcp=22 tcp://127.0.0.1:2222
-ssh-keygen -lf "$key.pub"
+# No separate sshd, authorized_keys, port forwarding or model credentials.
+# Tailscale SSH authorization is owned by the tailnet policy.
 `;
 
 export function setup(): void {
@@ -371,7 +405,6 @@ export function resumeCollector(
 export async function resume(
   orb: Omit<Orb, "thread"> & { thread?: string },
   repository: string,
-  authorizedKeys: string,
 ): Promise<void> {
   if (process.env.AMP_ORB !== "1")
     throw new Error("Resume is only for an Amp orb.");
@@ -406,8 +439,8 @@ export async function resume(
     throw new Error(
       "Requested thread does not match this orb's runtime identity.",
     );
-  if (!isAbsolute(repository) || !isAbsolute(authorizedKeys))
-    throw new Error("Repository and authorized-keys paths must be absolute.");
+  if (!isAbsolute(repository))
+    throw new Error("Repository path must be absolute.");
   const root = realpathSync(repository);
   if (
     realpathSync(
@@ -420,7 +453,6 @@ export async function resume(
     FACTORY_AMP_REPOSITORY: root,
     FACTORY_AMP_THREAD: thread,
     FACTORY_AMP_HOSTNAME: hostname,
-    FACTORY_AMP_AUTHORIZED_KEYS: authorizedKeys,
   };
   // A dedicated session must not inherit another Herdr client's local socket.
   delete env.HERDR_SOCKET_PATH;

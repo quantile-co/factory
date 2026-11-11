@@ -4,6 +4,11 @@
   # Pinned upstream sources; exact revisions live in flake.lock.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Scope the SSH security update to Tailscale and its build dependencies.
+    tailscale-nixpkgs = {
+      url = "github:NixOS/nixpkgs/nixos-unstable";
+      flake = false;
+    };
     llm-agents.url = "github:numtide/llm-agents.nix/main";
     semgrep-rules = {
       url = "github:semgrep/semgrep-rules/develop";
@@ -27,6 +32,10 @@
         let
           factory = config.quantile-co.factory;
           agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
+          tailscale =
+            (import inputs.tailscale-nixpkgs {
+              inherit (pkgs.stdenv.hostPlatform) system;
+            }).tailscale;
           copy = source: {
             inherit source;
             mode = "copy";
@@ -133,7 +142,7 @@
               postgresql = pkgs.postgresql;
               clickhouse = pkgs.clickhouse;
               openssh = pkgs.openssh;
-              tailscale = pkgs.tailscale;
+              inherit tailscale;
               clickhousectl = factory.clickhousectl.package;
               langfuse = factory.langfuse.package;
             };
@@ -181,7 +190,7 @@
                 agents.amp
                 agents.hunk
                 pkgs.clickhouse
-                pkgs.tailscale
+                tailscale
                 pkgs.openssh
                 factory.clickhousectl.package
                 factory.langfuse.package

@@ -5,16 +5,12 @@ set +x
     echo 'This hook is only for an Amp orb.' >&2
     exit 1
 }
-: "${FACTORY_AMP_SSH_PUBLIC_KEYS:?Set the approved SSH public keys in Amp workspace or personal environment settings}"
 cd -- "$(dirname -- "$0")/.."
 umask 077
-keys=$(mktemp)
-trap 'rm -f "$keys"' EXIT
-printf '%s\n' "$FACTORY_AMP_SSH_PUBLIC_KEYS" >"$keys"
 # Never expose ingestion credentials to Nix evaluation or shell snapshots.
 export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY CLICKSTACK_DOCKER_STATS
 shell=$(nix print-dev-env)
 eval "$shell"
 unset shell
 export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY CLICKSTACK_DOCKER_STATS
-pnpm amp resume --repo quantile-co/factory --directory "$PWD" --authorized-keys "$keys"
+pnpm amp resume --repo quantile-co/factory --directory "$PWD"

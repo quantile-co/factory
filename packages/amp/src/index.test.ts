@@ -10,8 +10,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
 import {
+  connect,
   identity,
   orbPeers,
+  pinHostKeys,
   resume,
   resumeCollector,
   resumeScript,
@@ -86,7 +88,7 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
   }
   vi.stubEnv("AMP_ORB", "0");
   try {
-    await expect(resume({ thread }, "/", "/missing")).rejects.toThrow(
+    await expect(resume({ thread }, "/")).rejects.toThrow(
       "only for an Amp orb",
     );
   } finally {
@@ -142,12 +144,11 @@ if (args.includes('is-active')) process.exit(3);
   }
 });
 
-it.each([true, false])(
-  "resolves account tools only when sshd is missing (exists=%s)",
-  (exists) => {
+it.each(["1.104.5", "1.104.1"])(
+  "prepares only safe Tailscale SSH snapshots (%s)",
+  (version) => {
     const home = mkdtempSync(join(tmpdir(), "factory-amp-setup-"));
     try {
-      // Mock privileged operations; only the temporary HOME is written.
       const result = spawnSync(
         "bash",
         [
@@ -157,19 +158,8 @@ it.each([true, false])(
           "pipefail",
           "-c",
           `
-: > "$HOME/lookups"
-command() {
-  case "$2" in
-    useradd|nologin)
-      printf '%s\\n' "$2" >> "$HOME/lookups"
-      [ "$ACCOUNT_EXISTS" = 0 ] || return 1
-      [[ ":$PATH:" == *:/usr/sbin:* && "$PATH" == /pinned/bin:* ]] || return 1
-      printf '/usr/sbin/%s\\n' "$2"
-      ;;
-    *) printf '/pinned/bin/%s\\n' "$2" ;;
-  esac
-}
-getent() { [ "$ACCOUNT_EXISTS" = 1 ]; }
+command() { printf '/pinned/bin/%s\\n' "$2"; }
+tailscale() { printf '%s\\n' "$VERSION"; }
 sudo() {
   printf '%s\\n' "$*" >> "$HOME/operations"
   if [ "$1" = tee ]; then
@@ -186,35 +176,176 @@ ${setupScript}
           env: {
             HOME: home,
             AMP_ORB: "1",
-            ACCOUNT_EXISTS: exists ? "1" : "0",
+            VERSION: version,
+            PATH: process.env.PATH,
             CLICKSTACK_API_KEY: "fixture-not-for-snapshots",
-            PATH: `/pinned/bin:${process.env.PATH?.split(":")
-              .filter((path) => !path.endsWith("/sbin"))
-              .join(":")}`,
           },
           encoding: "utf8",
         },
       );
-      expect(result.status, result.stdout + result.stderr).toBe(0);
-      const lookups = readFileSync(join(home, "lookups"), "utf8");
-      const operations = readFileSync(join(home, "operations"), "utf8");
-      expect(readFileSync(join(home, "units"), "utf8")).toContain(
-        "Type=notify\nTimeoutStartSec=15\n",
-      );
-      const units = readFileSync(join(home, "units"), "utf8");
-      expect(units).toContain("EnvironmentFile=/run/factory-amp/otel.env");
-      expect(units).not.toContain("fixture-not-for-snapshots");
-      if (exists) {
-        expect(lookups).toBe("");
-        expect(operations).not.toContain("useradd");
-      } else {
-        expect(lookups).toContain("useradd");
-        expect(lookups).toContain("nologin");
-        expect(operations).toContain("/usr/sbin/useradd --system");
-        expect(operations).toContain("--shell /usr/sbin/nologin sshd");
+      if (version === "1.104.1") {
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain(">= 1.104.4");
+        return;
       }
+      expect(result.status, result.stdout + result.stderr).toBe(0);
+      const units = readFileSync(join(home, "units"), "utf8");
+      expect(units).toContain("Environment=TS_SSH_DISABLE_FORWARDING=1");
+      expect(units).toContain("InaccessiblePaths=-/etc/ssh/ssh_host_rsa_key");
+      expect(units).toContain("EnvironmentFile=/run/factory-amp/otel.env");
+      expect(units).not.toMatch(
+        /fixture-not-for-snapshots|ExecStart=.*sshd|authorized_keys/,
+      );
+      expect(readFileSync(join(home, "operations"), "utf8")).not.toMatch(
+        /restart|useradd/,
+      );
     } finally {
       rmSync(home, { recursive: true, force: true });
     }
   },
 );
+
+it("pins authenticated public keys once, handles hashed entries, and rejects rotation or malformed input", () => {
+  const home = mkdtempSync(join(tmpdir(), "factory-amp-trust-"));
+  try {
+    const keyPath = join(home, "fixture");
+    expect(
+      spawnSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", keyPath])
+        .status,
+    ).toBe(0);
+    const key = readFileSync(`${keyPath}.pub`, "utf8")
+      .trim()
+      .split(" ")
+      .slice(0, 2)
+      .join(" ");
+    const host = "amp-test.tail.example";
+    const file = join(home, ".ssh", "known_hosts");
+    expect(() => pinHostKeys(host, [], file)).toThrow("No Tailscale SSH");
+    expect(() => pinHostKeys(host, [`${key}\ninjection`], file)).toThrow(
+      "Invalid",
+    );
+    pinHostKeys(host, [key], file);
+    const initial = readFileSync(file, "utf8");
+    pinHostKeys(host, [key], file);
+    expect(readFileSync(file, "utf8")).toBe(initial);
+    expect(spawnSync("ssh-keygen", ["-H", "-f", file]).status).toBe(0);
+    const hashed = readFileSync(file, "utf8");
+    pinHostKeys(host, [key], file);
+    expect(readFileSync(file, "utf8")).toBe(hashed);
+    const other = join(home, "other");
+    expect(
+      spawnSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", other])
+        .status,
+    ).toBe(0);
+    const changed = readFileSync(`${other}.pub`, "utf8")
+      .trim()
+      .split(" ")
+      .slice(0, 2)
+      .join(" ");
+    expect(() => pinHostKeys(host, [changed], file)).toThrow("changed");
+    expect(readFileSync(file, "utf8")).toBe(hashed);
+    writeFileSync(file, `@revoked ${host} ${key}\n`);
+    expect(() => pinHostKeys(host, [key], file)).toThrow("trust marker");
+    expect(() => pinHostKeys("-unsafe", [key], file)).toThrow("hostname");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+it("verifies Tailscale-pinned SSH before native Herdr setup and stops on SSH failure", () => {
+  const home = mkdtempSync(join(tmpdir(), "factory-amp-connect-"));
+  try {
+    const keyPath = join(home, "fixture");
+    expect(
+      spawnSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", keyPath])
+        .status,
+    ).toBe(0);
+    const key = readFileSync(`${keyPath}.pub`, "utf8")
+      .trim()
+      .split(" ")
+      .slice(0, 2)
+      .join(" ");
+    const peer = {
+      HostName: identity({ thread }).hostname,
+      DNSName: "amp-fixture.tail.example.",
+      Online: true,
+      Tags: ["tag:amp-orb"],
+      SSH_HostKeys: [key],
+    };
+    const record = join(home, "operations");
+    for (const command of ["tailscale", "ssh", "herdr"]) {
+      const file = join(home, command);
+      writeFileSync(
+        file,
+        `#!${process.execPath}
+const fs = require("node:fs");
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify([${JSON.stringify(command)}, ...args]) + "\\n");
+if (${JSON.stringify(command)} === "tailscale") console.log(${JSON.stringify(JSON.stringify({ Peer: { orb: peer } }))});
+if (${JSON.stringify(command)} === "herdr" && args[1] === "list") console.log("[]");
+if (${JSON.stringify(command)} === "ssh" && process.env.FIXTURE_SSH_FAIL) process.exit(1);
+`,
+      );
+      chmodSync(file, 0o755);
+    }
+    vi.stubEnv("HOME", home);
+    vi.stubEnv("PATH", `${home}:${process.env.PATH}`);
+    connect({ thread });
+    const calls = readFileSync(record, "utf8");
+    expect(calls).toContain("StrictHostKeyChecking=yes");
+    expect(calls).toContain("ControlPath=none");
+    expect(calls).toContain(
+      '["herdr","machine","add","user@amp-fixture.tail.example"',
+    );
+    expect(calls).toContain('"--remote-session","orb"');
+    expect(readFileSync(join(home, ".ssh/known_hosts"), "utf8")).toContain(key);
+    writeFileSync(record, "");
+    vi.stubEnv("FIXTURE_SSH_FAIL", "1");
+    expect(() => connect({ thread })).toThrow();
+    expect(readFileSync(record, "utf8")).not.toContain('"herdr"');
+  } finally {
+    vi.unstubAllEnvs();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+it("refuses legacy resume before changing runtime identity or services", () => {
+  const home = mkdtempSync(join(tmpdir(), "factory-amp-legacy-"));
+  try {
+    const result = spawnSync(
+      "bash",
+      [
+        "-euo",
+        "pipefail",
+        "-c",
+        `
+sudo() {
+  if [ "$1" = test ]; then return 1; fi
+  [ "$1" = -n ]
+}
+${resumeScript}
+`,
+      ],
+      {
+        env: {
+          HOME: home,
+          AMP_ORB: "1",
+          TAILSCALE_CLIENT_ID: "fixture",
+          TAILSCALE_AUDIENCE: "fixture",
+          FACTORY_AMP_THREAD: thread,
+          FACTORY_AMP_HOSTNAME: "amp-test",
+          PATH: process.env.PATH,
+        },
+        encoding: "utf8",
+      },
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Legacy orb");
+    expect(
+      spawnSync("test", ["-e", join(home, ".local/state/factory-amp/thread")])
+        .status,
+    ).toBe(1);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
