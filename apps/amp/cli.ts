@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { connect, list, resume, setup } from "@quantile-co/factory-amp";
-import { Command, Option } from "commander";
+import { Command } from "commander";
 
 const cli = new Command()
   .name("factory-amp")
@@ -27,20 +27,8 @@ task(cli.command("resume"))
     "Verify this thread against the runtime Amp identity",
   )
   .requiredOption("--directory <path>", "Absolute disposable Git checkout root")
-  .addOption(
-    new Option(
-      "--authorized-keys <path>",
-      "Runtime public authorized_keys file (never a private key)",
-    )
-      .env("FACTORY_AMP_AUTHORIZED_KEYS")
-      .makeOptionMandatory(),
-  )
   .action(async (options) =>
-    resume(
-      { ...options, repository: options.repo },
-      options.directory,
-      options.authorizedKeys,
-    ),
+    resume({ ...options, repository: options.repo }, options.directory),
   );
 cli
   .command("list")

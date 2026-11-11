@@ -1105,6 +1105,45 @@ or context manager. Langfuse/Pi remains separate and unchanged. Website-specific
 policy and adoption belong to the owning repository. Delivery, acknowledgements,
 retries and flushes stay bounded and best-effort, not durable billing accounting.
 
+## Tailscale SSH transition (live qualification pending)
+
+#decision [[amp-tailscale-ssh]]
+The user approved implementing Tailscale SSH only; model login, API credentials,
+Aperture and subscription federation are deferred. Keep per-orb Pi login unchanged.
+
+New snapshots prepare only the dedicated tailscaled service and existing Herdr/
+optional telemetry components. Resume enables native Tailscale SSH; there is no
+Factory sshd, TCP Serve listener or authorized-key input. Setup requires stable
+Tailscale >= 1.104.4. The separate locked `tailscale-nixpkgs` input selects 1.104.5
+and its upstream dependencies without updating unrelated shell packages; retire
+this extra input when the main Nixpkgs pin supplies the required version.
+`TS_SSH_DISABLE_FORWARDING=1` disables port, Unix-socket and agent forwarding.
+Systemd hides the three system SSH private-key paths only inside this service's
+namespace so native Tailscale generates dedicated keys in its runtime state
+directory instead of reusing Amp's keys. No host identity is generated in setup.
+
+`amp connect` requires a unique online tagged peer and public `SSH_HostKeys`
+from the authenticated local Tailscale daemon. It validates those public keys,
+pins them in native `~/.ssh/known_hosts`, then verifies a fresh strict,
+noninteractive SSH connection before native Herdr setup. No key scan, custom
+broker, background discovery or SSH verification bypass. Matching hashed entries
+are reused; changed keys and trust-marker entries fail without replacement.
+A custom SSH configuration must consult that native known-hosts file; the strict
+preflight fails rather than bypassing it. A recreated orb/key requires explicit
+identity review and operator reconciliation. Node identity is authenticated by
+Tailscale; a self-advertised hostname is not an independent Amp thread attestation.
+
+Setup and resume reject existing Factory sshd units rather than migrating active
+pilots. Existing pilots, sessions, login, local profiles and approved keys have
+not been changed. The matching centrally managed SSH policy is now approved and
+deployed: `autogroup:member` may reach `tag:amp-orb` as Unix `user`, using
+`accept`. Access follows tailnet membership, not a hardcoded operator or separate
+GitHub/GCP rosters; shared sessions are not per-user isolation. This clears the
+policy prerequisite for publishing Factory's new lifecycle. The rollout preserves
+the separately landed shared OTel runtime and snapshot safeguards. A new billed
+qualification orb still needs separate approval. Source tests do not qualify
+live SSH, systemd namespace isolation or pause/reconnect.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
@@ -1114,8 +1153,9 @@ repository identity and explicit disposable checkout path. Factory's `.agents/`
 hooks are its pilot wiring, not generic files to copy unchanged.
 
 Shared workspace federation avoids per-repository Tailscale identity registration,
-but each Amp project still needs approved runtime enrollment values and SSH public
-keys. Native project mapping and issue spawners remain per-repository operator
+but each Amp project still needs approved runtime enrollment values. New Tailscale
+SSH orbs use the centrally approved SSH policy instead of project SSH public keys;
+legacy OpenSSH pilots retain their existing keys and profiles. Native project mapping and issue spawners remain per-repository operator
 configuration; neither a label nor a Terraform module creates an Amp spawner.
 Pi/model credentials remain per-user runtime data. Herdr profiles remain explicit
 workstation choices; no automatic sidebar population is introduced.
@@ -1141,27 +1181,24 @@ the Amp/Herdr/Pi pilot; this does not authorize deleting or replacing existing
 pilots or reverting unrelated shared infrastructure.
 
 #decision [[amp-orb-qualification-order]]
-Continue in this order: (1) current-pilot automatic keep-awake qualification,
-(2) shared-session and pause/wake/reconnect verification, (3) approved issue-spawner
-delivery test, (4) easier Pi/model login and authenticated SSH host-key discovery,
-(5) reviewed Terraform label adoption/consumer deployments, then (6) downstream
-packaging and final artifact/worktree accounting. Step 4 is no longer a post-rollout
-deferral: investigate options and review credential/trust changes before deploying
-them. Manual login and explicit Herdr profiles remain current until replacements
-are approved and qualified. A test issue/new billed orb and each protected Apply
-still require their own approval.
+Activity-driven lease acquisition/release, the shared Amp-terminal/Herdr Pi
+session and one issue-spawner delivery are qualified on the earlier lifecycle.
+Next publish the prepared native SSH lifecycle after its now-deployed central
+policy, then separately authorize one new orb for live SSH/host-key/Herdr testing.
+Finish automatic idle pause, wake/reconnect and operator Auto/On/Off qualification;
+then reviewed Terraform label adoption, downstream packaging/adoption and final
+artifact/worktree accounting. Model-login changes are deferred, not a rollout
+prerequisite. A test issue/new billed orb and each protected Plan/Apply still
+require their own approval.
 
 #todo [[amp-orb-login-friction]]
-- Explore lower-friction Pi/model authentication for new orbs: native remote/device
-  login, scoped runtime secret injection or safe per-user credential reuse.
-  Compare subscription versus API billing and credential scope explicitly. Keep
-  credentials out of source and shared snapshots; manual per-orb login remains
-  the current choice pending review.
-- Explore lower-friction SSH host-key verification when saving Herdr profiles:
-  obtain the expected key through authenticated orb metadata and compare it before
-  trusting the SSH endpoint. Preserve verification across reconnects and handle
-  recreated orbs, stale profiles and key rotation without blind acceptance or
-  disabling host-key checks. These are investigation items, not approved changes.
+- Keep Pi/model authentication unchanged. Investigation is complete for this
+  rollout; API credentials, gateways, subscription federation and credential reuse
+  are deferred. Credentials must stay out of source and shared snapshots.
+- Qualify the implemented authenticated Tailscale host-key discovery and native
+  SSH/Herdr connection on a separately approved new orb. Preserve strict trust
+  across reconnects; recreated nodes or changed keys require explicit review,
+  never blind acceptance or disabling host-key checks.
 - Clean up completed task worktrees after checking for uncommitted work, unmerged
   commits and active agents. Preserve ongoing work; do not force-remove checkouts.
 - At completion, account for every added file and directory, separating tracked
