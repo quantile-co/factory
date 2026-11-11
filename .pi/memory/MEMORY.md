@@ -1169,7 +1169,31 @@ another native SSH test, obtain approval to delete only Factory's cached
 `a1.medium` project snapshot using native `amp projects snapshots delete` with
 that explicit resource, then separately approve one new billed orb. Do not
 remove active orb services, weaken the guard or delete every project snapshot.
-The cache deletion and another billed orb are not yet authorized.
+The operator subsequently approved that exact cache deletion and one replacement
+Medium orb. Native deletion returned success and empty snapshot-list readback.
+Replacement `T-01a1c9c2-56d3-73e5-ba4b-d6610d542ec9` used clean `d4d4cf1` but hit
+Amp's 20-minute setup timeout before pnpm or Factory setup ran. It was archived
+after read-only diagnosis; archived-list readback succeeded and no matching
+Tailscale peer or new Herdr profile/trust existed. No hook retry, repair, model
+login or credential change occurred. Both approvals are consumed.
+
+#bug [[amp-cold-nix-cache-bootstrap]]
+The clean-base test exposed an existing hook bootstrap mismatch: `.agents/setup`
+calls `nix develop` directly and `.agents/resume` calls `nix print-dev-env`, so
+neither loads `.envrc`'s public signed caches. The fresh orb reported a trusted
+local Nix store, signatures required, only `cache.nixos.org`, and `max-jobs=1`.
+Exact pinned Herdr/Pi outputs returned 404 there and 200 on the configured
+Numtide/Quantile caches. Independent workstation lookup confirmed the pinned
+Herdr result. Setup downloaded the source-build toolchains and timed out before
+entering its shell command; automatic resume then compiled Herdr from source.
+The cause of setup's approximately 18-minute silent interval is not established;
+no download error was reported. This is not evidence of an SSH policy failure:
+no Factory services or Herdr session were installed, and no Pi auth file existed.
+Fix cache initialization consistently before Nix evaluation in both hooks,
+preserving signature verification, trusted-store handling and exclusion of
+runtime credentials. Do not move heavy installation into resume or use warm
+snapshots to hide the cold-path failure. No source fix or replacement test is
+yet qualified; another billed test needs fresh approval.
 
 ## Downstream Amp adoption
 
