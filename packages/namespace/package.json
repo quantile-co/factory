@@ -2,7 +2,7 @@
   "name": "@quantile-co/factory-namespace",
   "version": "0.1.0",
   "license": "MIT",
-  "description": "Namespace Nix cache and managed Observability agents.",
+  "description": "Namespace Nix cache integration.",
   "type": "module",
   "engines": {
     "node": ">=24"

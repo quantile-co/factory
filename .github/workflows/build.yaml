@@ -10,6 +10,7 @@ on:
         options:
           - factory
           - namespace
+          - otel
       tf_layer:
         description: Layer
         required: true

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -147,6 +148,11 @@ it.each([true, false])(
   (exists) => {
     const home = mkdtempSync(join(tmpdir(), "factory-amp-setup-"));
     try {
+      mkdirSync(join(home, "artifacts"));
+      writeFileSync(join(home, "artifacts/cli.js"), "import './chunk.js';");
+      writeFileSync(join(home, "artifacts/chunk.js"), "export {};");
+      writeFileSync(join(home, "host.yaml"), "host fixture");
+      writeFileSync(join(home, "docker.yaml"), "docker fixture");
       // Mock privileged operations; only the temporary HOME is written.
       const result = spawnSync(
         "bash",
@@ -160,6 +166,7 @@ it.each([true, false])(
 : > "$HOME/lookups"
 command() {
   case "$2" in
+    node) printf '/nix/store/fixture-node/bin/node\\n' ;;
     useradd|nologin)
       printf '%s\\n' "$2" >> "$HOME/lookups"
       [ "$ACCOUNT_EXISTS" = 0 ] || return 1
@@ -179,6 +186,7 @@ sudo() {
   return 0
 }
 readlink() { printf '%s\\n' "$2"; }
+nix-store() { printf '%s\\n' "$*" >> "$HOME/operations"; }
 ${setupScript}
 `,
         ],
@@ -188,6 +196,11 @@ ${setupScript}
             AMP_ORB: "1",
             ACCOUNT_EXISTS: exists ? "1" : "0",
             CLICKSTACK_API_KEY: "fixture-not-for-snapshots",
+            FACTORY_AMP_OTEL_CLI: join(home, "artifacts/cli.js"),
+            OTEL_COLLECTOR_BINARY:
+              "/nix/store/fixture-collector/bin/otelcol-contrib",
+            OTEL_COLLECTOR_CONFIG: join(home, "host.yaml"),
+            OTEL_COLLECTOR_DOCKER_CONFIG: join(home, "docker.yaml"),
             PATH: `/pinned/bin:${process.env.PATH?.split(":")
               .filter((path) => !path.endsWith("/sbin"))
               .join(":")}`,
@@ -204,6 +217,21 @@ ${setupScript}
       const units = readFileSync(join(home, "units"), "utf8");
       expect(units).toContain("EnvironmentFile=/run/factory-amp/otel.env");
       expect(units).not.toContain("fixture-not-for-snapshots");
+      expect(units).toContain(
+        `ExecStart=/nix/store/fixture-node/bin/node ${home}/.local/share/factory-amp/otel/cli.js collector`,
+      );
+      expect(
+        readFileSync(
+          join(home, ".local/share/factory-amp/otel/chunk.js"),
+          "utf8",
+        ),
+      ).toBe("export {};");
+      expect(operations).toContain(
+        "--indirect --realise /nix/store/fixture-node",
+      );
+      expect(operations).toContain(
+        "--indirect --realise /nix/store/fixture-collector",
+      );
       if (exists) {
         expect(lookups).toBe("");
         expect(operations).not.toContain("useradd");

@@ -19,8 +19,6 @@ import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-export { withCollector } from "./collector.ts";
-
 type Environment = NodeJS.ProcessEnv;
 interface Context {
   env: Environment;

@@ -20,22 +20,22 @@ processors:
         value: factory-host
         action: upsert
       - key: service.instance.id
-        value: "${env:FACTORY_OTEL_INSTANCE_ID}"
+        value: "${env:OTEL_AGENT_INSTANCE_ID}"
         action: upsert
       - key: factory.platform
-        value: "${env:FACTORY_OTEL_PLATFORM}"
+        value: "${env:OTEL_AGENT_PLATFORM}"
         action: upsert
       - key: vcs.repository.name
-        value: "${env:FACTORY_OTEL_REPOSITORY}"
+        value: "${env:OTEL_AGENT_REPOSITORY}"
         action: upsert
       - key: cicd.pipeline.run.id
-        value: "${env:FACTORY_OTEL_RUN_ID}"
+        value: "${env:OTEL_AGENT_RUN_ID}"
         action: upsert
       - key: cicd.pipeline.run.attempt
-        value: "${env:FACTORY_OTEL_RUN_ATTEMPT}"
+        value: "${env:OTEL_AGENT_RUN_ATTEMPT}"
         action: upsert
       - key: amp.thread.id
-        value: "${env:FACTORY_OTEL_THREAD_ID}"
+        value: "${env:OTEL_AGENT_THREAD_ID}"
         action: upsert
   batch:
     timeout: 5s

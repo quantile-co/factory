@@ -1,29 +1,10 @@
 import { randomBytes } from "node:crypto";
-// Keep this runtime contract aligned with Namespace's cold collector entry.
-export function clickstackConfig(env: NodeJS.ProcessEnv) {
-  const endpoint = env.CLICKSTACK_OTLP_ENDPOINT;
-  const key = env.CLICKSTACK_API_KEY;
-  if (!endpoint && !key) return undefined;
-  try {
-    const url = new URL(endpoint ?? "");
-    if (
-      !endpoint ||
-      endpoint !== endpoint.trim() ||
-      url.protocol !== "https:" ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash ||
-      url.pathname !== "/" ||
-      !key ||
-      !/^[\x21-\x7e]{1,4096}$/.test(key)
-    )
-      throw new Error();
-    return { endpoint: url.origin, key };
-  } catch {
-    throw new Error("Invalid ClickStack runtime configuration.");
-  }
-}
+import { managedConfig } from "@quantile-co/factory-otel/config";
+import {
+  exportSpans,
+  type MetadataSpan,
+  metadataSpan,
+} from "@quantile-co/factory-otel/otlp";
 
 // Standalone native plugin, bundled with Node built-ins only. No transcript API,
 // telemetry SDK, keepAlive, shell commands or dependency on the awake plugin.
@@ -49,17 +30,6 @@ export type TelemetryPlugin = {
   on(name: string, handler: (event: Event) => unknown): unknown;
   logger: { log(message: string): void };
 };
-type Span = {
-  traceId: string;
-  spanId: string;
-  name: string;
-  startTimeUnixNano: string;
-  endTimeUnixNano: string;
-  attributes: {
-    key: string;
-    value: { stringValue?: string; intValue?: string };
-  }[];
-};
 const nano = () => (BigInt(Date.now()) * 1_000_000n).toString();
 const identity = (event: Event, id: string | number | undefined) =>
   typeof event.thread?.id === "string" &&
@@ -71,22 +41,20 @@ const identity = (event: Event, id: string | number | undefined) =>
 
 export default function telemetry(amp: TelemetryPlugin): void {
   if (process.env.AMP_ORB !== "1") return;
-  let config: ReturnType<typeof clickstackConfig>;
+  let config: ReturnType<typeof managedConfig>;
   try {
-    config = clickstackConfig(process.env);
+    config = managedConfig(process.env);
   } catch {
-    amp.logger.log(
-      "ClickStack telemetry disabled: invalid runtime configuration.",
-    );
+    amp.logger.log("OTel telemetry disabled: invalid runtime configuration.");
     return;
   }
   if (!config) return;
-  const { endpoint, key } = config;
+  const destination = config;
   const instance = randomBytes(16).toString("hex");
   const turns = new Map<string, string>();
   const tools = new Map<string, string>();
   const usageSeen = new Set<string>();
-  const queue: Span[] = [];
+  const queue: MetadataSpan[] = [];
   let pending: Promise<void> | undefined;
   let warned = false;
 
@@ -103,92 +71,30 @@ export default function telemetry(amp: TelemetryPlugin): void {
       )
     )
       values["amp.thread.id"] = thread ?? "unknown";
-    queue.push({
-      traceId: randomBytes(16).toString("hex"),
-      spanId: randomBytes(8).toString("hex"),
-      name,
-      startTimeUnixNano: start,
-      endTimeUnixNano: nano(),
-      attributes: Object.entries(values).map(([key, value]) => ({
-        key,
-        value:
-          typeof value === "number"
-            ? { intValue: String(value) }
-            : { stringValue: value },
-      })),
-    });
+    queue.push(metadataSpan(name, start, nano(), values));
   }
   function flush(): Promise<void> {
     if (pending) return pending;
     if (!queue.length) return Promise.resolve();
-    const body = JSON.stringify({
-      resourceSpans: [
-        {
-          resource: {
-            attributes: [
-              { key: "service.name", value: { stringValue: "factory-amp" } },
-              { key: "service.instance.id", value: { stringValue: instance } },
-            ],
-          },
-          scopeSpans: [
-            { scope: { name: "factory.amp" }, spans: queue.splice(0, 64) },
-          ],
-        },
-      ],
-    });
-    pending = (async () => {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const response = await fetch(`${endpoint}/v1/traces`, {
-            method: "POST",
-            redirect: "error",
-            signal: AbortSignal.timeout(1_500),
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${key}`,
-            },
-            body,
-          });
-          if (response.ok) {
-            // OTLP may reject spans in a 200 response. Bound the acknowledgement;
-            // never print its errorMessage or retry a partially accepted batch.
-            let text = "";
-            let size = 0;
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            while (reader) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              size += value.byteLength;
-              if (size > 4096) {
-                await reader.cancel();
-                throw new Error();
-              }
-              text += decoder.decode(value, { stream: true });
-            }
-            text += decoder.decode();
-            const partial = text ? JSON.parse(text).partialSuccess : undefined;
-            if (
-              !partial ||
-              (Number(partial.rejectedSpans ?? 0) === 0 &&
-                !partial.errorMessage)
-            )
-              return;
-            break;
-          }
-          await response.body?.cancel();
-          if (response.status !== 429 && response.status < 500) break;
-        } catch {
-          /* Never log endpoints, credentials, payloads or raw network errors. */
+    pending = exportSpans(
+      destination,
+      {
+        "service.name": "factory-amp",
+        "service.instance.id": instance,
+      },
+      "factory.amp",
+      queue.splice(0, 64),
+      2,
+    )
+      .then((sent) => {
+        if (!sent && !warned) {
+          warned = true;
+          amp.logger.log("OTel telemetry unavailable; workload continues.");
         }
-      }
-      if (!warned) {
-        warned = true;
-        amp.logger.log("ClickStack telemetry unavailable; workload continues.");
-      }
-    })().finally(() => {
-      pending = undefined;
-    });
+      })
+      .finally(() => {
+        pending = undefined;
+      });
     return pending;
   }
   function start(map: Map<string, string>, id: string | undefined) {

@@ -58,7 +58,7 @@ let
         source;
   collectorJob =
     phase: source:
-    if !(builtins.elem phase cfg.clickstackJobs) then
+    if !(builtins.elem phase cfg.otelJobs) then
       source
     else
       let
@@ -78,13 +78,16 @@ let
         [
           (
             marker
-            + "          FACTORY_CLICKSTACK: '1'\n"
+            + "          OTEL_AGENT_PLATFORM: namespace\n"
+            + "          OTEL_AGENT_REPOSITORY: \${{ github.repository }}\n"
+            + "          OTEL_AGENT_RUN_ID: \${{ github.run_id }}\n"
+            + "          OTEL_AGENT_RUN_ATTEMPT: \${{ github.run_attempt }}\n"
             + "          CLICKSTACK_OTLP_ENDPOINT: \${{ vars.CLICKSTACK_OTLP_ENDPOINT }}\n"
             + "          CLICKSTACK_API_KEY: \${{ secrets.CLICKSTACK_API_KEY }}\n"
           )
           # Shell-local until shell evaluation and frozen install have finished.
           "        run: |\n          export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n"
-          "shell=$(\"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n          factory-otelcol -- pnpm run github:"
+          "shell=$(\"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n          pnpm otel -- pnpm run github:"
         ]
         source;
   render =
@@ -127,7 +130,7 @@ let
 in
 {
   options.quantile-co.factory.github.workflows = {
-    clickstackJobs = lib.mkOption {
+    otelJobs = lib.mkOption {
       type = lib.types.listOf (
         lib.types.enum [
           "test"
@@ -137,7 +140,7 @@ in
         ]
       );
       default = [ ];
-      description = "Explicit credential-bearing managed Observability jobs; only protected workflow_dispatch main jobs, never Check/PRs. Select opentelemetry.package in the caller shell; native factory-otelcol owns lifecycle without an npm release.";
+      description = "Explicit ClickHouse Observability jobs, only protected workflow_dispatch main jobs, never Check/PRs. Caller supplies pnpm otel and selected native collector/config paths.";
     };
     nixCache = lib.mkOption {
       type = lib.types.enum [

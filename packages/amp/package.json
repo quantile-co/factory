@@ -29,11 +29,14 @@
     "./plugin": "./src/plugin.ts",
     "./telemetry": "./src/telemetry.ts"
   },
+  "dependencies": {
+    "@quantile-co/factory-otel": "workspace:*"
+  },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && vite build --mode telemetry",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --maxWorkers=4"
   }

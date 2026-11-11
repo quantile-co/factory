@@ -11,7 +11,7 @@ import {
   processRunner,
   type TransportOptions,
 } from "@quantile-co/factory-github";
-import { withCollector, withNixCache } from "@quantile-co/factory-namespace";
+import { withNixCache } from "@quantile-co/factory-namespace";
 import { Command, Option } from "commander";
 
 const deployments = {
@@ -57,17 +57,6 @@ for (const name of [
 const abort = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.once(signal, () => abort.abort());
-function withRunner<T>(
-  task: (env: NodeJS.ProcessEnv) => Promise<T>,
-  env: NodeJS.ProcessEnv,
-  signal: AbortSignal,
-): Promise<T> {
-  return withCollector(
-    (clean) => withNixCache(task, clean, signal),
-    env,
-    signal,
-  );
-}
 const program = new Command()
   .name("factory-github")
   .description(
@@ -87,12 +76,12 @@ program
   )
   .addOption(
     new Option("--npm-package <package>", "Release selection")
-      .choices(["factory", "namespace"])
+      .choices(["factory", "namespace", "otel"])
       .env("NPM_PACKAGE")
       .default("factory"),
   )
   .action((options: { npmToken: string; npmPackage: string }) =>
-    withRunner(
+    withNixCache(
       async (taskEnvironment) => {
         const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
           encoding: "utf8",
@@ -113,12 +102,13 @@ program
           if (result.status !== 0)
             throw new CommandFailure(result.status ?? 1, `${task} failed`);
         };
-        run(
+        const group =
           options.npmPackage === "namespace"
-            ? "namespace:nixcache:pack"
-            : "npm:pack",
-          buildEnvironment,
-        );
+            ? "namespace:nixcache"
+            : options.npmPackage === "otel"
+              ? "otel"
+              : "npm";
+        run(`${group}:pack`, buildEnvironment);
         execFileSync("git", ["diff", "--exit-code", "HEAD"], {
           cwd: root,
           env: buildEnvironment,
@@ -134,16 +124,11 @@ program
               mode: 0o600,
             },
           );
-          run(
-            options.npmPackage === "namespace"
-              ? "namespace:nixcache:stage"
-              : "npm:stage",
-            {
-              ...buildEnvironment,
-              NPM_TOKEN: options.npmToken,
-              NPM_CONFIG_USERCONFIG: config,
-            },
-          );
+          run(`${group}:stage`, {
+            ...buildEnvironment,
+            NPM_TOKEN: options.npmToken,
+            NPM_CONFIG_USERCONFIG: config,
+          });
         } finally {
           rmSync(directory, { recursive: true, force: true });
         }
@@ -187,7 +172,7 @@ for (const phase of ["plan", "apply"] as const) {
       ).makeOptionMandatory(),
     );
   command.action(async (custom: string[], options: Options) =>
-    withRunner(
+    withNixCache(
       async (taskEnvironment) => {
         const deployment = deployments[options.tfLayer];
         const transport: TransportOptions = {
@@ -279,7 +264,7 @@ for (const phase of ["plan", "apply"] as const) {
   );
 }
 program.command("test").action(() =>
-  withRunner(
+  withNixCache(
     async (environment) => {
       await new Promise<void>((resolve, reject) => {
         const child = spawn("pnpm", ["test"], {

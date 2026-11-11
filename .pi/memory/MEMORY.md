@@ -102,8 +102,8 @@ Remove migration scaffolding after successful adoption and prove convergence.
 #decision [[factory-flake-direnv]] [[factory-managed-files]]
 Factory uses a locked flake shell and the same `.envrc` through direnv locally and
 in CI. Pnpm/Turbo workspaces separate thin commands in `apps/` from importable
-behavior in `packages/`. The apps are Nix, GitHub, Namespace, Amp and repo;
-the packages are Nix, GitHub, Namespace, Amp and Pi. Code packages use `src/` with colocated tests and
+behavior in `packages/`. The apps are Nix, GitHub, Namespace, Amp, OTel and repo;
+the packages are Nix, GitHub, Namespace, Amp, OTel and Pi. Code packages use `src/` with colocated tests and
 `index.ts` for actual root public entry points. Nix exposes separate `files` and
 `semgrep` subpaths without a forwarding barrel. Single-file CLI apps use root `cli.ts` entry points.
 Build tooling, manifests and skill assets remain at package roots. Native
@@ -1046,51 +1046,62 @@ npm release-pipeline expansion is included in the pilot.
 ## Managed Observability agents
 
 #decision [[factory-managed-observability]]
-Factory owns agents for existing Amp orbs and Namespace runners. Website/hosting
-instrumentation and platform forwarding belong to their owning repositories.
-Agents export directly
-to fully managed ClickHouse Observability; no central collector/server is deployed.
-Select `opentelemetry.package` (`factory-otelcol`) explicitly; `configFile` and
-`dockerConfigFile` expose native YAML, and `collectorPackage` selects the pinned
-contrib binary. Imports/shell entry start nothing. The locked 0.155.0 binary
-supports `host_metrics`, `docker_stats` and `otlp_http`; revalidate on upgrades.
+Factory agents export directly from existing Amp orbs and Namespace runners to
+ClickHouse Observability; no central collector/server is deployed. Native
+`otelcol-contrib.package`, `hostConfigFile` and `dockerConfigFile` expose only the
+locked upstream binary and YAML under `etc/otelcol-contrib`. The locked 0.155.0
+binary supports `host_metrics`, `docker_stats` and `otlp_http`; revalidate upgrades.
+There is no Factory Nix launcher. Explicit caller shell selections supply absolute
+`OTEL_COLLECTOR_BINARY`, `OTEL_COLLECTOR_CONFIG` and `OTEL_COLLECTOR_DOCKER_CONFIG`
+paths. Imports and shell entry start nothing.
 
-Runtime-only `CLICKSTACK_OTLP_ENDPOINT` is an HTTPS origin/base endpoint (optional
-trailing slash, no signal path, userinfo, query or fragment); `CLICKSTACK_API_KEY`
-is the raw ingestion key, sent as `Authorization: Bearer …`. Both absent disables;
-partial/invalid configuration is rejected without echoing values. Never put these
-values in Nix, source, cache inputs, shared setup snapshots or logs. Host metrics
+`packages/otel` owns the reusable `@quantile-co/factory-otel` package: `config`
+validates managed configuration, `collector` owns bounded process lifecycle,
+`otlp` exports small metadata batches with Node built-ins, and `tracing` initializes
+standard Node OTel with the official HTTP exporter. `apps/otel/cli.ts` is thin;
+root `pnpm otel -- <command>` and the packed `factory-otel` bin need no consumer
+copy of Factory source. `factory-otel collector` is the foreground agent mode.
+Publication remains separately approved; consumers must wait for a real registry
+release before adding a dependency. Build offers an explicit OTel package group.
+Namespace retains cache/platform ownership; Amp retains event/orb integration.
+
+Runtime-only vendor names remain `CLICKSTACK_OTLP_ENDPOINT` (HTTPS origin, optional
+trailing slash; no signal path, userinfo, query or fragment) and
+`CLICKSTACK_API_KEY` (raw key, sent as `Authorization: Bearer …`). Both absent
+means disabled; invalid/partial configuration yields sanitized rejection. Never
+put values in Nix, source, cache inputs, shared snapshots or logs. Host metrics
 cover CPU, memory, disk/filesystem and network, with a generated service instance
-and bounded runner/orb/repository identity. No ambient `OTEL_RESOURCE_ATTRIBUTES`,
-process scraper, logs or arbitrary container/environment labels are forwarded.
-`CLICKSTACK_DOCKER_STATS=1` explicitly adds Docker stats: access to the Docker
-socket is effectively host-root authority, not a read-only privilege. Never grant
-that access by default.
+and bounded `OTEL_AGENT_*` identity supplied by platform owners. No ambient OTel
+resource attributes, process scraper, logs or arbitrary container/environment
+labels. `OTEL_DOCKER_STATS=1` explicitly adds Docker stats; socket access is
+effectively host-root authority and is never granted by default.
 
-`github.workflows.clickstackJobs` defaults empty and accepts Test/Build/Plan/Apply
-phase names in lowercase. Factory selects Test only. These remain protected
-manual-main jobs; Check/PRs never receive ingestion credentials. All job and
-production gates remain unchanged. Consumers select the native package in their
-shell and configure the endpoint variable/key secret at runtime. Rendered tasks
-run `factory-otelcol -- <command>` after credential-free Nix/shell evaluation and
-frozen installation; no new Namespace npm release is required. The wrapper removes
-ingestion credentials from workload/cache subprocesses, owns bounded collector
-cleanup, preserves task exit status and emits one duration/outcome span containing
-only allowlisted repository/run identity. Optional source API `withCollector`
-wraps outside `withNixCache`. No command, arguments, stdout, plan data or raw errors
-enter telemetry. Missing/failed ingestion never gates the workload.
+`github.workflows.otelJobs` defaults empty; Factory selects only manual Test.
+Protected main/environment/All gates remain; Check/PRs never receive ingestion
+keys. Frozen installation and secret-free Nix/shell evaluation precede `pnpm otel`.
+The wrapper strips ingestion credentials from workload/cache subprocesses,
+preserves workload status and emits only task duration/outcome and allowlisted
+identity, never commands, arguments, stdout, plan data or raw errors.
 
-Amp setup prepares a dormant systemd agent only when the package is selected and
-installs the independent standalone `dist/telemetry.js` plugin. Resume refreshes
-credentials through a private volatile `/run` environment file, removed after
-systemd loads it; no automatic restart with stale credentials. The awake plugin
-remains separate: telemetry never acquires a lease, starts a new orb or wakes one.
-Native agent/tool events emit timing/outcome spans without prompt/message content,
-arguments, results or raw errors. Actual optional message usage is deduplicated by
-thread/message in bounded process memory; the pinned public message API currently
-omits usage, so missing usage is not estimated. Queues, acknowledgements, retries
-and flushes are bounded; partial OTLP rejection produces only a sanitized warning.
-Delivery and deduplication are best-effort, not durable billing accounting.
+Amp setup installs the complete nonsecret CLI distribution and copies native
+configs into orb-owned storage, rooting pinned Node/collector binaries against GC.
+The dormant systemd service reads a private volatile `/run` environment file on
+resume; it is removed after loading. Standalone Amp plugins inline only shared
+builtins-only helpers, not the tracing SDK. Awake behavior stays separate; OTel
+never acquires a lease, starts an orb or wakes one. Native agent/tool spans exclude
+content/arguments/results/raw errors. Optional actual message usage is deduplicated
+in bounded process memory; the pinned public API omits it, so none is estimated.
+
+Application `initializeTracing` exports nothing without explicit caller-owned
+sampling, constant span name and attribute privacy policy. Fresh allowlisted
+spans precede batching; raw names/status messages/events/links/scope/resources
+are discarded. No automatic instrumentation, resource discovery or ambient
+exporter selection. Ambiguous ambient OTLP headers fail closed without changing
+process environment; explicit native HTTP agent options avoid borrowing client
+certificates. Initialization is idempotent and refuses an occupied global provider
+or context manager. Langfuse/Pi remains separate and unchanged. Website-specific
+policy and adoption belong to the owning repository. Delivery, acknowledgements,
+retries and flushes stay bounded and best-effort, not durable billing accounting.
 
 ## Downstream Amp adoption
 

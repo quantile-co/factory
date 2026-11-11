@@ -2,6 +2,8 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import { managedConfig } from "@quantile-co/factory-otel/config";
 
 export type Orb = {
   thread: string;
@@ -135,7 +137,7 @@ export function connect(orb: Orb, user = "user"): void {
 // Caller installs pinned tools explicitly (e.g. its Nix shell/profile). Setup
 // writes only dormant service definitions; it never authenticates or starts them.
 export const setupScript: string = `set +x
-unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY CLICKSTACK_DOCKER_STATS
+unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY OTEL_DOCKER_STATS
 [ "\${AMP_ORB:-}" = 1 ] || { echo 'Setup is only for an Amp orb.' >&2; exit 1; }
 [ ! -e "$HOME/.local/state/factory-amp" ] || { echo 'Refusing to snapshot an already activated Factory orb.' >&2; exit 1; }
 # Debian omits administrative tools from the unprivileged user's PATH.
@@ -205,18 +207,41 @@ for tool in herdr pi; do
     nix-store --add-root "$HOME/.local/share/factory-amp/$tool" --indirect --realise "$store" >/dev/null
   fi
 done
-# Optional package selection prepares a dormant agent only. No setup credentials.
-if command -v factory-otelcol >/dev/null; then
-  collector=$(command -v factory-otelcol)
-  [[ "$collector" =~ ^/[a-zA-Z0-9/._+-]+$ ]] || exit 1
+# Explicit native selection prepares a dormant agent. Copy nonsecret configs
+# and the complete JS distribution so the service needs no checkout/node_modules.
+if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ] && [ -n "\${FACTORY_AMP_OTEL_CLI:-}" ]; then
+  node=$(command -v node)
+  collector=$OTEL_COLLECTOR_BINARY
+  install="$HOME/.local/share/factory-amp/otel"
+  for path in "$node" "$collector" "$install" "$FACTORY_AMP_OTEL_CLI" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}"; do
+    [[ "$path" =~ ^/[a-zA-Z0-9/._+-]+$ ]] || { echo 'Select plain absolute OTel artifact paths.' >&2; exit 1; }
+  done
+  mkdir -p "$install"
+  cp -R "$(dirname "$FACTORY_AMP_OTEL_CLI")/." "$install/"
+  printf '%s\\n' '{"type":"module"}' > "$install/package.json"
+  cp "$OTEL_COLLECTOR_CONFIG" "$install/host.yaml"
+  cp "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
+  # Store-backed Node and collector executables must survive orb GC too.
+  for tool in node otelcol-contrib; do
+    target=$node
+    [ "$tool" != otelcol-contrib ] || target=$collector
+    if [[ "$target" == /nix/store/* ]]; then
+      store=\${target#/nix/store/}
+      store="/nix/store/\${store%%/*}"
+      nix-store --add-root "$HOME/.local/share/factory-amp/otel-$tool" --indirect --realise "$store" >/dev/null
+    fi
+  done
   sudo tee /etc/systemd/system/factory-amp-otel.service >/dev/null <<EOF
 [Unit]
-Description=Factory host metrics to managed Observability
+Description=Factory host metrics to ClickHouse Observability
 [Service]
 User=$(id -un)
 EnvironmentFile=/run/factory-amp/otel.env
-ExecStart=$collector
-TimeoutStopSec=5
+Environment=OTEL_COLLECTOR_BINARY=$collector
+Environment=OTEL_COLLECTOR_CONFIG=$install/host.yaml
+Environment=OTEL_COLLECTOR_DOCKER_CONFIG=$install/docker.yaml
+ExecStart=$node $install/cli.js collector
+TimeoutStopSec=6
 KillMode=control-group
 StandardOutput=null
 StandardError=null
@@ -290,14 +315,16 @@ ssh-keygen -lf "$key.pub"
 `;
 
 export function setup(): void {
-  interactive("bash", [
-    "--noprofile",
-    "--norc",
-    "-euo",
-    "pipefail",
-    "-c",
-    setupScript,
-  ]);
+  interactive(
+    "bash",
+    ["--noprofile", "--norc", "-euo", "pipefail", "-c", setupScript],
+    {
+      ...process.env,
+      FACTORY_AMP_OTEL_CLI: fileURLToPath(
+        import.meta.resolve("@quantile-co/factory-otel/cli"),
+      ),
+    },
+  );
 }
 
 // /run is volatile runtime storage, never the setup snapshot or checkout. Remove
@@ -326,29 +353,15 @@ export function resumeCollector(
   try {
     run(["systemctl", "stop", "factory-amp-otel.service"]);
     if (disabled) return;
-    const endpoint = new URL(process.env.CLICKSTACK_OTLP_ENDPOINT ?? "");
-    const key = process.env.CLICKSTACK_API_KEY;
-    if (
-      process.env.CLICKSTACK_OTLP_ENDPOINT !==
-        process.env.CLICKSTACK_OTLP_ENDPOINT?.trim() ||
-      endpoint.protocol !== "https:" ||
-      endpoint.username ||
-      endpoint.password ||
-      endpoint.search ||
-      endpoint.hash ||
-      endpoint.pathname !== "/" ||
-      !key ||
-      !/^[\x21-\x7e]{1,4096}$/.test(key)
-    )
-      throw new Error();
+    const config = managedConfig();
+    if (!config) return;
     const values = {
-      AMP_ORB: "1",
-      FACTORY_AMP_THREAD: thread,
-      FACTORY_AMP_TELEMETRY_REPOSITORY: repository ?? "",
-      CLICKSTACK_OTLP_ENDPOINT: endpoint.origin,
-      CLICKSTACK_API_KEY: key,
-      CLICKSTACK_DOCKER_STATS:
-        process.env.CLICKSTACK_DOCKER_STATS === "1" ? "1" : "0",
+      OTEL_AGENT_PLATFORM: "amp-orb",
+      OTEL_AGENT_THREAD_ID: thread,
+      OTEL_AGENT_REPOSITORY: repository ?? "",
+      CLICKSTACK_OTLP_ENDPOINT: config.endpoint,
+      CLICKSTACK_API_KEY: config.key,
+      OTEL_DOCKER_STATS: process.env.OTEL_DOCKER_STATS === "1" ? "1" : "0",
     };
     run(
       ["install", "-m", "0600", "/dev/stdin", file],
@@ -358,7 +371,7 @@ export function resumeCollector(
     );
     run(["systemctl", "restart", "factory-amp-otel.service"]);
   } catch {
-    console.error("ClickStack orb collector unavailable; resume continues.");
+    console.error("OTel orb collector unavailable; resume continues.");
   } finally {
     try {
       run(["rm", "-f", file]);

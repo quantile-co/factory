@@ -1,0 +1,20 @@
+{ lib, pkgs, ... }:
+{
+  options.quantile-co.factory.otelcol-contrib = {
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.opentelemetry-collector-contrib;
+      description = "Upstream contrib collector from the locked Nixpkgs input; starts nothing on import.";
+    };
+    hostConfigFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/otelcol-contrib/host.yaml;
+      description = "Native host metrics configuration with runtime-only managed credentials and agent identity.";
+    };
+    dockerConfigFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/otelcol-contrib/docker.yaml;
+      description = "Explicit Docker stats overlay; socket access grants host-root authority.";
+    };
+  };
+}

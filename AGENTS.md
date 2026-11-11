@@ -27,7 +27,8 @@ and scratchpads. Never commit credentials or private cross-repository details.
 - [etc/pi/settings.json](etc/pi/settings.json): native Pi package and resource selections.
 - [nix/](nix/): reusable Nix modules and executables.
 - [nix/files/](nix/files/): generic manifest and cold-bootstrap command module.
-- [nix/opentelemetry/](nix/opentelemetry/) and [etc/opentelemetry/](etc/opentelemetry/): managed Observability agent and native pipeline configurations.
+- [nix/otelcol-contrib/](nix/otelcol-contrib/) and [etc/otelcol-contrib/](etc/otelcol-contrib/): upstream collector and native pipeline configurations.
+- [packages/otel/](packages/otel/) and [apps/otel/](apps/otel/): shared OTel runtime, tracing and CLI.
 - [nix/flake/](nix/flake/): per-system output module and consumer-bootstrap tests.
 - [etc/](etc/): reusable native-format configuration assets.
 - [etc/flake/](etc/flake/): native downstream flake starter.

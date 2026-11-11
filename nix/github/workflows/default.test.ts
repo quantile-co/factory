@@ -22,7 +22,7 @@ function workflow(path: string) {
   );
 }
 
-function namespaceWorkflows(clickstack = false): Record<string, string> {
+function namespaceWorkflows(otel = false): Record<string, string> {
   return JSON.parse(
     execFileSync(
       "nix",
@@ -43,7 +43,7 @@ function namespaceWorkflows(clickstack = false): Record<string, string> {
           ${root}/nix/github/workflows
           { quantile-co.factory.github.workflows = {
               nixCache = "namespace";
-              clickstackJobs = ${clickstack ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
+              otelJobs = ${otel ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
           }; }
         ];
       }).config.quantile-co.factory.github.workflows;
@@ -177,12 +177,12 @@ it("releases ingestion credentials only to explicitly selected trusted-main nati
         expect(script.indexOf("pnpm install --frozen-lockfile")).toBeLessThan(
           script.indexOf("export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY"),
         );
-        expect(script).toContain(`factory-otelcol -- pnpm run github:${name}`);
+        expect(script).toContain(`pnpm otel -- pnpm run github:${name}`);
         if (name === "test") {
           const bin = join(temporary, "bin");
           mkdirSync(bin);
           const record = join(temporary, "calls");
-          for (const tool of ["nix", "direnv", "factory-otelcol"]) {
+          for (const tool of ["nix", "direnv", "pnpm"]) {
             const path = join(bin, tool);
             writeFileSync(
               path,
@@ -191,7 +191,10 @@ const fs = require('node:fs');
 fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ tool: ${JSON.stringify(tool)}, secret: !!process.env.CLICKSTACK_API_KEY, shell: process.env.TEST_SHELL }) + '\\n');
 if (${JSON.stringify(tool)} === 'nix') console.log(${JSON.stringify(temporary)});
 if (${JSON.stringify(tool)} === 'direnv' && process.argv[2] === 'export') console.log('export TEST_SHELL=ready');
-if (${JSON.stringify(tool)} === 'factory-otelcol') process.exit(23);
+if (${JSON.stringify(tool)} === 'pnpm') {
+  if (process.argv[2] !== 'otel' || process.argv[3] !== '--') process.exit(91);
+  process.exit(23);
+}
 `,
             );
             chmodSync(path, 0o755);
@@ -213,7 +216,7 @@ if (${JSON.stringify(tool)} === 'factory-otelcol') process.exit(23);
             .map((line) => JSON.parse(line));
           expect(calls.slice(0, -1).every((call) => !call.secret)).toBe(true);
           expect(calls.at(-1)).toEqual({
-            tool: "factory-otelcol",
+            tool: "pnpm",
             secret: true,
             shell: "ready",
           });

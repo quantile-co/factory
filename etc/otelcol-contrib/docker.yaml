@@ -1,4 +1,4 @@
-# Explicit CLICKSTACK_DOCKER_STATS=1 only. Docker socket access is effectively
+# Explicit OTEL_DOCKER_STATS=1 only. Docker socket access is effectively
 # host-root authority, even when used for read-only stats. Never grant it by default.
 receivers:
   docker_stats:

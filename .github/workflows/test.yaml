@@ -48,7 +48,10 @@ jobs:
 
       - name: Run checks, then tests
         env:
-          FACTORY_CLICKSTACK: '1'
+          OTEL_AGENT_PLATFORM: namespace
+          OTEL_AGENT_REPOSITORY: ${{ github.repository }}
+          OTEL_AGENT_RUN_ID: ${{ github.run_id }}
+          OTEL_AGENT_RUN_ATTEMPT: ${{ github.run_attempt }}
           CLICKSTACK_OTLP_ENDPOINT: ${{ vars.CLICKSTACK_OTLP_ENDPOINT }}
           CLICKSTACK_API_KEY: ${{ secrets.CLICKSTACK_API_KEY }}
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
@@ -65,4 +68,4 @@ jobs:
           eval "$shell"
           unset shell
           export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY
-          factory-otelcol -- pnpm run github:test
+          pnpm otel -- pnpm run github:test

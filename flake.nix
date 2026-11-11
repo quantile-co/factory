@@ -53,6 +53,7 @@
                     + "        options:\n"
                     + "          - factory\n"
                     + "          - namespace\n"
+                    + "          - otel\n"
                   )
                 ]
                 source
@@ -63,7 +64,7 @@
             github.workflows = {
               layers = [ "infrastructure" ];
               build.layers = [ "application" ];
-              clickstackJobs = [ "test" ];
+              otelJobs = [ "test" ];
             };
 
             # Public package outputs.
@@ -92,8 +93,7 @@
               nix = pkgs.nix;
               namespace-cli = pkgs.namespace-cli;
               nixcache = factory.nixcache.package;
-              opentelemetry-collector-contrib = factory.opentelemetry.collectorPackage;
-              factory-otelcol = factory.opentelemetry.package;
+              otelcol-contrib = factory.otelcol-contrib.package;
               shfmt = pkgs.shfmt;
               age = pkgs.age;
               gh = pkgs.gh;
@@ -145,6 +145,11 @@
                 factory.pi.shellHook
                 factory.uv.shellHook
                 factory.turbo.shellHook
+                ''
+                  export OTEL_COLLECTOR_BINARY=${lib.getExe factory.otelcol-contrib.package}
+                  export OTEL_COLLECTOR_CONFIG=${factory.otelcol-contrib.hostConfigFile}
+                  export OTEL_COLLECTOR_DOCKER_CONFIG=${factory.otelcol-contrib.dockerConfigFile}
+                ''
               ];
               packages = [
                 pkgs.bash
@@ -159,7 +164,7 @@
                 pkgs.nix
                 pkgs.namespace-cli
                 factory.nixcache.package
-                factory.opentelemetry.package
+                factory.otelcol-contrib.package
                 pkgs.nodejs_24
                 pkgs.pnpm
                 pkgs.conftest
@@ -377,7 +382,7 @@
         nixfmt = ./nix/nixfmt;
         opa = ./nix/opa;
         opentofu = ./nix/opentofu;
-        opentelemetry = ./nix/opentelemetry;
+        otelcol-contrib = ./nix/otelcol-contrib;
         pi = ./nix/pi;
         playwright = ./nix/playwright;
         pnpm = ./nix/pnpm;
