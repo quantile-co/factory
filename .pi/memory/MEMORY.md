@@ -710,38 +710,23 @@ inputs used by Application, apply it first and create a new Application Plan.
 and the maintainer completed npm approval. Registry SHA-1
 `4fc0104675c0b793cb01945c570b20fb22a1278c` matches the staged artifact.
 Consumers install the normal npm dependency; local shell startup stays inline
-and independent of npm. This release does not establish live signed cache
-publication or cross-run reuse; later live qualification found the blocker below.
+and independent of npm. Subsequent authorized consumer qualification established
+live native signed publication and retrieval into a separate empty store with
+public fallback disabled. The root verified against only the consumer signing
+key; upstream closure dependencies retain approved public-cache signatures.
 
-#bug [[restricted-runner-blob-auth]]
-Live qualification found that the proxy binds normally but serves HTTP 403 from
-blobstorage for `/nix-cache-info` under Restricted runner workload credentials.
-This is authorization failure, not slow listener startup. Namespace documents
-Restricted as disabling workload API access; do not silently widen shared
-profiles or increase readiness timeouts. An approved cache-scoped credential or
-reviewed workload authorization change is required before signed publication and
-fresh-store reuse can be qualified. No cache credential was provisioned or
-profile access changed during this investigation. A subsequently approved
-namespace-specific revokable token attempt was rejected by Namespace because
-`blobs:read` and `blobs:write` are not allowed in revokable tokens. No token was
-created. Do not assume that this credential type supports the early-access Nix
-cache; obtain the supported scoped-authentication contract before provisioning.
-An approved in-place Custom runner-profile attempt with verified CLI 0.0.594
-was rejected by the same blob-permission validator; full API readback confirmed
-no profile change. API schema support does not establish backend grant support.
+#deployment [[namespace-blob-cache-qualification]]
+Raw blob access is distinct from Limited's `cache/*` API access. Restricted and
+Limited workload credentials both failed blob authorization. A separately
+approved Permissive profile supplied workspace-default `blobs/*` grants and
+qualified the released lifecycle without a new stored authentication token.
+This authority is broader than cache-only access: obtain explicit approval,
+preserve full profile specs and verify API readback; never silently relax other
+workspaces. The tested `blobs` revokable token was rejected; Custom grants also
+failed with the observed `exists`, `read`, `create` actions on `nix-cache`.
+Do not infer grant acceptance from schema fields or conceptual action names.
 The older pinned CLI lacks Custom fields and discards unknown fields/enum names;
-use a newer client and full API readback for any separately approved experiment.
-Structured blob API denials subsequently confirmed ContainsBlob, ReadBlobs and
-CreateBlob need `exists`, `read`, `create` respectively on resource ID `nix-cache`;
-this does not qualify multipart uploads. The corrected
-Custom-profile grant was still rejected without changing profiles. Distinguish
-runtime permission tuples from permissions accepted by the grant validator;
-conceptual read/write labels and schema presence are not acceptance evidence.
-A separately approved Limited workload test also lacked blob access: its token
-contained `cache/*`, not `blobs`, and the direct blob RPC returned PermissionDenied.
-Limited cache-service access is not raw blob access. The original Restricted
-profile was restored and read back unchanged apart from its version; no
-Permissive fallback was performed.
+use a compatible client and full API readback for approved custom experiments.
 
 ## Retained implementation decisions and open issues
 
