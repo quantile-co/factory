@@ -1299,8 +1299,17 @@ Local `amp:pack` passed the normal checks/tests; its 0.1.0 tarball exported the
 runtime/types, standalone keep-awake plugin and telemetry plugin without source or
 workspace paths. All three packed JavaScript exports imported outside the checkout;
 the workspace OTel dependency became exact published version 0.1.0. This is local
-artifact qualification, not publication or consumer activation. Both still need
-separate approval. Consumers
+artifact qualification, not publication or consumer activation.
+
+The separately approved protected Build `43122297383` succeeded on source
+`d3494282457444378b1892a424e1a78d73b11458` and staged only
+`@quantile-co/factory-amp@0.1.0` with ID
+`82b15fec-2e28-4442-a2f8-1e6b40eb190c`. Its seven-file tarball SHA-1 is
+`99a408a622f399dc7fddc8bc1121740f7b3f55c4`. Maintainer npm 2FA approval and registry
+readback are pending; this is not yet a published release. The Build approval is
+consumed; do not dispatch another Build or activate a consumer implicitly.
+
+Consumers
 must supply their own thin setup/resume hooks, pinned tools/dependency build,
 repository identity and explicit disposable checkout path. Factory's `.agents/`
 hooks are its pilot wiring, not generic files to copy unchanged.
