@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+set +x
+[[ ${AMP_ORB:-} == 1 ]] || {
+    echo 'This hook is only for an Amp orb.' >&2
+    exit 1
+}
+: "${FACTORY_AMP_SSH_PUBLIC_KEYS:?Set the approved SSH public keys in Amp workspace or personal environment settings}"
+cd -- "$(dirname -- "$0")/.."
+umask 077
+keys=$(mktemp)
+trap 'rm -f "$keys"' EXIT
+printf '%s\n' "$FACTORY_AMP_SSH_PUBLIC_KEYS" >"$keys"
+nix develop --command pnpm amp resume --repo quantile-co/factory --directory "$PWD" --authorized-keys "$keys"

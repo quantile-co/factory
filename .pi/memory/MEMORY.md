@@ -744,3 +744,68 @@ Git source when its explicit extension path is enabled.
 <!-- 2026-10-24 04:01:40 [01a16d44] -->
 #decision [[factory-module-composition]]
 Keep Nix leaf implementations and named exports independent: each `flake.nix` named export points directly to its own module, without sibling imports or dependency bundles. Callers compose the modules required by the defaults they use; `nix/default.nix` remains the explicit aggregate convenience. Missing sibling options fail when their dependent defaults are evaluated, not merely on import; callers can replace those defaults through existing overridable options. Native TypeScript, Firebase and pnpm renderers consume the overridable `biome.formatFile` interface. Kubeconform targets an explicitly selected pinned schema version through `kubeconform.kubernetesVersion` or `-kubernetes-version`, never the kubectl client version. Cold Files and Semgrep commands independently load their stdlib-only package implementations with pinned Node 24's native TypeScript support, without bundling the combined workspace CLI or requiring node_modules.
+
+<!-- 2026-11-10 18:21:15 [01a1c824] -->
+#decision [[factory-amp-orb-pilot]]
+Amp integration lives in `packages/amp` with a thin `apps/amp` Commander CLI
+(`pnpm amp`). Keep this an adapter to native Amp, Tailscale and Herdr surfaces:
+no webhook receiver, scheduler, task database, automatic prompts or transcript
+synchronization. Native Amp issue-only spawners remain separate operator setup.
+The first pilot is Factory's own executable `.agents/setup` / `.agents/resume`;
+do not roll hooks out to consumers before one-orb qualification.
+
+Setup enters the locked Nix shell, installs frozen workspace dependencies and
+builds the packages. The shared setup requires explicitly installed tools,
+prepares dormant dedicated systemd services, provisions the OpenSSH privilege-
+separation account when absent, and refuses activated runtime state. It preserves
+different user-owned `~/.local/bin/herdr` / `pi` entries; new entries reference
+the selected binaries, with Nix GC roots for store-backed executables. No shell
+profile replacement or downloaded Herdr fallback is intended.
+
+Runtime requires the approved workspace's nonsecret `TAILSCALE_CLIENT_ID` and
+`TAILSCALE_AUDIENCE`. The pilot also requires `FACTORY_AMP_SSH_PUBLIC_KEYS`
+containing the explicitly approved public authorized keys, never private keys.
+Resume obtains thread metadata from its runtime Amp token and enrolls with
+`--subject-scope workspace`, using ephemeral/preauthorized `tag:amp-orb` nodes.
+Preauthorization intentionally skips device approval; change that explicitly if
+the tailnet requires approval. Tailscale verifies identity; local JWT decoding is
+only naming metadata. Credentials never belong in setup snapshots.
+
+The dedicated tailscaled uses `/run/factory-amp/tailscaled.sock`; ordinary local
+discovery uses the workstation's daemon. SSH listens only on the tailnet IPv4,
+uses per-orb runtime host keys and public-key authentication, and disables
+passwords, forwarding and root login. Existing host daemon settings are not
+replaced. Herdr runs as the orb user in named session `orb`, inheriting the
+runtime environment. Browser/mobile Terminal attach command:
+`~/.local/bin/herdr --session orb`; start Pi in its repository pane with
+`nix develop --command pi`. Pi's own provider login/keys must be supplied at
+runtime, not cloned from a shared image. Reauthentication/environment changes
+and session restoration still need real sleep/wake qualification.
+
+Only `AMP_ORB=1` together with an exact canonical `FACTORY_AMP_REPOSITORY`
+allows Pi to edit the disposable primary checkout directly. Other repositories
+retain normal main/worktree guards, and direct Git-metadata edits remain blocked.
+This is an accidental-action policy, not a sandbox or proof of workload identity.
+
+`pnpm amp list` reports native Amp thread results, tagged Tailscale peers and
+saved Herdr profiles without inventing a cross-service registry. Explicit
+`connect --thread T-… --repo org/repo [--issue N] [--title text]` selects the
+unique online thread-named node and delegates profile creation to native
+`herdr machine add`. Labels start with org/repo, or a project name for non-GitHub
+work, and include a short thread suffix. The full thread UUID determines the
+hostname. Existing profiles are never replaced or automatically enabled.
+SSH cannot wake paused orbs; open the thread in Amp first. Inspect changed host
+keys, name collisions and stale profiles rather than bypassing SSH checks.
+
+`packages/amp/src/plugin.ts` builds to a standalone, import-free
+`dist/plugin.js`. Deploy that built artifact as a native Amp plugin file (project
+or workspace plugin repository) after review; do not assume remote npm imports
+work. Factory source remains canonical. Its explicit command toggles a billed,
+best-effort keep-awake lease, released on toggle or plugin process exit. It does
+not infer Pi busy state, wake machines or hold leases for saved Herdr profiles.
+
+These are source implementations, not a qualified live deployment. Still verify
+workspace identity/trust and administrative credential permissions, native plugin
+installation, SSH account/host-key behavior, mobile terminal keys, model login,
+pause/resume/reconnect and issue spawners before adoption/publication. No automatic
+npm release-pipeline expansion is included in the pilot.

@@ -1,0 +1,13 @@
+{
+  "name": "@quantile-co/factory-amp-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@quantile-co/factory-amp": "workspace:*",
+    "commander": "15.0.0"
+  }
+}

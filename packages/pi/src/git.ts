@@ -99,7 +99,20 @@ export async function repository(
   return { primary: checkouts[0].path, common, checkouts };
 }
 
+// Explicit runtime opt-in for one disposable Amp checkout, not all repositories
+// reached from an orb. This remains an accident guard, not an identity check.
+export function disposableOrb(repo: Repository): boolean {
+  const root = process.env.FACTORY_AMP_REPOSITORY;
+  return (
+    process.env.AMP_ORB === "1" &&
+    !!root &&
+    isAbsolute(root) &&
+    canonical(root) === repo.primary
+  );
+}
+
 export function primaryDrift(repo: Repository): string | undefined {
+  if (disposableOrb(repo)) return undefined;
   const branch = repo.checkouts[0].branch;
   return branch === "main"
     ? undefined
@@ -247,7 +260,7 @@ export async function guardFile(path: string): Promise<void> {
     )
     .sort((a, b) => b.path.length - a.path.length)[0];
   if (
-    owner?.path === repo.primary ||
+    (owner?.path === repo.primary && !disposableOrb(repo)) ||
     target === repo.common ||
     target.startsWith(`${repo.common}/`)
   ) {
@@ -302,7 +315,7 @@ export async function guardCommand(
     }
     if (!cwd || !args[0]) return;
     const repo = await repository(cwd);
-    if (!repo) return;
+    if (!repo || disposableOrb(repo)) return;
     const checkout = canonical(
       (await git(cwd, "rev-parse", "--show-toplevel")).trim(),
     );

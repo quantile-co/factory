@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, it } from "vitest";
-import { guardCommand, guardFile } from "./git.ts";
+import { expect, it, vi } from "vitest";
+import { guardCommand, guardFile, primaryDrift, repository } from "./git.ts";
 
 it("blocks literal primary-checkout mutations and direct edits without inspecting arbitrary shell execution", async () => {
   const base = mkdtempSync(join(tmpdir(), "factory-git-"));
@@ -82,6 +82,40 @@ it("blocks literal primary-checkout mutations and direct edits without inspectin
     await expect(guardFile(join(child, "file.txt"))).resolves.toBeUndefined();
     expect(git(primary, "branch", "--show-current")).toBe("main");
   } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+it("opts in only the exact disposable orb repository and still protects Git metadata", async () => {
+  const base = mkdtempSync(join(tmpdir(), "factory-orb-guard-"));
+  const orb = join(base, "orb");
+  const other = join(base, "other");
+  try {
+    for (const path of [orb, other]) {
+      mkdirSync(path);
+      execFileSync("git", ["init", "-q", "-b", "task", path]);
+    }
+    vi.stubEnv("FACTORY_AMP_REPOSITORY", orb);
+    await expect(guardFile(join(orb, "file"))).rejects.toThrow("not main");
+    vi.stubEnv("AMP_ORB", "1");
+    const repo = await repository(orb);
+    if (!repo) throw new Error("Missing fixture repository");
+    expect(primaryDrift(repo)).toBeUndefined();
+    await expect(guardFile(join(orb, "file"))).resolves.toBeUndefined();
+    await expect(
+      guardCommand("git switch feature", orb),
+    ).resolves.toBeUndefined();
+    await expect(guardFile(join(orb, ".git", "HEAD"))).rejects.toThrow(
+      "blocked",
+    );
+    await expect(guardFile(join(other, "file"))).rejects.toThrow("not main");
+    await expect(
+      guardCommand(`git -C '${other}' switch feature`, orb),
+    ).rejects.toThrow();
+    vi.stubEnv("FACTORY_AMP_REPOSITORY", base);
+    await expect(guardFile(join(orb, "file"))).rejects.toThrow("not main");
+  } finally {
+    vi.unstubAllEnvs();
     rmSync(base, { recursive: true, force: true });
   }
 });

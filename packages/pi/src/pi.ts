@@ -597,7 +597,7 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
     promptSnippet:
       "Create/open a task worktree with a separate Pi session; preserve the primary checkout on main.",
     promptGuidelines: [
-      "Before making task changes in a primary checkout, use herdr_worktree with action start, branch and task. Read-only inspection can stay in the primary checkout.",
+      "Before making task changes in a primary checkout, use herdr_worktree with action start, branch and task. Exception: inside AMP_ORB=1, the exact disposable checkout selected by FACTORY_AMP_REPOSITORY may be edited directly. Read-only inspection can stay in the primary checkout.",
       "In a linked task checkout, continue there instead of launching another workspace for the same task. A launcher failure may leave a child workspace or agent: inspect before retrying.",
     ],
     parameters: Type.Object({

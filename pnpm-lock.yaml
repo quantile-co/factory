@@ -221,6 +221,15 @@ importers:
         specifier: 5.0.4
         version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
 
+  apps/amp:
+    dependencies:
+      '@quantile-co/factory-amp':
+        specifier: workspace:*
+        version: link:../../packages/amp
+      commander:
+        specifier: 15.0.0
+        version: 15.0.0
+
   apps/github:
     dependencies:
       '@quantile-co/factory-github':
@@ -237,6 +246,8 @@ importers:
         version: link:../../packages/nix
 
   apps/repo: {}
+
+  packages/amp: {}
 
   packages/github: {}
 
