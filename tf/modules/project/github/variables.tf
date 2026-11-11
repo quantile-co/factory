@@ -25,11 +25,33 @@ variable "environments" {
   nullable    = false
 }
 
+variable "factory_automatic_label" {
+  description = "Manage the shared factory-automatic opt-in label; does not configure an Amp spawner."
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
 variable "has_issues" {
   description = "Whether to enable the repository issue tracker."
   type        = bool
   default     = true
   nullable    = false
+}
+
+variable "labels" {
+  description = "Labels managed individually by name; other repository labels remain unmanaged. Overrides the optional Factory preset."
+  type = map(object({
+    color       = string
+    description = optional(string, "")
+  }))
+  default  = {}
+  nullable = false
+
+  validation {
+    condition     = alltrue([for label in var.labels : can(regex("^[0-9A-Fa-f]{6}$", label.color))])
+    error_message = "Label colors must be six hexadecimal digits without a leading #."
+  }
 }
 
 variable "main_branch" {

@@ -18,6 +18,14 @@ module "gh" {
   environments = ["prod"]
   owners       = [for person in local.project_owners : person.gh_username]
   members      = [for person in local.project_members : person.gh_username]
+
+  factory_automatic_label = true
+}
+
+# Adopt the existing pilot label; do not create a duplicate or manage other labels.
+import {
+  to = module.gh.github_issue_label.self["factory-automatic"]
+  id = "factory:factory-automatic"
 }
 
 module "gcp" {

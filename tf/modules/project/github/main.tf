@@ -28,6 +28,25 @@ resource "github_repository" "self" {
   }
 }
 
+locals {
+  labels = merge(var.factory_automatic_label ? {
+    factory-automatic = {
+      color       = "5319e7"
+      description = "Opt in at issue creation to an agent workspace and triage (billed runtime)."
+    }
+  } : {}, var.labels)
+}
+
+# Per-label resources deliberately leave other labels alone.
+resource "github_issue_label" "self" {
+  for_each = local.labels
+
+  repository  = github_repository.self.name
+  name        = each.key
+  color       = each.value.color
+  description = each.value.description
+}
+
 resource "github_repository_collaborator" "member" {
   for_each = var.members
 

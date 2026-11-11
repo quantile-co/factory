@@ -887,7 +887,7 @@ Amp integration lives in `packages/amp` with a thin `apps/amp` Commander CLI
 no webhook receiver, scheduler, task database, automatic prompts or transcript
 synchronization. Native Amp issue-only spawners remain separate operator setup.
 Factory now has one enabled, unblocked, user-owned native spawner for newly
-opened `quantile-co/factory` issues with the exact label `amp-orb`, targeting the
+opened `quantile-co/factory` issues with the exact label `factory-automatic`, targeting the
 Factory workspace project in Medium mode. Its saved instructions permit only
 read-only issue triage and bootstrap diagnostics, then wait for the operator;
 no automatic code changes, deployments, Pi prompts or keep-awake. There is no PR
@@ -969,17 +969,23 @@ hostname. Existing profiles are never replaced or automatically enabled.
 SSH cannot wake paused orbs; open the thread in Amp first. Inspect changed host
 keys, name collisions and stale profiles rather than bypassing SSH checks.
 
-`packages/amp/src/plugin.ts` builds to a standalone, import-free
-`dist/plugin.js`. Factory's orb setup installs that artifact as the per-orb system
+`packages/amp/src/plugin.ts` builds to standalone `dist/plugin.js`, using only
+Node built-ins (no package imports). Factory's orb setup installs it as the per-orb system
 plugin `${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins/factory-orb-awake.js` after
 successful dormant setup. No workstation, personal or workspace-global plugin is
 installed. Factory source remains canonical; do not assume remote npm imports
-work. The pilot's installed artifact was hash-verified and loaded by Amp's native
-plugin manager. Its explicit `Factory orb: Toggle keep awake` command toggles a
-billed, best-effort lease, released on toggle or plugin process exit. It starts
-off and does not infer Pi busy state, wake machines or hold leases for saved Herdr
-profiles. Registered commands need the operator palette; native plugin listing
-or one-off event execution does not prove the live toggle was tested.
+work. Keep-awake now defaults to Auto inside an orb: sample native Herdr Pi
+activity in session `orb` every five seconds, hold while working, then release
+after two minutes without observed work (including blocked/exited agents or
+unavailable status). A four-hour continuously busy period caps Auto until a
+confirmed idle state or explicit re-arm. Native palette commands select Auto,
+On (explicit indefinite hold), or Off. Reload returns to Auto; process exit
+releases Amp's lease. Monitoring invokes the local Herdr CLI directly, not Amp
+shell/tools that could refresh its idle clock. It does not start Herdr, wake a
+paused orb or synchronize transcripts. Leases are billed and best effort, not a
+guarantee against manual pauses or provider limits. Focused tests cover state,
+grace, cap, failure and override behavior; live activity/idle-pause qualification
+of this version is still pending.
 
 The initial pilot installs the three runtime values as Factory project-level
 environment variables, not workspace/personal overrides. Only an explicitly
@@ -1000,6 +1006,31 @@ workspace identity/trust and administrative credential permissions, native plugi
 installation, SSH account/host-key behavior, mobile terminal keys, model login,
 pause/resume/reconnect and issue spawners before adoption/publication. No automatic
 npm release-pipeline expansion is included in the pilot.
+
+## Downstream Amp adoption
+
+The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
+the adapter is not yet published as a qualified downstream npm release. Consumers
+must supply their own thin setup/resume hooks, pinned tools/dependency build,
+repository identity and explicit disposable checkout path. Factory's `.agents/`
+hooks are its pilot wiring, not generic files to copy unchanged.
+
+Shared workspace federation avoids per-repository Tailscale identity registration,
+but each Amp project still needs approved runtime enrollment values and SSH public
+keys. Native project mapping and issue spawners remain per-repository operator
+configuration; neither a label nor a Terraform module creates an Amp spawner.
+Pi/model credentials remain per-user runtime data. Herdr profiles remain explicit
+workstation choices; no automatic sidebar population is introduced.
+
+`tf/modules/project/github` supports a `labels` map and opt-in
+`factory_automatic_label = true` for the shared `factory-automatic` preset.
+Caller labels can override the preset. Singular `github_issue_label` resources
+leave unrelated labels alone; existing labels need explicit import. The pinned
+provider's Create implementation calls CreateLabel directly despite its docs'
+upsert claim. Factory declares the preset and an import for its renamed pilot
+label; protected Terraform state adoption still requires a fresh reviewed Plan
+and separately approved Apply. No infrastructure Apply has been performed for
+this change. Existing consumers default to managing no labels.
 
 #todo [[amp-orb-login-friction]]
 - Explore lower-friction Pi/model authentication for new orbs: native remote/device

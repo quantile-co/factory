@@ -10,7 +10,6 @@ import {
   resumeScript,
   setupScript,
 } from "./index.ts";
-import plugin, { type AmpPlugin } from "./plugin.ts";
 
 const thread = "T-12345678-1234-1234-1234-123456789abc";
 it("keys machines by thread, starts labels with org/repo and rejects unsafe input", () => {
@@ -160,62 +159,3 @@ ${setupScript}
     }
   },
 );
-
-it("keeps awake only on explicit commands and serializes rapid toggles", async () => {
-  let toggle!: Parameters<AmpPlugin["registerCommand"]>[2];
-  let acquired = 0;
-  let released = 0;
-  const notifications: string[] = [];
-  const ctx = {
-    ui: {
-      notify: async (message: string) => {
-        notifications.push(message);
-      },
-    },
-  };
-  plugin({
-    system: {
-      executor: {
-        keepAlive: async () => {
-          acquired++;
-          return {
-            unsubscribe: () => {
-              released++;
-            },
-          };
-        },
-      },
-    },
-    registerCommand: (_name, _options, handler) => {
-      toggle = handler;
-    },
-  });
-  expect(acquired).toBe(0);
-  await Promise.all([toggle(ctx), toggle(ctx)]);
-  expect(acquired).toBe(1);
-  expect(released).toBe(1);
-  expect(notifications[0]).toContain("billed");
-  await toggle(ctx);
-  expect(acquired).toBe(2);
-});
-
-it("allows another explicit attempt after a rejected keep-alive lease", async () => {
-  let toggle!: Parameters<AmpPlugin["registerCommand"]>[2];
-  let attempts = 0;
-  plugin({
-    system: {
-      executor: {
-        keepAlive: async () => {
-          if (++attempts === 1) throw new Error("not an orb");
-          return { unsubscribe: () => {} };
-        },
-      },
-    },
-    registerCommand: (_name, _options, handler) => {
-      toggle = handler;
-    },
-  });
-  const ctx = { ui: { notify: async () => {} } };
-  await expect(toggle(ctx)).rejects.toThrow("not an orb");
-  await expect(toggle(ctx)).resolves.toBeUndefined();
-});

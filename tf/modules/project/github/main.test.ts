@@ -60,6 +60,10 @@ run "${visibility}_fork_approval" {
     environments = ["preview", "prod"]
   }
   assert {
+    condition = length(github_issue_label.self) == 0
+    error_message = "Labels must remain opt-in for existing consumers."
+  }
+  assert {
     condition = output.owner_ids["fixture-operator"] == "987654321"
     error_message = "Owner IDs must retain the username-keyed immutable actor mapping."
   }
@@ -102,6 +106,26 @@ run "member_write_access" {
       toset(keys(output.owner_ids)) == toset(["fixture-operator"])
     )
     error_message = "Members receive repository write access, not owner actor identities."
+  }
+}
+run "caller_labels" {
+  command = plan
+  module { source = ${JSON.stringify(moduleDir)} }
+  variables {
+    repo_name = "fixture"
+    visibility = "private"
+    owners = ["fixture-operator"]
+    factory_automatic_label = true
+    labels = { custom = { color = "123abc", description = "Caller label" } }
+  }
+  assert {
+    condition = (
+      toset(keys(github_issue_label.self)) == toset(["factory-automatic", "custom"]) &&
+      github_issue_label.self["factory-automatic"].repository == github_repository.self.name &&
+      github_issue_label.self["factory-automatic"].color == "5319e7" &&
+      github_issue_label.self["custom"].description == "Caller label"
+    )
+    error_message = "The shared opt-in label must compose with caller-owned labels."
   }
 }
 run "overlapping_roles" {
