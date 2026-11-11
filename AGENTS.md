@@ -26,6 +26,7 @@ and scratchpads. Never commit credentials or private cross-repository details.
 - [.agents/setup](.agents/setup) and [.agents/resume](.agents/resume): Factory's opt-in orb pilot hooks.
 - [etc/pi/settings.json](etc/pi/settings.json): native Pi package and resource selections.
 - [nix/](nix/): reusable Nix modules and executables.
+- [nix/hindsight/](nix/hindsight/) and [Hindsight skill](packages/pi/skills/hindsight/SKILL.md): opt-in Cloud memory configuration, native CLI and migration entry points.
 - [nix/files/](nix/files/): generic manifest and cold-bootstrap command module.
 - [nix/otelcol-contrib/](nix/otelcol-contrib/) and [etc/otelcol-contrib/](etc/otelcol-contrib/): upstream collector and native pipeline configurations.
 - [packages/otel/](packages/otel/) and [apps/otel/](apps/otel/): shared OTel runtime, tracing and CLI.

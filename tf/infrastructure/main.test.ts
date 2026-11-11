@@ -21,6 +21,7 @@ it("scopes the public-repository scanner exception to its module invocation", ()
       "infrastructure",
       "modules/project/github",
       "modules/project/gcp",
+      "modules/project/hindsight",
     ]) {
       const from = resolve(sourceDir, "..", relative);
       const to = join(work, relative);

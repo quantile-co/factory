@@ -119,7 +119,9 @@ The operator's GitHub CLI login is separate from the provider PAT;
 do not let `GITHUB_TOKEN` or `GH_TOKEN` select the wrong credential.
 
 Plan and Apply receive provider credentials and the Cachix token only at runtime.
-Never copy those values into Terraform inputs, artifacts, source or Nix values.
+Never copy those values into persistent Terraform inputs, artifacts, source or Nix values.
+Factory’s Hindsight alias uses the explicitly mapped native ephemeral credential
+input described in the configuration contract; supply it again for saved Apply.
 
 ## 2. Plan
 

@@ -22,7 +22,10 @@ function workflow(path: string) {
   );
 }
 
-function namespaceWorkflows(otel = false): Record<string, string> {
+function namespaceWorkflows(
+  otel = false,
+  hindsight = false,
+): Record<string, string> {
   return JSON.parse(
     execFileSync(
       "nix",
@@ -43,6 +46,7 @@ function namespaceWorkflows(otel = false): Record<string, string> {
           ${root}/nix/github/workflows
           { quantile-co.factory.github.workflows = {
               nixCache = "namespace";
+              hindsight = ${hindsight ? "true" : "false"};
               otelJobs = ${otel ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
           }; }
         ];
@@ -227,6 +231,39 @@ if (${JSON.stringify(tool)} === 'pnpm') {
             shell: "ready",
           });
         }
+      }
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+it("selects Hindsight credentials only for protected Plan/Apply jobs", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "factory-hindsight-workflow-"));
+  try {
+    const disabled = namespaceWorkflows(true);
+    const enabled = namespaceWorkflows(true, true);
+    for (const [name, source] of Object.entries(enabled)) {
+      expect(disabled[name]).not.toContain("HINDSIGHT_API_TOKEN");
+      if (!["plan", "apply"].includes(name)) {
+        expect(source).toBe(disabled[name]);
+        continue;
+      }
+      const path = join(temporary, `${name}.yaml`);
+      writeFileSync(path, source);
+      for (const job of Object.values(workflow(path).jobs) as Array<{
+        if: string;
+        environment: string;
+        steps: Array<{ env?: Record<string, string> }>;
+      }>) {
+        expect(job.if).toContain("github.ref == 'refs/heads/main'");
+        expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
+        expect(job.environment).toBe("prod");
+        const tasks = job.steps.filter((step) => step.env?.HINDSIGHT_API_TOKEN);
+        expect(tasks).toHaveLength(1);
+        expect(tasks[0].env?.HINDSIGHT_API_TOKEN).toBe(
+          `\${{ secrets.HINDSIGHT_API_TOKEN }}`,
+        );
       }
     }
   } finally {

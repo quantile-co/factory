@@ -493,6 +493,8 @@ if(output)fs.writeFileSync(output.slice(5),"saved");
               source === "env" ? "fixture-credential" : "overridden-credential",
             GITHUB_TOKEN: "must-not-leak",
             REST_API_BEARER: "must-not-leak",
+            HINDSIGHT_API_TOKEN: "fixture-hindsight-credential",
+            TF_VAR_hindsight_api_token: "must-not-leak",
             GCP_TF_STATE_BUCKET: "ignored-ambient-bucket",
             GCP_WIF_POOL: "ignored-ambient-pool",
             PROJECT_OWNERS: '[{"gh_username":"approved"}]',
@@ -542,6 +544,13 @@ if(output)fs.writeFileSync(output.slice(5),"saved");
       expect(observed.env.TF_VAR_gcp_wif_pool).toBe("approved-pool");
       expect(observed.env.GITHUB_TOKEN).toBe("fixture-credential");
       expect(observed.env.REST_API_BEARER).toBe("fixture-credential");
+      expect(observed.env.TF_VAR_hindsight_api_token).toBe(
+        "fixture-hindsight-credential",
+      );
+      expect(observed.env.HINDSIGHT_API_TOKEN).toBeUndefined();
+      expect(result.stdout + result.stderr).not.toContain(
+        "fixture-hindsight-credential",
+      );
       expect(observed.env.GH_REPO).toBe("example/repository");
       const storage = JSON.parse(
         readFileSync(join(root, "storage-env"), "utf8"),
@@ -549,6 +558,8 @@ if(output)fs.writeFileSync(output.slice(5),"saved");
       expect(storage.GH_REPO_TOKEN).toBeUndefined();
       expect(storage.GITHUB_TOKEN).toBeUndefined();
       expect(storage.REST_API_BEARER).toBeUndefined();
+      expect(storage.HINDSIGHT_API_TOKEN).toBeUndefined();
+      expect(storage.TF_VAR_hindsight_api_token).toBeUndefined();
       expect(existsSync(join(root, "saved-plan"))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });

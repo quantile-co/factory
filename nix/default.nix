@@ -21,6 +21,7 @@
     ./github
     ./gitleaks
     ./gofumpt
+    ./hindsight
     ./goimports
     ./golangci-lint
     ./husky

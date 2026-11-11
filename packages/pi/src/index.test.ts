@@ -66,6 +66,7 @@ it("packs only Factory skills and loads extensions independently of skill sync",
   expect(catalog.skills.map((skill) => skill.name).sort()).toEqual([
     "day-zero-deploy",
     "deploy",
+    "hindsight",
   ]);
   for (const skill of catalog.skills) {
     expect(readFileSync(skill.filePath, "utf8")).toBe(
@@ -390,6 +391,7 @@ it("lets downstreams synchronize and exclude packaged skills without activating 
     expect(readdirSync(canonical).sort()).toEqual([
       "consumer-owned",
       "day-zero-deploy",
+      "hindsight",
     ]);
     expect(
       readFileSync(join(canonical, "consumer-owned/SKILL.md"), "utf8"),

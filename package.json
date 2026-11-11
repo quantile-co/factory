@@ -35,6 +35,7 @@
     "@opentelemetry/sdk-trace": "2.12.0",
     "@quantile-co/factory-pi": "workspace:*",
     "@types/node": "26.6.5",
+    "@vectorize-io/hindsight-coding-agents": "0.8.7",
     "husky": "9.1.7",
     "rolldown-plugin-dts": "0.28.8",
     "skills": "1.7.4",

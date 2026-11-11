@@ -90,6 +90,26 @@ let
           "shell=$(env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n          pnpm otel -- pnpm run github:"
         ]
         source;
+  hindsightJob =
+    phase: source:
+    if
+      !cfg.hindsight
+      || !(builtins.elem phase [
+        "plan"
+        "apply"
+      ])
+    then
+      source
+    else
+      let
+        marker = "          GH_REPO_TOKEN: \${{ secrets.GH_REPO_TOKEN }}\n";
+      in
+      assert lib.assertMsg (lib.hasInfix marker source)
+        "Workflow provider credential environment changed";
+      builtins.replaceStrings
+        [ marker ]
+        [ (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n") ]
+        source;
   render =
     name: source: layers:
     let
@@ -124,12 +144,19 @@ let
       selectedHeader
       + "\njobs:\n"
       + lib.concatStringsSep "\n" (
-        map (layer: collectorJob (lib.removeSuffix ".yaml" name) (cacheJob jobs.${layer})) layers
+        map (
+          layer:
+          let
+            phase = lib.removeSuffix ".yaml" name;
+          in
+          hindsightJob phase (collectorJob phase (cacheJob jobs.${layer}))
+        ) layers
       )
     );
 in
 {
   options.quantile-co.factory.github.workflows = {
+    hindsight = lib.mkEnableOption "the Hindsight runtime credential in protected Plan/Apply jobs";
     otelJobs = lib.mkOption {
       type = lib.types.listOf (
         lib.types.enum [

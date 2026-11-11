@@ -42,3 +42,13 @@ module "gcp" {
   gh_repo_id   = module.gh.repo_id
   gh_owner_ids = module.gh.owner_ids
 }
+
+module "hindsight" {
+  source = "../modules/project/hindsight"
+  providers = {
+    restapi = restapi.hindsight
+  }
+
+  bank_id = "quantile-co--factory"
+  name    = "quantile-co/factory"
+}
