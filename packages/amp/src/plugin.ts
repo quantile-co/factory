@@ -7,7 +7,6 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 const pollMs = 5_000;
 const graceMs = 120_000;
-const maxAutoMs = 4 * 60 * 60 * 1_000;
 type Mode = "auto" | "on" | "off";
 type Lease = { unsubscribe(): void };
 type Context = { ui: { notify(message: string): Promise<void> } };
@@ -46,8 +45,6 @@ export default function plugin(amp: AmpPlugin): void {
   let mode: Mode = "auto";
   let lease: Lease | undefined;
   let lastWorking: number | undefined;
-  let busySince: number | undefined;
-  let capped = false;
   let unavailable = false;
   let polling = false;
   let pending = Promise.resolve();
@@ -64,21 +61,9 @@ export default function plugin(amp: AmpPlugin): void {
 
   async function reconcile(): Promise<void> {
     const now = Date.now();
-    if (
-      mode === "auto" &&
-      busySince !== undefined &&
-      now - busySince >= maxAutoMs
-    ) {
-      if (!capped)
-        amp.logger.log(
-          "Auto keep-awake reached its four-hour busy-period limit. Select Auto to acknowledge and re-arm, or On for an explicit hold.",
-        );
-      capped = true;
-    }
     const wanted =
       mode === "on" ||
       (mode === "auto" &&
-        !capped &&
         lastWorking !== undefined &&
         now - lastWorking < graceMs);
     if (wanted && !lease) {
@@ -106,16 +91,9 @@ export default function plugin(amp: AmpPlugin): void {
           try {
             const working = await piWorking();
             unavailable = false;
-            if (working) {
-              lastWorking = Date.now();
-              busySince ??= lastWorking;
-            } else {
-              if (capped) lastWorking = undefined;
-              busySince = undefined;
-              capped = false;
-            }
+            if (working) lastWorking = Date.now();
           } catch {
-            // Do not refresh lastWorking or reset the cap on unavailable state.
+            // Missing activity never refreshes lastWorking.
             if (!unavailable)
               amp.logger.log(
                 "Herdr activity unavailable; Auto will release after its idle grace period.",
@@ -140,7 +118,7 @@ export default function plugin(amp: AmpPlugin): void {
         category: "Factory orb",
         description:
           selected === "auto"
-            ? "Follow Pi activity in Herdr's orb session; 2-minute idle grace, 4-hour busy-period cap. Billed runtime."
+            ? "Follow Pi activity in Herdr's orb session; 2-minute idle grace, no working-time limit. Billed runtime."
             : selected === "on"
               ? "Explicit billed hold until Off, Auto or plugin exit; best effort, not a wake command."
               : "Release the lease and allow normal Amp idle pausing.",
@@ -150,8 +128,6 @@ export default function plugin(amp: AmpPlugin): void {
           mode = selected;
           // Moving a live manual hold to Auto gives observation time to take over.
           lastWorking = selected === "auto" && lease ? Date.now() : undefined;
-          busySince = undefined;
-          capped = false;
           await reconcile();
           await ctx.ui.notify(
             `Factory keep-awake: ${mode}. ${mode === "off" ? "Normal Amp idle timeouts apply." : "Awake runtime is billed; manual pauses and provider limits still apply."}`,

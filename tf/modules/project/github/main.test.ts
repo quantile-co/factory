@@ -60,8 +60,8 @@ run "${visibility}_fork_approval" {
     environments = ["preview", "prod"]
   }
   assert {
-    condition = length(github_issue_label.self) == 0
-    error_message = "Labels must remain opt-in for existing consumers."
+    condition = toset(keys(github_issue_label.self)) == toset(["factory-automatic"])
+    error_message = "Repositories receive the shared Factory label by default."
   }
   assert {
     condition = output.owner_ids["fixture-operator"] == "987654321"
@@ -115,7 +115,6 @@ run "caller_labels" {
     repo_name = "fixture"
     visibility = "private"
     owners = ["fixture-operator"]
-    factory_automatic_label = true
     labels = { custom = { color = "123abc", description = "Caller label" } }
   }
   assert {
@@ -125,7 +124,7 @@ run "caller_labels" {
       github_issue_label.self["factory-automatic"].color == "5319e7" &&
       github_issue_label.self["custom"].description == "Caller label"
     )
-    error_message = "The shared opt-in label must compose with caller-owned labels."
+    error_message = "The standard Factory label must compose with caller-owned labels."
   }
 }
 run "overlapping_roles" {

@@ -5,7 +5,7 @@ const activity = vi.hoisted(() => vi.fn());
 vi.mock("node:child_process", async (original) => {
   const { promisify } = await import("node:util");
   return {
-    ...(await original<typeof import("node:child_process")>()),
+    ...(await original<object>()),
     execFile: Object.assign(vi.fn(), { [promisify.custom]: activity }),
   };
 });
@@ -95,20 +95,17 @@ it.each(["blocked", "exited", "unavailable", "invalid"])(
   },
 );
 
-it("caps a continuously busy period without immediately reacquiring", async () => {
+it("keeps long-running Pi work awake without a runtime cap", async () => {
   const f = await fixture();
   inventory("working");
   await vi.advanceTimersByTimeAsync(5000);
-  vi.setSystemTime(4 * 60 * 60 * 1000 + 5000);
+  vi.setSystemTime(48 * 60 * 60 * 1000);
   await vi.advanceTimersByTimeAsync(10000);
+  expect(f.acquire).toHaveBeenCalledTimes(1);
+  expect(f.release).not.toHaveBeenCalled();
+  inventory("idle");
+  await vi.advanceTimersByTimeAsync(125000);
   expect(f.release).toHaveBeenCalledTimes(1);
-  expect(f.acquire).toHaveBeenCalledTimes(1);
-  inventory();
-  await vi.advanceTimersByTimeAsync(5000);
-  expect(f.acquire).toHaveBeenCalledTimes(1);
-  inventory("working");
-  await vi.advanceTimersByTimeAsync(5000);
-  expect(f.acquire).toHaveBeenCalledTimes(2);
 });
 
 it("serializes explicit On/Off overrides and permits Auto re-arming", async () => {

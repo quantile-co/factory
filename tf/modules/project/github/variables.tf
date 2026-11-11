@@ -26,9 +26,9 @@ variable "environments" {
 }
 
 variable "factory_automatic_label" {
-  description = "Manage the shared factory-automatic opt-in label; does not configure an Amp spawner."
+  description = "Manage the standard factory-automatic label; does not configure an Amp spawner."
   type        = bool
-  default     = false
+  default     = true
   nullable    = false
 }
 

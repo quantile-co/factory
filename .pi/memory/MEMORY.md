@@ -977,15 +977,15 @@ installed. Factory source remains canonical; do not assume remote npm imports
 work. Keep-awake now defaults to Auto inside an orb: sample native Herdr Pi
 activity in session `orb` every five seconds, hold while working, then release
 after two minutes without observed work (including blocked/exited agents or
-unavailable status). A four-hour continuously busy period caps Auto until a
-confirmed idle state or explicit re-arm. Native palette commands select Auto,
+unavailable status). Do not cap working time: long-running agents must retain
+their lease for as long as Pi reports work. Native palette commands select Auto,
 On (explicit indefinite hold), or Off. Reload returns to Auto; process exit
 releases Amp's lease. Monitoring invokes the local Herdr CLI directly, not Amp
 shell/tools that could refresh its idle clock. It does not start Herdr, wake a
 paused orb or synchronize transcripts. Leases are billed and best effort, not a
 guarantee against manual pauses or provider limits. Focused tests cover state,
-grace, cap, failure and override behavior; live activity/idle-pause qualification
-of this version is still pending.
+grace, long-running work, failure and override behavior; live activity/idle-pause
+qualification of this version is still pending.
 
 The initial pilot installs the three runtime values as Factory project-level
 environment variables, not workspace/personal overrides. Only an explicitly
@@ -1022,15 +1022,18 @@ configuration; neither a label nor a Terraform module creates an Amp spawner.
 Pi/model credentials remain per-user runtime data. Herdr profiles remain explicit
 workstation choices; no automatic sidebar population is introduced.
 
-`tf/modules/project/github` supports a `labels` map and opt-in
-`factory_automatic_label = true` for the shared `factory-automatic` preset.
+`tf/modules/project/github` supports a `labels` map and defaults
+`factory_automatic_label = true` so repositories receive the shared
+`factory-automatic` preset. Label existence alone does not enable a spawner.
 Caller labels can override the preset. Singular `github_issue_label` resources
 leave unrelated labels alone; existing labels need explicit import. The pinned
 provider's Create implementation calls CreateLabel directly despite its docs'
 upsert claim. Factory declares the preset and an import for its renamed pilot
 label; protected Terraform state adoption still requires a fresh reviewed Plan
 and separately approved Apply. No infrastructure Apply has been performed for
-this change. Existing consumers default to managing no labels.
+this change. Existing repositories receive the default on their next approved
+module update/deployment; repositories outside this module need separate adoption.
+No blanket cross-repository Apply is authorized by the default change.
 
 #todo [[amp-orb-login-friction]]
 - Explore lower-friction Pi/model authentication for new orbs: native remote/device
