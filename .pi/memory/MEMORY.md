@@ -1230,6 +1230,28 @@ Focused regressions cover the observed peer schema and inherited 0444 configs.
 No live repair or hook rerun was performed. Another billed test requires fresh
 approval; do not report these source fixes as a successful end-to-end bootstrap.
 
+#deployment [[amp-native-ssh-connector-qualified]]
+The separately approved Medium test `T-ab070b8f-2752-4019-a464-714b7f688ec0`
+used clean `f3be934` from a prepared project snapshot, not a cold base. Its
+snapshot contained completed setup/plugin installation and 0644 collector
+configs. Resume completed in about 73 seconds; dedicated tailscaled was active
+with zero restarts, no legacy Factory sshd and no Pi auth file. Herdr reported
+one workspace and zero agents.
+
+The published `amp connect` succeeded without a manual key handoff or code
+workaround: authenticated host-key pinning, fresh strict SSH and native Herdr
+machine creation all completed. Native machine status reported reachable, with
+no error. No installation replacement or repository-trust approval was needed.
+This qualifies the saved-profile connector on that snapshot, not cold-start
+performance, an operator-viewed TUI/model turn or automatic pause/wake behavior.
+
+The thread was archived and verified absent from normal/present in archived
+listings. Only the temporary test profile and its three new known-hosts records
+were removed; the original pilot/profile/login were preserved. The immediate
+post-archive peer read still showed online, so do not claim an independently
+confirmed offline transition. No retry, additional orb or infrastructure phase
+was run; the test approval is consumed.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
