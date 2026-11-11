@@ -235,9 +235,18 @@ importers:
       '@quantile-co/factory-github':
         specifier: workspace:*
         version: link:../../packages/github
+      '@quantile-co/factory-namespace':
+        specifier: workspace:*
+        version: link:../../packages/namespace
       commander:
         specifier: 15.0.0
         version: 15.0.0
+
+  apps/namespace:
+    dependencies:
+      '@quantile-co/factory-namespace':
+        specifier: workspace:*
+        version: link:../../packages/namespace
 
   apps/nix:
     dependencies:
@@ -250,6 +259,8 @@ importers:
   packages/amp: {}
 
   packages/github: {}
+
+  packages/namespace: {}
 
   packages/nix: {}
 

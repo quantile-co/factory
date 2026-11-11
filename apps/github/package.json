@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "cache-publish": "cd ../.. && tsx apps/github/cli.ts cache-publish",
     "plan": "cd ../.. && tsx apps/github/cli.ts plan",
     "apply": "cd ../.. && tsx apps/github/cli.ts apply"
   },
   "dependencies": {
+    "@quantile-co/factory-namespace": "workspace:*",
     "@quantile-co/factory-github": "workspace:*",
     "commander": "15.0.0"
   }

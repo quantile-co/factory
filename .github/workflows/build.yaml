@@ -3,6 +3,13 @@ name: Build
 on:
   workflow_dispatch:
     inputs:
+      npm_package:
+        description: Package group to release
+        type: choice
+        default: factory
+        options:
+          - factory
+          - namespace
       tf_layer:
         description: Layer
         required: true
@@ -60,6 +67,7 @@ jobs:
       - name: Build
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_PACKAGE: ${{ inputs.npm_package }}
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
         run: |
           export TURBO_CACHE=local:rw

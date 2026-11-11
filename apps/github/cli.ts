@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +11,7 @@ import {
   processRunner,
   type TransportOptions,
 } from "@quantile-co/factory-github";
+import { withNixCache } from "@quantile-co/factory-namespace";
 import { Command, Option } from "commander";
 
 const deployments = {
@@ -59,7 +60,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
 const program = new Command()
   .name("factory-github")
   .description(
-    "Repository artifacts and saved-plan transport; use approved workflows.",
+    "Repository tests, artifacts and saved-plan transport; use approved workflows.",
   );
 program
   .command("build")
@@ -73,49 +74,73 @@ program
       .env("NPM_TOKEN")
       .makeOptionMandatory(),
   )
-  .action((options: { npmToken: string }) => {
-    const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-      encoding: "utf8",
-    }).trim();
-    const buildEnvironment = { ...process.env };
-    delete buildEnvironment.NPM_TOKEN;
-    delete buildEnvironment.NPM_CONFIG_USERCONFIG;
-    delete buildEnvironment.npm_config_userconfig;
-    const run = (task: string, env: NodeJS.ProcessEnv) => {
-      const result = spawnSync("pnpm", ["run", task], {
-        cwd: root,
-        env,
-        stdio: "inherit",
-      });
-      if (result.error) throw result.error;
-      if (result.status !== 0)
-        throw new CommandFailure(result.status ?? 1, `${task} failed`);
-    };
-    run("npm:pack", buildEnvironment);
-    execFileSync("git", ["diff", "--exit-code", "HEAD"], {
-      cwd: root,
-      env: buildEnvironment,
-      stdio: "inherit",
-    });
-    const directory = mkdtempSync(join(tmpdir(), "factory-npm-"));
-    try {
-      const config = join(directory, "npmrc");
-      writeFileSync(
-        config,
-        `//registry.npmjs.org/:_authToken=\${NPM_TOKEN}\n`,
-        {
-          mode: 0o600,
-        },
-      );
-      run("npm:stage", {
-        ...buildEnvironment,
-        NPM_TOKEN: options.npmToken,
-        NPM_CONFIG_USERCONFIG: config,
-      });
-    } finally {
-      rmSync(directory, { recursive: true, force: true });
-    }
-  });
+  .addOption(
+    new Option("--npm-package <package>", "Release selection")
+      .choices(["factory", "namespace"])
+      .env("NPM_PACKAGE")
+      .default("factory"),
+  )
+  .action((options: { npmToken: string; npmPackage: string }) =>
+    withNixCache(
+      async (taskEnvironment) => {
+        const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+          encoding: "utf8",
+          env: taskEnvironment,
+        }).trim();
+        const buildEnvironment = { ...taskEnvironment };
+        delete buildEnvironment.NPM_TOKEN;
+        delete buildEnvironment.NPM_PACKAGE;
+        delete buildEnvironment.NPM_CONFIG_USERCONFIG;
+        delete buildEnvironment.npm_config_userconfig;
+        const run = (task: string, env: NodeJS.ProcessEnv) => {
+          const result = spawnSync("pnpm", ["run", task], {
+            cwd: root,
+            env,
+            stdio: "inherit",
+          });
+          if (result.error) throw result.error;
+          if (result.status !== 0)
+            throw new CommandFailure(result.status ?? 1, `${task} failed`);
+        };
+        run(
+          options.npmPackage === "namespace"
+            ? "namespace:nixcache:pack"
+            : "npm:pack",
+          buildEnvironment,
+        );
+        execFileSync("git", ["diff", "--exit-code", "HEAD"], {
+          cwd: root,
+          env: buildEnvironment,
+          stdio: "inherit",
+        });
+        const directory = mkdtempSync(join(tmpdir(), "factory-npm-"));
+        try {
+          const config = join(directory, "npmrc");
+          writeFileSync(
+            config,
+            `//registry.npmjs.org/:_authToken=\${NPM_TOKEN}\n`,
+            {
+              mode: 0o600,
+            },
+          );
+          run(
+            options.npmPackage === "namespace"
+              ? "namespace:nixcache:stage"
+              : "npm:stage",
+            {
+              ...buildEnvironment,
+              NPM_TOKEN: options.npmToken,
+              NPM_CONFIG_USERCONFIG: config,
+            },
+          );
+        } finally {
+          rmSync(directory, { recursive: true, force: true });
+        }
+      },
+      process.env,
+      abort.signal,
+    ),
+  );
 for (const phase of ["plan", "apply"] as const) {
   const command = program
     .command(phase)
@@ -150,92 +175,129 @@ for (const phase of ["plan", "apply"] as const) {
         "Reviewed saved plan",
       ).makeOptionMandatory(),
     );
-  command.action(async (custom: string[], options: Options) => {
-    const deployment = deployments[options.tfLayer];
-    const transport: TransportOptions = {
-      bucket: options.gcpTfStateBucket,
-      repositoryId: requiredEnvironment("GITHUB_REPOSITORY_ID"),
-      runId: requiredEnvironment("GITHUB_RUN_ID"),
-      attempt: requiredEnvironment("GITHUB_RUN_ATTEMPT"),
-      scratchDirectory: requiredEnvironment("RUNNER_TEMP"),
-      signal: abort.signal,
-    };
-    const vars: NodeJS.ProcessEnv = {
-      ...environment,
-      TF_IN_AUTOMATION: "true",
-      TF_INPUT: "0",
-      GH_REPO: requiredEnvironment("GITHUB_REPOSITORY"),
-    };
-    if (options.ghRepoToken !== undefined) {
-      vars.GITHUB_TOKEN = options.ghRepoToken;
-      vars.REST_API_BEARER = options.ghRepoToken;
-    }
-    if (options.gcpWifPool !== undefined)
-      vars.TF_VAR_gcp_wif_pool = options.gcpWifPool;
-    const provider = processRunner(vars);
-    const action: Action = async ({ planFile, logFile, signal }) => {
-      if (custom.length) {
-        await provider(
-          custom[0],
-          custom.slice(1).map((value) => value.replaceAll("{plan}", planFile)),
-          { logFile, append: true, signal },
-        );
-        return;
-      }
-      await provider(
-        "tofu",
-        [
-          `-chdir=${deployment.directory}`,
-          "init",
-          "-input=false",
-          "-lockfile=readonly",
-          `-backend-config=bucket=${options.gcpTfStateBucket}`,
-          `-backend-config=prefix=${deployment.backendPrefix}`,
-        ],
-        { logFile, append: true, signal },
-      );
-      await provider(
-        "tofu",
-        phase === "plan"
-          ? [
+  command.action(async (custom: string[], options: Options) =>
+    withNixCache(
+      async (taskEnvironment) => {
+        const deployment = deployments[options.tfLayer];
+        const transport: TransportOptions = {
+          bucket: options.gcpTfStateBucket,
+          repositoryId: requiredEnvironment("GITHUB_REPOSITORY_ID"),
+          runId: requiredEnvironment("GITHUB_RUN_ID"),
+          attempt: requiredEnvironment("GITHUB_RUN_ATTEMPT"),
+          scratchDirectory: requiredEnvironment("RUNNER_TEMP"),
+          signal: abort.signal,
+        };
+        const vars: NodeJS.ProcessEnv = {
+          ...environment,
+          NIX_CONFIG: taskEnvironment.NIX_CONFIG,
+          TF_IN_AUTOMATION: "true",
+          TF_INPUT: "0",
+          GH_REPO: requiredEnvironment("GITHUB_REPOSITORY"),
+        };
+        if (options.ghRepoToken !== undefined) {
+          vars.GITHUB_TOKEN = options.ghRepoToken;
+          vars.REST_API_BEARER = options.ghRepoToken;
+        }
+        if (options.gcpWifPool !== undefined)
+          vars.TF_VAR_gcp_wif_pool = options.gcpWifPool;
+        const provider = processRunner(vars);
+        const action: Action = async ({ planFile, logFile, signal }) => {
+          if (custom.length) {
+            await provider(
+              custom[0],
+              custom
+                .slice(1)
+                .map((value) => value.replaceAll("{plan}", planFile)),
+              { logFile, append: true, signal },
+            );
+            return;
+          }
+          await provider(
+            "tofu",
+            [
               `-chdir=${deployment.directory}`,
-              "plan",
+              "init",
               "-input=false",
-              "-no-color",
-              `-out=${planFile}`,
-            ]
-          : [
-              `-chdir=${deployment.directory}`,
-              "apply",
-              "-input=false",
-              planFile,
+              "-lockfile=readonly",
+              `-backend-config=bucket=${options.gcpTfStateBucket}`,
+              `-backend-config=prefix=${deployment.backendPrefix}`,
             ],
-        { logFile, append: true, signal },
-      );
-    };
-    const storage = processRunner(environment);
-    if (phase === "plan") {
-      await plan(
-        {
-          ...transport,
-          summaryFile: requiredEnvironment("GITHUB_STEP_SUMMARY"),
-        },
-        action,
-        storage,
-      );
-    } else {
-      if (!options.ghPlanRef) throw new Error("Missing GH_PLAN_REF");
-      await apply(
-        { ...transport, planReference: options.ghPlanRef },
-        action,
-        storage,
-      );
-    }
-  });
+            { logFile, append: true, signal },
+          );
+          await provider(
+            "tofu",
+            phase === "plan"
+              ? [
+                  `-chdir=${deployment.directory}`,
+                  "plan",
+                  "-input=false",
+                  "-no-color",
+                  `-out=${planFile}`,
+                ]
+              : [
+                  `-chdir=${deployment.directory}`,
+                  "apply",
+                  "-input=false",
+                  planFile,
+                ],
+            { logFile, append: true, signal },
+          );
+        };
+        const storage = processRunner(environment);
+        if (phase === "plan") {
+          await plan(
+            {
+              ...transport,
+              summaryFile: requiredEnvironment("GITHUB_STEP_SUMMARY"),
+            },
+            action,
+            storage,
+          );
+        } else {
+          if (!options.ghPlanRef) throw new Error("Missing GH_PLAN_REF");
+          await apply(
+            { ...transport, planReference: options.ghPlanRef },
+            action,
+            storage,
+          );
+        }
+      },
+      process.env,
+      abort.signal,
+    ),
+  );
 }
+program.command("test").action(() =>
+  withNixCache(
+    async (environment) => {
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn("pnpm", ["test"], {
+          env: environment,
+          stdio: "inherit",
+          signal: abort.signal,
+        });
+        let failure: Error | undefined;
+        child.on("error", (error) => {
+          failure = error;
+        });
+        child.on("close", (code) => {
+          if (code === 0 && !failure) resolve();
+          else reject(failure ?? new CommandFailure(code ?? 1, "Tests failed"));
+        });
+      });
+    },
+    process.env,
+    abort.signal,
+  ),
+);
+
 try {
   await program.parseAsync();
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = error instanceof CommandFailure ? error.exitCode : 1;
+  process.exitCode = abort.signal.aborted
+    ? 130
+    : error instanceof CommandFailure
+      ? error.exitCode
+      : 1;
 }

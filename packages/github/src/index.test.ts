@@ -22,7 +22,42 @@ import {
   CommandFailure,
   plan,
   processRunner,
+  publishNixCache,
 } from "./index.ts";
+
+it("GitHub Test runs the ordinary test task without a signing secret and forwards failure", () => {
+  const root = mkdtempSync(join(tmpdir(), "factory-github-test-"));
+  try {
+    const pnpm = join(root, "pnpm");
+    writeFileSync(
+      pnpm,
+      `#!${process.execPath}\nif (process.env.NIX_CACHE_PRIVATE_KEY) process.exit(80);\nprocess.exit(process.argv[2] === "test" ? 17 : 81);\n`,
+    );
+    chmodSync(pnpm, 0o755);
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        fileURLToPath(new URL("../../../apps/github/cli.ts", import.meta.url)),
+        "test",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${root}:${process.env.PATH}`,
+          NIX_CACHE_PROVIDER: "cachix",
+          NIX_CACHE_PRIVATE_KEY: "fixture-private",
+        },
+      },
+    );
+    expect(result.status, result.stderr).toBe(17);
+    expect(result.stdout + result.stderr).not.toContain("fixture-private");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 it("packs a standalone JavaScript transport with declarations for downstreams", () => {
   const root = mkdtempSync(join(tmpdir(), "factory-github-packed-"));
@@ -52,11 +87,75 @@ it("packs a standalone JavaScript transport with declarations for downstreams", 
       [
         "--input-type=module",
         "-e",
-        'import { plan, apply, processRunner } from "@quantile-co/factory-github"; if ([plan, apply, processRunner].some(value => typeof value !== "function")) process.exit(1);',
+        'import { plan, apply, processRunner, publishNixCache } from "@quantile-co/factory-github"; if ([plan, apply, processRunner, publishNixCache].some(value => typeof value !== "function")) process.exit(1);',
       ],
       { cwd: root, encoding: "utf8" },
     );
     expect(result.status, result.stderr).toBe(0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("cache publication validates keys and removes its private scratch after success, failure or cancellation", async () => {
+  const root = mkdtempSync(join(tmpdir(), "factory-nix-cache-"));
+  try {
+    for (const outcome of [
+      "success",
+      "failure",
+      "cancelled",
+      "mismatch",
+    ] as const) {
+      const abort = new AbortController();
+      let keyFile = "";
+      const options = {
+        scratchDirectory: root,
+        privateKey: "fixture-private",
+        publicKey: "fixture-public",
+        signal: abort.signal,
+      };
+      const running = publishNixCache(
+        options,
+        async (program, args, execution) => {
+          expect(program).toBe("nix");
+          expect(execution?.signal).toBe(abort.signal);
+          if (args[0] === "key") {
+            expect(execution?.input).toBe("fixture-private\n");
+            return outcome === "mismatch" ? "other-public" : "fixture-public";
+          }
+          if (args[0] === "path-info") {
+            expect(args).toEqual(["path-info", "--all"]);
+            return "/nix/store/restored\n/nix/store/built";
+          }
+          expect(args.slice(0, 3)).toEqual(["copy", "--stdin", "--to"]);
+          keyFile = new URL(args[3]).searchParams.get("secret-key") ?? "";
+          expect(readFileSync(keyFile, "utf8")).toBe("fixture-private\n");
+          expect(lstatSync(keyFile).mode & 0o777).toBe(0o600);
+          expect(lstatSync(dirname(keyFile)).mode & 0o777).toBe(0o700);
+          expect(execution?.input).toBe(
+            "/nix/store/restored\n/nix/store/built\n",
+          );
+          if (outcome === "failure")
+            throw new CommandFailure(17, "copy failed");
+          if (outcome === "cancelled") {
+            abort.abort();
+            throw new CommandFailure(130, "Command cancelled");
+          }
+          return "";
+        },
+      );
+      if (outcome === "success") await running;
+      else
+        await expect(running).rejects.toThrow(
+          outcome === "mismatch"
+            ? "keys do not match"
+            : outcome === "failure"
+              ? "copy failed"
+              : "Command cancelled",
+        );
+      if (outcome === "mismatch") expect(keyFile).toBe("");
+      else expect(existsSync(dirname(keyFile))).toBe(false);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

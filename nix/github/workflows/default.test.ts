@@ -22,6 +22,37 @@ function workflow(path: string) {
   );
 }
 
+function namespaceWorkflows(): Record<string, string> {
+  return JSON.parse(
+    execFileSync(
+      "nix",
+      [
+        "eval",
+        "--impure",
+        "--json",
+        "--option",
+        "allow-import-from-derivation",
+        "false",
+        "--expr",
+        `let
+      flake = builtins.getFlake ${JSON.stringify(`git+file://${root}`)};
+      pkgs = import flake.inputs.nixpkgs { system = "aarch64-linux"; };
+      workflows = (pkgs.lib.evalModules {
+        specialArgs = { inherit pkgs; };
+        modules = [
+          ${root}/nix/github/workflows
+          { quantile-co.factory.github.workflows.nixCache = "namespace"; }
+        ];
+      }).config.quantile-co.factory.github.workflows;
+    in builtins.mapAttrs (name: _: builtins.readFile workflows.\${name}.configFile) {
+      check = null; test = null; build = null; plan = null; apply = null;
+    }`,
+      ],
+      { encoding: "utf8" },
+    ),
+  );
+}
+
 it("renders selected workflows as readable data without building for the target platform", () => {
   const files = JSON.parse(
     execFileSync(
@@ -59,6 +90,58 @@ it("renders selected workflows as readable data without building for the target 
   expect(files.plan).toContain("\n  infrastructure:\n");
   expect(files.plan).not.toContain("\n  application:\n");
   expect(files.apply).toContain("--gh-plan-ref");
+});
+
+it("keeps Namespace lifecycle inside trusted GitHub task commands and leaves Check unchanged", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "factory-namespace-workflow-"));
+  try {
+    const files = namespaceWorkflows();
+    for (const [name, source] of Object.entries(files)) {
+      const path = join(temporary, `${name}.yaml`);
+      expect(source).not.toMatch(/[ \t]+\n/);
+      writeFileSync(path, source as string);
+      const data = workflow(path);
+      for (const job of Object.values(data.jobs) as Array<{
+        if: string;
+        steps: Array<{
+          name: string;
+          if?: string;
+          env?: Record<string, string>;
+          run?: string;
+        }>;
+      }>) {
+        const tasks = job.steps.filter(
+          (step) => step.env?.NIX_CACHE_PROVIDER === "namespace",
+        );
+        if (name === "check") {
+          expect(tasks).toHaveLength(0);
+          expect(source).not.toContain("NIX_CACHE_PRIVATE_KEY");
+          continue;
+        }
+        expect(job.if).toContain("github.ref == 'refs/heads/main'");
+        expect(source).not.toContain("cachix/cachix-action@");
+        expect(tasks).toHaveLength(1);
+        expect(tasks[0].env?.NIX_CACHE_PUBLIC_KEY).toBe(
+          `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
+        );
+        expect(tasks[0].env?.NIX_CACHE_PRIVATE_KEY).toBe(
+          `\${{ secrets.NIX_CACHE_PRIVATE_KEY }}`,
+        );
+        expect(tasks[0].run).toContain(
+          'env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile',
+        );
+        expect(tasks[0].run).toContain(`pnpm run github:${name}`);
+        expect(
+          job.steps.filter((step) => step.env?.NIX_CACHE_PRIVATE_KEY),
+        ).toHaveLength(1);
+        expect(
+          job.steps.some((step) => step.name === "Publish Namespace Nix cache"),
+        ).toBe(false);
+      }
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 it("runs layer-specific workflow tasks at the repository root and forwards failures", () => {

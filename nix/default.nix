@@ -32,6 +32,7 @@
     ./license
     ./markdownlint-cli2
     ./mypy
+    ./nixcache
     ./nixfmt
     ./opa
     ./opentofu

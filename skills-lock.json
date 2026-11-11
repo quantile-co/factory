@@ -101,15 +101,15 @@
       "source": "@quantile-co/factory-pi",
       "sourceType": "node_modules",
       "skillPath": "skills/day-zero-deploy/SKILL.md",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "computedHash": "8993eca7032082d214652aac7df2cf3254296477044557b731b381fa2b23030f"
     },
     "deploy": {
       "source": "@quantile-co/factory-pi",
       "sourceType": "node_modules",
       "skillPath": "skills/deploy/SKILL.md",
-      "version": "0.1.2",
-      "computedHash": "19f192940ad419cada907ab1fc4e90cbec336484c3ae39f0495fda1804e8c274"
+      "version": "0.1.3",
+      "computedHash": "21b693db2ec294c739ca51ebe66bf2ef77c79d429808f70005854df4b9a702c8"
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",

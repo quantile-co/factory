@@ -96,8 +96,8 @@ Remove migration scaffolding after successful adoption and prove convergence.
 #decision [[factory-flake-direnv]] [[factory-managed-files]]
 Factory uses a locked flake shell and the same `.envrc` through direnv locally and
 in CI. Pnpm/Turbo workspaces separate thin commands in `apps/` from importable
-behavior in `packages/`. The three apps are Nix, GitHub and repo; the three
-packages are Nix, GitHub and Pi. Code packages use `src/` with colocated tests and
+behavior in `packages/`. The apps are Nix, GitHub, Namespace, Amp and repo;
+the packages are Nix, GitHub, Namespace, Amp and Pi. Code packages use `src/` with colocated tests and
 `index.ts` for actual root public entry points. Nix exposes separate `files` and
 `semgrep` subpaths without a forwarding barrel. Single-file CLI apps use root `cli.ts` entry points.
 Build tooling, manifests and skill assets remain at package roots. Native
@@ -198,14 +198,21 @@ existing Nix checks. OPA and Conftest independently select explicit Rego paths,
 reject empty checks and prevent policy traversal without a shared shell fragment.
 Third-party Marimo skills are used unpatched.
 
+#preference [[namespace-cache-command-names]]
+Use `namespace:nixcache:proxy` for proxy setup and `namespace:nixcache:publish`
+for publishing outputs. Keep cleanup internal; do not add GitHub cache aliases.
+
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
 snapshots, tests of upstream behavior, unnecessary abstractions and repetitive
 validation. Terraform policies retain permission and state-safety invariants, not
 exact resource inventories or root module-expression wiring. Workflow tests
 exercise input forwarding, failure handling and deployment gates without freezing
-shell formatting or asserting the absence of historical variable names. Minimize new files, directories and abstractions; add them only when
-required and list the additions at task completion. Declare runtime dependencies
+shell formatting or asserting the absence of historical variable names. Minimize
+new files, directories and abstractions; add them only when required and list the
+additions at task completion. Prefer inlining small shell glue in its owning Nix
+module or native workflow rather than adding separate shell-script files. Declare
+runtime dependencies
 through pinned inputs/locks; never weaken
 assertions or skip coverage to conceal missing dependencies.
 Keep comments about current behavior, not historical migration narratives.
@@ -430,9 +437,14 @@ never automatically approved or bypassed.
 
 ## Dependencies, credentials and caches
 
+#preference [[checked-direct-main]]
+When repository protections permit, push checked task commits directly to main
+rather than opening PRs. Preserve linked task checkouts, required checks and
+fast-forward history; never bypass protections.
+
 #decision [[factory-npm-distribution]]
-Publish Factory Pi and GitHub packages publicly through npm; the root workspace
-and remaining packages stay private. Package builds and staging run on Namespace,
+Publish Factory Pi, GitHub and Namespace packages publicly through npm; the root
+workspace and Nix package stay private. Package builds and staging run on Namespace,
 not GitHub-hosted runners. Artifact building/publication uses `build.yaml`, named
 Build, with Infrastructure and Application jobs. Callers select applicable layers;
 `github.workflows.build.layers` can differ from the shared deployment selection.
@@ -467,6 +479,39 @@ credentials or infrastructure data. Credentialed workflows enter the same direnv
 shell as local development, then pass credentials to process environment only;
 never put resolved values in Nix outputs. Keep backend coordinates and exact
 saved-plan identity checks. Forward named secrets explicitly, not `secrets: inherit`.
+
+#decision [[factory-namespace-nix-cache]]
+The opt-in `nixcache` module packages fixed-hash official Namespace binaries;
+`namespace-cli` is selected directly from Nixpkgs. Authentication, daemon setup
+stay runtime-owned. Consumers explicitly select `nixcache.shellHook` with an
+expected workspace and public key to manage local reader proxy startup; imports
+alone do not start it. The hook skips CI, never prompts for login, preserves
+existing caches/keys and refuses unmanaged listeners or mismatched workspaces.
+Multi-user trust remains administrator-owned; an untrusted client may select
+an administrator-allowlisted URL only when its public key is already trusted.
+It never installs client-side signing trust. Cold evaluation precedes the hook.
+Public Factory keeps Cachix. Consumers may select
+`github.workflows.nixCache = "namespace"` for trusted-main workflows, export
+`nixcache` and configure their own public trust. Check never starts a writer
+proxy. Keep local authentication, workspace verification, proxy reuse and Nix
+configuration inline in the shell hook; local startup does not require npm.
+The Namespace TypeScript package owns CI proxy startup, signed publication and
+cleanup only; do not duplicate local-shell behavior there. Install its published
+release as an ordinary pinned app dependency, not a second Nix npm-artifact pin.
+GitHub TypeScript commands for Test/Build/Plan/Apply wrap their existing tasks
+with the Namespace API after dependency installation, publish only on success,
+and always clean up. Each workflow uses one task step; setup does not require a
+pre-install bootstrap helper or separate publication step. Use
+`namespace:nixcache:proxy` and `namespace:nixcache:publish` for cache aliases.
+The GitHub 0.1.3 publisher export remains available for compatibility, but is not
+the Namespace integration boundary. Native subprocesses never receive the
+private signing secret in their environment.
+Namespace instance authentication is separate from native Nix signing:
+only Namespace publication consumes the private signing secret, validates its public half
+and removes the temporary key file. Publish restored paths too; volume reuse
+does not establish remote publication. Namespace blobstorage permissions are
+separate from main-only volume commits. No cache integration authorizes prod
+dispatch, credential provisioning or a broader runner access level.
 
 #decision [[factory-cachix-policy]]
 Check receives no production provider credentials and never publishes remote caches.
@@ -663,6 +708,32 @@ prefix; shared templates contain no directory or backend-prefix arguments.
 Apply must select the same layer as its reviewed Plan. If Infrastructure changes
 inputs used by Application, apply it first and create a new Application Plan.
 
+## Namespace package release
+
+#deployment [[namespace-npm-release]]
+`@quantile-co/factory-namespace@0.1.0` is published after protected Build
+`42781366409` qualified and staged source `effcabfe3d37d4c2941795f913c3997239bdc1d7`
+and the maintainer completed npm approval. Registry SHA-1
+`4fc0104675c0b793cb01945c570b20fb22a1278c` matches the staged artifact.
+Consumers install the normal npm dependency; local shell startup stays inline
+and independent of npm. Subsequent authorized consumer qualification established
+live native signed publication and retrieval into a separate empty store with
+public fallback disabled. The root verified against only the consumer signing
+key; upstream closure dependencies retain approved public-cache signatures.
+
+#deployment [[namespace-blob-cache-qualification]]
+Raw blob access is distinct from Limited's `cache/*` API access. Restricted and
+Limited workload credentials both failed blob authorization. A separately
+approved Permissive profile supplied workspace-default `blobs/*` grants and
+qualified the released lifecycle without a new stored authentication token.
+This authority is broader than cache-only access: obtain explicit approval,
+preserve full profile specs and verify API readback; never silently relax other
+workspaces. The tested `blobs` revokable token was rejected; Custom grants also
+failed with the observed `exists`, `read`, `create` actions on `nix-cache`.
+Do not infer grant acceptance from schema fields or conceptual action names.
+The older pinned CLI lacks Custom fields and discards unknown fields/enum names;
+use a compatible client and full API readback for approved custom experiments.
+
 ## Retained implementation decisions and open issues
 
 - Public repositories require all-external-contributor workflow approval. GitHub
@@ -696,6 +767,19 @@ inputs used by Application, apply it first and create a new Application Plan.
   `39919872065`, approved exact-generation Apply `39923368441`. Only module
   addresses and output names changed; cloud resources, IAM and backend identity
   were retained. Do not replay this completed migration.
+
+## Factory 0.1.3 publication
+
+#deployment [[factory-nix-cache-publication]]
+Both public Factory packages were published at 0.1.3 after protected Build
+`42767105872` qualified and staged source
+`0298f837f0600f072f4c34f5935e4001c2a86b16` and the maintainer completed npm
+approval. Registry tarball SHA-1 values match the staged Build output:
+GitHub `7eea138f5608b22d149c8e4693fc23fba4154726`,
+Pi `05480110df043b7ea54c9f91043c079939f74efc`.
+The GitHub artifact exports `publishNixCache`; Pi includes the updated cache
+deployment guidance. This publication did not dispatch infrastructure Plan/Apply
+or qualify any consumer's private-cache publication/reuse.
 
 ## Native CLI packages
 

@@ -20,8 +20,8 @@ and scratchpads. Never commit credentials or private cross-repository details.
 
 - [README.md](README.md): usage and development entry points.
 - [flake.nix](flake.nix) and [.envrc](.envrc): pinned shell and direnv entry.
-- [apps/](apps/): thin Nix, GitHub and repository commands.
-- [packages/](packages/): TypeScript support for Nix, GitHub and Amp plus the native Pi package.
+- [apps/](apps/): thin Nix, GitHub, Namespace, Amp and repository commands.
+- [packages/](packages/): TypeScript support for Nix, GitHub, Namespace and Amp plus the native Pi package.
 - [packages/amp/](packages/amp/) and [apps/amp/](apps/amp/): orb lifecycle, Herdr connections and the standalone Amp plugin.
 - [.agents/setup](.agents/setup) and [.agents/resume](.agents/resume): Factory's opt-in orb pilot hooks.
 - [etc/pi/settings.json](etc/pi/settings.json): native Pi package and resource selections.

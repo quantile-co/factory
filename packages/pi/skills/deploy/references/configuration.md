@@ -57,9 +57,82 @@ may choose flags. Only the provider subprocess receives the internal native
 neither. Keep organization credentials distinct as `GH_ORG_TOKEN` or an
 organization-qualified name such as `GH_QUANTILE_CO_ORG_TOKEN`; do not combine
 privileges to standardize names. The operator's GitHub CLI login remains separate.
-`CACHIX_AUTH_TOKEN` remains a separate workflow secret. Google CLI login, ADC
+`CACHIX_AUTH_TOKEN` remains a separate workflow secret for Cachix consumers. Google CLI login, ADC
 and CI WIF are distinct authentication contexts. Keep credentials out of Git,
 Terraform inputs, Nix values and public logs.
+
+### Namespace Nix cache
+
+Select `github.workflows.nixCache = "namespace"` to replace Cachix in trusted
+main Test/Build/Plan/Apply jobs. Export `nixcache` from the consumer flake and select
+`factory.nixcache.package` and Nixpkgs `namespace-cli` in its development shell.
+Check retains its existing volume and public-cache reads without a writer proxy.
+Public Factory continues to use Cachix by default.
+The consumer GitHub TypeScript app pins the published Namespace npm package.
+Its `github:test`, `github:build`, `github:plan` and `github:apply` commands wrap
+their existing tasks with `withNixCache`: start the proxy after frozen dependency
+installation, publish on success and always clean up within the same job step.
+The inline local shell hook is independent of npm and retains local authentication,
+workspace and trust checks. No extra npm-artifact pin in Nix is required.
+Use `namespace:nixcache:proxy` and `namespace:nixcache:publish` for cache aliases.
+
+The proxy uses `nsc login` locally; CI needs credentials authorized for the blob
+namespace. Restricted instance credentials returned HTTP 403 in qualification,
+and Namespace rejected `blobs:read`/`blobs:write` in revokable tokens. Confirm a
+supported scoped-authentication flow before provisioning; never substitute broad
+tokens or widen runner profiles implicitly. Verify workspace identity before
+access. Keep runner profiles Restricted and
+existing main-only volume commits; blob-cache authorization is separate.
+Local client flags do not turn a broad credential into a server-enforced reader.
+Never expose a writer proxy or its local cache directory to untrusted jobs.
+
+Provision a native Nix signing key through approved secret administration, not
+Terraform or Nix values. Trusted publication reads `NIX_CACHE_PRIVATE_KEY` from
+an Actions secret; `NIX_CACHE_PUBLIC_KEY` is a nonsecret Actions variable.
+Consumers must also trust that public key locally, retain upstream public keys
+and `require-sigs = true`. Keep the private key outside the checkout, persisted
+volumes and Nix store. Rotate consumer trust if it is compromised.
+Source configuration does not authorize key provisioning or production dispatch.
+
+The workflow starts a loopback proxy before entering the shell and publishes
+the store with native signed `nix copy` after a successful task, including paths
+restored from the volume. Publish only closures safe for that private workspace:
+source and configuration paths can be included. Cache credentials, state,
+plans and provider data must never enter the Nix store. No management token or
+signing key is needed in the setup step. The signing key is supplied only to
+publication, checked against the public key, and its temporary file is removed
+on success or failure. Publication and key cleanup live in the GitHub TypeScript
+library/app, not a shell-script file. The CLI requires native main-ref metadata
+and removes the signing secret from the environment of native Nix subprocesses.
+Frozen dependency installation does not receive the signing secret. Cleanup stops
+the proxy even when the task fails.
+
+For automatic local use, set `nixcache.workspace` to the expected workspace and
+`nixcache.publicKey` to its public signing key, then explicitly compose
+`nixcache.shellHook` after `files.shellHook`. After `nsc login`, re-enter the shell.
+The hook starts or reuses its managed, workspace-scoped `local-only` proxy and
+adds it and its public key to effective Nix configuration without removing public
+caches or upstream keys. No `.envrc.local` setting or interactive login is needed.
+It skips CI and unauthenticated/wrong-workspace sessions, refuses unmanaged
+listeners and reports startup failures without preventing shell entry.
+`nixcache.port` defaults to 18765; different workspaces need distinct ports.
+The first cold flake evaluation precedes the hook and still uses bootstrap caches.
+
+The proxy keeps archives and its PID/binary record beneath the OS user cache
+in `nixcache/TENANT/PORT/`; concurrent shell entries serialize startup. Stop the
+recorded PID before clearing that directory or replacing a running proxy binary.
+A lock left by a forcibly killed setup can be removed only after verifying no
+setup is active. Credentials stay in the existing Namespace keychain, never in
+this cache. Multi-user installations require administrator trust and a proxy
+reachable by the daemon; the hook does not rewrite daemon configuration.
+For untrusted clients, an administrator permits the loopback URL with
+`extra-trusted-substituters` and adds the public key with
+`extra-trusted-public-keys`, retaining `require-sigs = true`, then restarts the
+daemon. The hook recognizes this allowlist and sets only the substituter, never
+client-side signing trust. Do not grant broad `trusted-users` access just for caching.
+`local-only` disables automatic upstream publication, not explicit uploads or
+the credential's server permissions.
+See [Namespace's Nix integration](https://namespace.so/docs/integrations/nix).
 
 ### Turbo cache access
 

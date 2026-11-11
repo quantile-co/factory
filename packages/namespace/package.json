@@ -1,0 +1,39 @@
+{
+  "name": "@quantile-co/factory-namespace",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Namespace Nix cache integration.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quantile-co/factory.git",
+    "directory": "packages/namespace"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "factory-namespace": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --maxWorkers=4"
+  }
+}
