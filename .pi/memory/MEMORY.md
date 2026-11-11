@@ -1,5 +1,11 @@
 # Factory project memory
 
+#preference [[direct-main-updates]]
+Prefer direct fast-forward pushes to `main`, not pull requests, unless explicitly
+requested. Prepare changes in linked task checkouts and satisfy required checks,
+signed commits and linear-history protections before pushing. Never disable or
+bypass branch protections to follow this preference.
+
 ## Active backend
 
 #deployment [[factory-layered-state-backend]]
