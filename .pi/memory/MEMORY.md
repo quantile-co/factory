@@ -985,7 +985,12 @@ shell/tools that could refresh its idle clock. It does not start Herdr, wake a
 paused orb or synchronize transcripts. Leases are billed and best effort, not a
 guarantee against manual pauses or provider limits. Focused tests cover state,
 grace, long-running work, failure and override behavior; live activity/idle-pause
-qualification of this version is still pending.
+qualification of this version is still pending. The first live Auto load exposed
+an incorrect executor guard: native `PluginExecutor.kind` is `local | remote |
+unknown`, describing UI location, not an `orb` discriminator. Use `AMP_ORB=1`
+for the local runtime guard; native `keepAlive()` remains authoritative and
+rejects non-orb callers. An `active` plugin with no registered commands was inert,
+not a successful keep-awake test. Tests must use the actual native enum.
 
 The initial pilot installs the three runtime values as Factory project-level
 environment variables, not workspace/personal overrides. Only an explicitly

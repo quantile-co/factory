@@ -13,6 +13,7 @@ vi.mock("node:child_process", async (original) => {
 afterEach(() => {
   vi.clearAllTimers();
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 function inventory(agent_status?: string, agent = "pi") {
@@ -26,7 +27,11 @@ function inventory(agent_status?: string, agent = "pi") {
   });
 }
 
-async function fixture(kind = "orb") {
+async function fixture(
+  orb = true,
+  kind: AmpPlugin["system"]["executor"]["kind"] = "remote",
+) {
+  vi.stubEnv("AMP_ORB", orb ? "1" : undefined);
   vi.useFakeTimers();
   vi.setSystemTime(0);
   activity.mockReset();
@@ -131,10 +136,13 @@ it("recovers from an acquisition error without leaking duplicate leases", async 
   expect(f.release).toHaveBeenCalledTimes(1);
 });
 
-it("does not monitor or acquire leases outside an orb", async () => {
-  const f = await fixture("local");
-  await vi.advanceTimersByTimeAsync(10000);
-  expect(activity).not.toHaveBeenCalled();
-  expect(f.commands.size).toBe(0);
-  expect(f.acquire).not.toHaveBeenCalled();
-});
+it.each(["local", "remote", "unknown"] as const)(
+  "does not treat executor kind %s as proof of an orb",
+  async (kind) => {
+    const f = await fixture(false, kind);
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(activity).not.toHaveBeenCalled();
+    expect(f.commands.size).toBe(0);
+    expect(f.acquire).not.toHaveBeenCalled();
+  },
+);

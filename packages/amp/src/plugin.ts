@@ -11,7 +11,12 @@ type Mode = "auto" | "on" | "off";
 type Lease = { unsubscribe(): void };
 type Context = { ui: { notify(message: string): Promise<void> } };
 export type AmpPlugin = {
-  system: { executor: { kind: string; keepAlive(): Promise<Lease> } };
+  system: {
+    executor: {
+      kind: "local" | "remote" | "unknown";
+      keepAlive(): Promise<Lease>;
+    };
+  };
   logger: { log(message: string): void };
   registerCommand(
     name: string,
@@ -41,7 +46,9 @@ async function piWorking(): Promise<boolean> {
 }
 
 export default function plugin(amp: AmpPlugin): void {
-  if (amp.system.executor.kind !== "orb") return;
+  // Executor kind describes UI location, not whether this is an orb.
+  // keepAlive itself rejects outside an Amp-managed orb.
+  if (process.env.AMP_ORB !== "1") return;
   let mode: Mode = "auto";
   let lease: Lease | undefined;
   let lastWorking: number | undefined;
@@ -135,6 +142,7 @@ export default function plugin(amp: AmpPlugin): void {
         }),
     );
   }
+  amp.logger.log("Factory keep-awake ready (auto); no working-time limit.");
   const timer = setInterval(() => void poll(), pollMs);
   timer.unref();
   void poll();
