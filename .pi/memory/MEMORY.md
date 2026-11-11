@@ -1127,7 +1127,7 @@ Systemd hides the three system SSH private-key paths only inside this service's
 namespace so native Tailscale generates dedicated keys in its runtime state
 directory instead of reusing Amp's keys. No host identity is generated in setup.
 
-`amp connect` requires a unique online tagged peer and public `SSH_HostKeys`
+`amp connect` requires a unique online tagged peer and public `sshHostKeys`
 from the authenticated local Tailscale daemon. It validates those public keys,
 pins them in native `~/.ssh/known_hosts`, then verifies a fresh strict,
 noninteractive SSH connection before native Herdr setup. No key scan, custom
@@ -1201,6 +1201,34 @@ from Numtide with the existing public keys; payload import/timing is not implied
 Do not move heavy installation into resume or use warm snapshots to hide the
 cold-path failure. Local checks are not live cold-orb qualification; another
 billed test needs fresh approval.
+
+#deployment [[amp-native-ssh-first-connection]]
+The separately approved single Medium test `T-768260de-450a-40d2-a867-119f83b9de91`
+used clean `60d3e71`. A cached Medium snapshot existed, so this was not a fresh
+cold-start timing test. Setup reached the completed build in roughly 16 seconds,
+then failed overwriting a 0444 inherited OTel `host.yaml`. Automatic resume
+nevertheless enrolled the dedicated native SSH server and started Herdr.
+Read-only checks found tailscaled 1.104.5 active with zero restarts, no legacy
+Factory sshd, the configured system-key masks and forwarding-disable flag,
+one Herdr workspace, zero agents and no Pi auth file.
+
+The workstation's authenticated peer JSON advertised `sshHostKeys`: the Go
+field is `SSH_HostKeys`, but its JSON spelling is camel-case. The original
+connector and mock incorrectly used the Go spelling. An explicit diagnostic
+used the correct field with the existing pinning helper and a temporary
+known-hosts file. Fresh strict SSH succeeded as `user`, and native Herdr
+workspace/agent queries succeeded over that SSH connection. This proves one
+native SSH/server-API connection, not the original connector, saved-profile/TUI
+attachment, cold bootstrap, key-rotation or pause/wake qualification.
+
+The test was archived and confirmed absent from normal/present in archived
+thread listings. Temporary trust was removed; no profile was added and the
+existing pilot/profile/credentials were untouched. Approval is consumed.
+Source now uses the real JSON field and native `install -m 0644` for the two
+nonsecret collector configs, so refresh can replace read-only snapshot copies.
+Focused regressions cover the observed peer schema and inherited 0444 configs.
+No live repair or hook rerun was performed. Another billed test requires fresh
+approval; do not report these source fixes as a successful end-to-end bootstrap.
 
 ## Downstream Amp adoption
 
