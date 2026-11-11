@@ -137,9 +137,17 @@ export function connect(orb: Orb, user = "user"): void {
 export const setupScript: string = `set +x
 [ "\${AMP_ORB:-}" = 1 ] || { echo 'Setup is only for an Amp orb.' >&2; exit 1; }
 [ ! -e "$HOME/.local/state/factory-amp" ] || { echo 'Refusing to snapshot an already activated Factory orb.' >&2; exit 1; }
-for tool in tailscale tailscaled sshd ssh-keygen herdr pi sudo systemctl getent useradd nologin; do
+# Debian omits administrative tools from the unprivileged user's PATH.
+# Keep caller-selected (e.g. pinned Nix) binaries ahead of system fallbacks.
+export PATH="$PATH:/usr/sbin:/sbin"
+for tool in tailscale tailscaled sshd ssh-keygen herdr pi sudo systemctl getent; do
   command -v "$tool" >/dev/null || { echo "Install $tool explicitly before setup." >&2; exit 1; }
 done
+if ! getent passwd sshd >/dev/null; then
+  for tool in useradd nologin; do
+    command -v "$tool" >/dev/null || { echo "Install $tool explicitly before setup." >&2; exit 1; }
+  done
+fi
 TAILSCALED=$(command -v tailscaled)
 SSHD=$(command -v sshd)
 for path in "$TAILSCALED" "$SSHD"; do

@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, it, vi } from "vitest";
 import {
   identity,
@@ -85,6 +87,73 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
     vi.unstubAllEnvs();
   }
 });
+
+it.each([true, false])(
+  "resolves account tools only when sshd is missing (exists=%s)",
+  (exists) => {
+    const home = mkdtempSync(join(tmpdir(), "factory-amp-setup-"));
+    try {
+      // Mock privileged operations; only the temporary HOME is written.
+      const result = spawnSync(
+        "bash",
+        [
+          "--noprofile",
+          "--norc",
+          "-euo",
+          "pipefail",
+          "-c",
+          `
+: > "$HOME/lookups"
+command() {
+  case "$2" in
+    useradd|nologin)
+      printf '%s\\n' "$2" >> "$HOME/lookups"
+      [ "$ACCOUNT_EXISTS" = 0 ] || return 1
+      [[ ":$PATH:" == *:/usr/sbin:* && "$PATH" == /pinned/bin:* ]] || return 1
+      printf '/usr/sbin/%s\\n' "$2"
+      ;;
+    *) printf '/pinned/bin/%s\\n' "$2" ;;
+  esac
+}
+getent() { [ "$ACCOUNT_EXISTS" = 1 ]; }
+sudo() {
+  printf '%s\\n' "$*" >> "$HOME/operations"
+  if [ "$1" = systemctl ] && [ "$2" = is-active ]; then return 1; fi
+  return 0
+}
+readlink() { printf '%s\\n' "$2"; }
+${setupScript}
+`,
+        ],
+        {
+          env: {
+            HOME: home,
+            AMP_ORB: "1",
+            ACCOUNT_EXISTS: exists ? "1" : "0",
+            PATH: `/pinned/bin:${process.env.PATH?.split(":")
+              .filter((path) => !path.endsWith("/sbin"))
+              .join(":")}`,
+          },
+          encoding: "utf8",
+        },
+      );
+      expect(result.status, result.stdout + result.stderr).toBe(0);
+      const lookups = readFileSync(join(home, "lookups"), "utf8");
+      const operations = readFileSync(join(home, "operations"), "utf8");
+      if (exists) {
+        expect(lookups).toBe("");
+        expect(operations).not.toContain("useradd");
+      } else {
+        expect(lookups).toContain("useradd");
+        expect(lookups).toContain("nologin");
+        expect(operations).toContain("/usr/sbin/useradd --system");
+        expect(operations).toContain("--shell /usr/sbin/nologin sshd");
+      }
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  },
+);
 
 it("keeps awake only on explicit commands and serializes rapid toggles", async () => {
   let toggle!: Parameters<AmpPlugin["registerCommand"]>[2];

@@ -895,7 +895,15 @@ prepares dormant dedicated systemd services, provisions the OpenSSH privilege-
 separation account when absent, and refuses activated runtime state. It preserves
 different user-owned `~/.local/bin/herdr` / `pi` entries; new entries reference
 the selected binaries, with Nix GC roots for store-backed executables. No shell
-profile replacement or downloaded Herdr fallback is intended.
+profile replacement or downloaded Herdr fallback is intended. The first live
+pilot completed dependency installation/build but stopped before service creation:
+Debian's `useradd`/`nologin` existed under `/usr/sbin`, outside the orb user's PATH.
+Setup now appends native sbin directories after the pinned tool paths and requires
+account-creation tools only when `sshd` is absent. Focused mocked execution covers
+both account states without privileged host changes. A partial resume can leave
+`~/.local/state/factory-amp/thread` even when enrollment fails; do not clear that
+marker or bypass the activated-state guard to retry setup without explicit
+recovery approval. The corrected bootstrap still needs live qualification.
 
 Runtime requires the approved workspace's nonsecret `TAILSCALE_CLIENT_ID` and
 `TAILSCALE_AUDIENCE`. The pilot also requires `FACTORY_AMP_SSH_PUBLIC_KEYS`
