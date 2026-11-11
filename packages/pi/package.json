@@ -431,6 +431,41 @@
       "skills": [
         "setup-matt-pocock-skills"
       ]
+    },
+    {
+      "source": "mattpocock/skills/skills/productivity/grilling",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "skills": [
+        "grilling"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/domain-modeling",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "skills": [
+        "domain-modeling"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/engineering/prototype",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "skills": [
+        "prototype"
+      ]
+    },
+    {
+      "source": "mattpocock/skills/skills/productivity/writing-for-agents",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "skills": [
+        "writing-for-agents"
+      ]
+    },
+    {
+      "source": "humanlayer/skills/plugins/narrow-react-prop-types/skills/narrow-react-prop-types",
+      "ref": "4d69d20f6e9b57b4fcf0d501ccfb1be961f0f329",
+      "skills": [
+        "narrow-react-prop-types"
+      ]
     }
   ],
   "dependencies": {

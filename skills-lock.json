@@ -109,7 +109,7 @@
       "sourceType": "node_modules",
       "skillPath": "skills/deploy/SKILL.md",
       "version": "0.1.3",
-      "computedHash": "21b693db2ec294c739ca51ebe66bf2ef77c79d429808f70005854df4b9a702c8"
+      "computedHash": "23f2220554d93faaa4cdf8c45688b0e6c7e23176541a1ab03e85d986cfad60c0"
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
@@ -149,6 +149,14 @@
       "sourceType": "github",
       "skillPath": "domain-driven-design-distilled/SKILL.md",
       "computedHash": "8a9aa1a8c5ddcdcdfb4bc6c6ca6f976796bd7807b57e384956988c676f0b6b98",
+      "via": "@quantile-co/factory-pi"
+    },
+    "domain-modeling": {
+      "source": "mattpocock/skills",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/domain-modeling/SKILL.md",
+      "computedHash": "b3eb40152b81f0c98fd2095a023c019452dbdce56f7540cc67fece2972db8369",
       "via": "@quantile-co/factory-pi"
     },
     "duckdb-docs": {
@@ -191,6 +199,14 @@
       "computedHash": "f2c4b15043980ca7d31b52d694e589e44b0924ebcff3f9d35cb1825e79ff370f",
       "via": "@quantile-co/factory-pi"
     },
+    "grilling": {
+      "source": "mattpocock/skills",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/grilling/SKILL.md",
+      "computedHash": "e40cc1d348f6d935e28f1e24474302d7368f0a400429271a43b35fe154891dc5",
+      "via": "@quantile-co/factory-pi"
+    },
     "hunk-review": {
       "source": "modem-dev/hunk",
       "ref": "0c6feadb58f99ed9a4876d93168ba776e06a27ec",
@@ -231,6 +247,14 @@
       "computedHash": "85a494e8076cbea237bfbd80592a542df869b693f0b61aa90c0a48d7f4afb5a7",
       "via": "@quantile-co/factory-pi"
     },
+    "narrow-react-prop-types": {
+      "source": "humanlayer/skills",
+      "ref": "4d69d20f6e9b57b4fcf0d501ccfb1be961f0f329",
+      "sourceType": "github",
+      "skillPath": "plugins/narrow-react-prop-types/skills/narrow-react-prop-types/SKILL.md",
+      "computedHash": "f1fee2b6c197780aa61594b2019a1b8d8e3ec9d8818f62f024af54af8e879259",
+      "via": "@quantile-co/factory-pi"
+    },
     "performance": {
       "source": "addyosmani/web-quality-skills",
       "ref": "c6b06ad1285cd6b129b58455b2eec96ab6b67fa7",
@@ -253,6 +277,14 @@
       "sourceType": "github",
       "skillPath": "plugins/protobuf/skills/protobuf/SKILL.md",
       "computedHash": "ab81fda811287aef352fe7e507f2008b76d879e3a5bc153cee0ca30bd5bbef6e",
+      "via": "@quantile-co/factory-pi"
+    },
+    "prototype": {
+      "source": "mattpocock/skills",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/prototype/SKILL.md",
+      "computedHash": "d3fc74689bd993e39c44bfae510d014eecffbeec2922764b065377fd1327c0f6",
       "via": "@quantile-co/factory-pi"
     },
     "query": {
@@ -461,6 +493,14 @@
       "sourceType": "github",
       "skillPath": "skills/webapp-testing/SKILL.md",
       "computedHash": "ad5b1fc52807e9afa4635e59218a026b164dc58b6c3f41b0f7c644dcd6ccf572",
+      "via": "@quantile-co/factory-pi"
+    },
+    "writing-for-agents": {
+      "source": "mattpocock/skills",
+      "ref": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/writing-for-agents/SKILL.md",
+      "computedHash": "95da47fc97af998e85b7d7e6d57b3ac76727c1e290cfe9ea09005aacb826959f",
       "via": "@quantile-co/factory-pi"
     }
   }

@@ -288,12 +288,21 @@ The package ships only Factory's extension and two first-party deployment
 skills under `skills/`. Its native `pi.skills` is empty:
 the CLI synchronizes the shipped skills too, avoiding double activation.
 Pstack `unslop` replaces avoid-ai-writing without executable helpers; upstream
-makes it explicit-use. Matt's five selected skills and his setup skill are
+makes it explicit-use. Matt's selected engineering/productivity skills and his setup skill are
 unchanged; running setup or installing anti-slop lint rules remains a separately
 approved repository operation. Do not enable Superpowers bootstrap implicitly.
 Upstream skill distributions retain their own licensing. Factory does not copy
 or aggregate the upstream catalog. There is no Factory skill-patching or
 vendoring framework.
+
+The selected `grilling` and `domain-modeling` skills complete references from
+`improve-codebase-architecture`; `prototype` and `writing-for-agents` add design
+exploration and agent-instruction guidance. HumanLayer's
+`narrow-react-prop-types` is selected for application prop cleanup: do not infer
+that repository-local usages exhaust a published component library's contract.
+Keep these upstream sources unchanged, including their host-specific invocation
+wording. Skill selection does not install a Claude-style Skill tool or a generic
+background-agent tool in Pi. TDD skills are intentionally not selected.
 
 `etc/pi/settings.json` is the only native settings template. Factory overrides
 only its local package source when materializing `.pi/settings.json`.
