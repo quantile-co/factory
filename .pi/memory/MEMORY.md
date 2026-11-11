@@ -892,9 +892,25 @@ Factory workspace project in Medium mode. Its saved instructions permit only
 read-only issue triage and bootstrap diagnostics, then wait for the operator;
 no automatic code changes, deployments, Pi prompts or keep-awake. There is no PR
 or installation-wide trigger. The label must be present when the issue opens;
-adding it later does not trigger a run. Configuration was read back, but no test
-issue/delivery has been authorized or observed yet. Do not infer end-to-end
-qualification from an enabled subscription.
+adding it later does not trigger a run. The separately approved 2026-11-11 test
+issue #56 generated exactly one delivered run and thread
+`T-8fb40ff3-58d7-49d4-8f11-1ad556b28962` in the expected Factory project/Medium
+mode. Setup and resume completed on clean `main` at `e306ed2`; both services were
+active without restarts. Authenticated orb diagnostics supplied the new host key,
+then independent strictly pinned SSH verified service/Herdr readiness and the
+expected Auto plugin hash. Herdr had no Pi agents, no Pi auth file was present,
+and the plugin acquired no lease. Its initial unavailable-activity message
+preceded Herdr startup; it did not prevent bootstrap. Tailscale reported sandbox
+iptables/UDP health warnings, but relay-backed SSH succeeded; no network policy
+was changed to suppress them.
+
+Only the test thread was archived and issue #56 closed after verification;
+readback confirmed archival, issue closure and the test tailnet node offline.
+Local temporary SSH trust files were removed; no saved Herdr profile was added. The
+interactive pilot and two earlier failed pilots were untouched. That single-test
+approval is consumed: further billed test orbs require fresh approval. This
+qualifies the native read-only issue-delivery path, not automatic implementation,
+all provider ingress paths, downstream rollout or Terraform label state adoption.
 The first pilot is Factory's own executable `.agents/setup` / `.agents/resume`;
 do not roll hooks out to consumers before one-orb qualification.
 
