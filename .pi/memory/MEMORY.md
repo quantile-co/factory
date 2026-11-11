@@ -984,13 +984,26 @@ releases Amp's lease. Monitoring invokes the local Herdr CLI directly, not Amp
 shell/tools that could refresh its idle clock. It does not start Herdr, wake a
 paused orb or synchronize transcripts. Leases are billed and best effort, not a
 guarantee against manual pauses or provider limits. Focused tests cover state,
-grace, long-running work, failure and override behavior; live activity/idle-pause
-qualification of this version is still pending. The first live Auto load exposed
-an incorrect executor guard: native `PluginExecutor.kind` is `local | remote |
-unknown`, describing UI location, not an `orb` discriminator. Use `AMP_ORB=1`
-for the local runtime guard; native `keepAlive()` remains authoritative and
-rejects non-orb callers. An `active` plugin with no registered commands was inert,
-not a successful keep-awake test. Tests must use the actual native enum.
+grace, long-running work, failure and override behavior. The first live Auto load
+exposed an incorrect executor guard: native `PluginExecutor.kind` is `local |
+remote | unknown`, describing UI location, not an `orb` discriminator. Use
+`AMP_ORB=1` for the local runtime guard; native `keepAlive()` remains authoritative
+and rejects non-orb callers. An `active` plugin with no registered commands was
+inert, not a successful keep-awake test. Tests must use the actual native enum.
+
+The corrected build at `53ed7c4` passed 15 focused tests and required CI, then was
+hash-verified and loaded on the existing pilot on 2026-11-11. Native loading
+registered all three commands. A genuine Pi model/tool turn in the preserved
+session produced observed working/idle transitions; plugin logs recorded Auto
+acquisition at 06:23:50 UTC and release at 06:26:09 after the idle grace. The same
+Pi session and model login worked after the disconnect/reconnect. This verifies
+live activity-to-lease behavior, not normal provider idle pausing or web/mobile
+terminal continuity, which remain pending. Manual palette overrides and missing
+activity are unit-tested, not yet live-qualified. Actual plugin logs are JSON
+`Plugin stderr` entries in `~/.cache/amp/logs/headless.log`, with text in `stderr`;
+exclude tool transcripts quoting source. Transfer and rollback scratch under
+`/tmp/factory-awake-stage/` was removed after activation. The per-orb plugin remains
+in Auto; no persistent manual hold was enabled.
 
 The initial pilot installs the three runtime values as Factory project-level
 environment variables, not workspace/personal overrides. Only an explicitly
