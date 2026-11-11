@@ -74,6 +74,7 @@
               layers = [ "infrastructure" ];
               build.layers = [ "application" ];
               otelJobs = [ "test" ];
+              hindsight = true;
             };
 
             # Public package outputs.
@@ -399,6 +400,7 @@
         prettier = ./nix/prettier;
         protoc = ./nix/protoc;
         pylint = ./nix/pylint;
+        hindsight = ./nix/hindsight;
         qmd = ./nix/qmd;
         readme = ./nix/readme;
         resend-cli = ./nix/resend-cli;

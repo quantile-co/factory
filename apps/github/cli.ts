@@ -196,6 +196,10 @@ for (const phase of ["plan", "apply"] as const) {
         }
         if (options.gcpWifPool !== undefined)
           vars.TF_VAR_gcp_wif_pool = options.gcpWifPool;
+        // Explicit native ephemeral input: never persisted in plans or state.
+        vars.TF_VAR_hindsight_api_token = requiredEnvironment(
+          "HINDSIGHT_API_TOKEN",
+        );
         const provider = processRunner(vars);
         const action: Action = async ({ planFile, logFile, signal }) => {
           if (custom.length) {

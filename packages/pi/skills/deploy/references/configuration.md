@@ -59,7 +59,15 @@ organization-qualified name such as `GH_QUANTILE_CO_ORG_TOKEN`; do not combine
 privileges to standardize names. The operator's GitHub CLI login remains separate.
 `CACHIX_AUTH_TOKEN` remains a separate workflow secret for Cachix consumers. Google CLI login, ADC
 and CI WIF are distinct authentication contexts. Keep credentials out of Git,
-Terraform inputs, Nix values and public logs.
+persistent Terraform inputs, Nix values and public logs.
+
+Factory additionally selects `github.workflows.hindsight = true`. Its separately
+approved `prod` secret `HINDSIGHT_API_TOKEN` is explicitly mapped by the repository
+app to `TF_VAR_hindsight_api_token` only for provider subprocesses. This variable
+is sensitive **and ephemeral**, used only by `restapi.hindsight`; it must be
+resupplied for every Plan and saved Apply and is never saved in plans or state.
+Do not replace it with an ordinary sensitive input. The separate GitHub credential
+mapping is unchanged; storage subprocesses receive neither credential.
 
 ### Namespace Nix cache
 

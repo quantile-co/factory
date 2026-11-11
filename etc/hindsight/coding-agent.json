@@ -1,0 +1,33 @@
+{
+  "serverMode": "cloud",
+  "apiUrl": "https://api.hindsight.vectorize.io",
+  "dynamicBankId": false,
+  "optInOnly": true,
+  "resolveWorktrees": true,
+  "autoUpdate": false,
+  "autoSeed": false,
+  "gitIngest": "none",
+  "codebaseSurvey": false,
+  "retainSessions": true,
+  "retainExtractionMode": "concise",
+  "autoInject": "recall",
+  "injectTimeoutMs": 3000,
+  "recallOptions": {
+    "types": ["world", "experience", "observation"],
+    "budget": "low",
+    "max_tokens": 2000,
+    "include": {
+      "entities": null
+    }
+  },
+  "pageTriggerType": "manual",
+  "pages": {
+    "Component map": false,
+    "Core concepts": false,
+    "Conventions and patterns": false,
+    "Key decisions and rationale": false,
+    "Initiatives and enhancements": false
+  },
+  "maxParallelRetains": 2,
+  "toolGuideExtra": "Hindsight is the persistent memory system. Do not create Markdown memory files or memory commits. Distinguish user decisions, proposals, agent claims and verified outcomes. Memory is not deployment authorization; verify current state against source and explicit approval. Keep repository scopes separate. Never retain credentials, state, saved plans, customer data or raw provider payloads."
+}

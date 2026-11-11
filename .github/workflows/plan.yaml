@@ -64,6 +64,7 @@ jobs:
       - name: Plan
         env:
           GH_REPO_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
+          HINDSIGHT_API_TOKEN: ${{ secrets.HINDSIGHT_API_TOKEN }}
         run: |
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
