@@ -1189,11 +1189,18 @@ entering its shell command; automatic resume then compiled Herdr from source.
 The cause of setup's approximately 18-minute silent interval is not established;
 no download error was reported. This is not evidence of an SSH policy failure:
 no Factory services or Herdr session were installed, and no Pi auth file existed.
-Fix cache initialization consistently before Nix evaluation in both hooks,
-preserving signature verification, trusted-store handling and exclusion of
-runtime credentials. Do not move heavy installation into resume or use warm
-snapshots to hide the cold-path failure. No source fix or replacement test is
-yet qualified; another billed test needs fresh approval.
+Both hooks now source `.agents/nix-env` before Nix evaluation. This small,
+repository-owned bootstrap matches `.envrc`'s existing public caches and keys;
+the focused test executes both hooks and checks parity with the native template
+for trusted, untrusted, unknown and failed store discovery. No user-global Nix
+settings, direnv approval or Pi/Herdr trust is changed. Runtime telemetry values
+remain excluded from Nix and are restored only for resume. Signatures and
+administrator-controlled cache selection for untrusted stores are preserved.
+Native Nix signature verification accepted the pinned Herdr and Pi cache metadata
+from Numtide with the existing public keys; payload import/timing is not implied.
+Do not move heavy installation into resume or use warm snapshots to hide the
+cold-path failure. Local checks are not live cold-orb qualification; another
+billed test needs fresh approval.
 
 ## Downstream Amp adoption
 
@@ -1234,8 +1241,8 @@ pilots or reverting unrelated shared infrastructure.
 #decision [[amp-orb-qualification-order]]
 Activity-driven lease acquisition/release, the shared Amp-terminal/Herdr Pi
 session and one issue-spawner delivery are qualified on the earlier lifecycle.
-Next publish the prepared native SSH lifecycle after its now-deployed central
-policy, then separately authorize one new orb for live SSH/host-key/Herdr testing.
+The native SSH lifecycle and central policy are published. Qualify the cache
+bootstrap fix and native SSH/host-key/Herdr on a separately approved new orb.
 Finish automatic idle pause, wake/reconnect and operator Auto/On/Off qualification;
 then reviewed Terraform label adoption, downstream packaging/adoption and final
 artifact/worktree accounting. Model-login changes are deferred, not a rollout

@@ -75,10 +75,15 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
     ),
   ]) {
     expect(spawnSync("bash", ["-n"], { input: script }).status).toBe(0);
-    const lint = spawnSync("shellcheck", ["--shell=bash", "-"], {
-      input: script,
-      encoding: "utf8",
-    });
+    const lint = spawnSync(
+      "shellcheck",
+      ["--external-sources", "--shell=bash", "-"],
+      {
+        cwd: new URL("../../../", import.meta.url),
+        input: script,
+        encoding: "utf8",
+      },
+    );
     expect(lint.status, lint.stdout + lint.stderr).toBe(0);
     const result = spawnSync("bash", ["-euo", "pipefail", "-c", script], {
       env: { AMP_ORB: "0" },

@@ -6,6 +6,7 @@ set -euo pipefail
 }
 unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY OTEL_DOCKER_STATS
 cd -- "$(dirname -- "$0")/.."
+source .agents/nix-env
 # Expand runtime paths inside the pinned shell, not the outer hook.
 # shellcheck disable=SC2016
 nix develop --command bash -euo pipefail -c '

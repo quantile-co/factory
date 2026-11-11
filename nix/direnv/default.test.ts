@@ -15,7 +15,7 @@ it.each([
   try {
     writeFileSync(
       join(root, ".envrc.local"),
-      'export NIX_CONFIG="sandbox = true"\n',
+      'export NIX_CONFIG="sandbox = true\nrequire-sigs = true"\n',
     );
     const run = spawnSync(
       "bash",
@@ -45,6 +45,57 @@ printf '%s' "$NIX_CONFIG"
     );
     if (run.error) throw run.error;
     expect(run.status, run.stderr).toBe(test.status);
+    for (const hook of ["setup", "resume"]) {
+      const configFile = join(root, `${hook}-config`);
+      const hookRun = spawnSync(
+        "bash",
+        [
+          "-c",
+          `
+nix() {
+  # Both store discovery and evaluation must exclude runtime credentials.
+  bash -c '[[ ! -v CLICKSTACK_API_KEY && ! -v CLICKSTACK_OTLP_ENDPOINT && ! -v OTEL_DOCKER_STATS ]]' || return 99
+  if [[ "$*" == "store info --json" ]]; then
+    printf '%s' "$STORE_INFO"
+    return "$STORE_STATUS"
+  fi
+  [[ "$1" == develop || "$1" == print-dev-env ]] || return 98
+  printf '%s' "$NIX_CONFIG" > "$CONFIG_FILE"
+  printf ':\\n'
+}
+pnpm() {
+  [[ "$1 $2" == "amp resume" ]] || return 97
+  # Resume restores runtime values only after Nix evaluation.
+  bash -c '[[ "$CLICKSTACK_API_KEY" == fixture && "$OTEL_DOCKER_STATS" == 1 ]]' || return 96
+}
+export -f nix pnpm
+bash "$1"
+`,
+          "fixture",
+          fileURLToPath(new URL(`../../.agents/${hook}`, import.meta.url)),
+        ],
+        {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            NIX_CONFIG: "sandbox = true\nrequire-sigs = true",
+            AMP_ORB: "1",
+            STORE_INFO: test.info,
+            STORE_STATUS: String(test.status),
+            CONFIG_FILE: configFile,
+            CLICKSTACK_API_KEY: "fixture",
+            CLICKSTACK_OTLP_ENDPOINT: "https://example.invalid",
+            OTEL_DOCKER_STATS: "1",
+          },
+        },
+      );
+      expect(hookRun.status, hookRun.stderr).toBe(test.status);
+      if (test.status === 0) {
+        expect(readFileSync(configFile, "utf8")).toBe(run.stdout);
+      } else {
+        expect(() => readFileSync(configFile)).toThrow();
+      }
+    }
     if (test.status !== 0) {
       expect(run.stdout).toBe("");
       expect(() => readFileSync(join(root, "order"))).toThrow();
@@ -52,7 +103,7 @@ printf '%s' "$NIX_CONFIG"
     }
     const config = run.stdout;
     expect(config).toContain(
-      "sandbox = true\nextra-experimental-features = nix-command flakes",
+      "sandbox = true\nrequire-sigs = true\nextra-experimental-features = nix-command flakes",
     );
     expect(config?.includes("extra-substituters =")).toBe(test.caches);
     expect(config?.includes("extra-trusted-public-keys =")).toBe(test.caches);
