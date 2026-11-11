@@ -2,31 +2,15 @@ package terraform.project.gcp
 
 import rego.v1
 
-# New resource kinds or additional declarations need an ownership/security review.
-valid_inventory if {
-	object.keys(input.resource) == {
-		"random_id", "google_project", "google_project_service", "google_storage_bucket",
-		"google_project_iam_member", "google_storage_bucket_iam_member", "google_project_iam_audit_config",
-	}
-	every resources in input.resource {
-		count(resources) == 1
-		every declarations in resources {
-			count(declarations) == 1
-		}
-	}
-}
-
 valid_state if {
 	project := input.resource.google_project.state[0]
 	project.auto_create_network == false
 	project.deletion_policy == "PREVENT"
 	project.lifecycle[0].prevent_destroy == true
 	storage := input.resource.google_project_service.storage[0]
-	storage.project == "${google_project.state.project_id}"
 	storage.service == "storage.googleapis.com"
 	storage.disable_on_destroy == false
 	bucket := input.resource.google_storage_bucket.state[0]
-	bucket.project == "${google_project.state.project_id}"
 	bucket.force_destroy == false
 	bucket.uniform_bucket_level_access == true
 	bucket.public_access_prevention == "enforced"
@@ -69,8 +53,6 @@ valid_federation if {
 	owner.role == "roles/owner"
 	owner.member == "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.main_branch_repository_actor_id/${var.gh_repo_id}_${each.value}"
 }
-
-deny contains "GCP module must contain only project, storage and scoped IAM resources" if not valid_inventory
 
 deny contains "State must retain private versioned storage, deletion guards and prefix-scoped plan cleanup" if not valid_state
 

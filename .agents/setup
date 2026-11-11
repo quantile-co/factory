@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ ${AMP_ORB:-} == 1 ]] || {
+    echo 'This hook is only for an Amp orb.' >&2
+    exit 1
+}
+cd -- "$(dirname -- "$0")/.."
+nix develop --command bash -euo pipefail -c '
+  pnpm install --frozen-lockfile
+  pnpm run build
+  pnpm amp setup
+'

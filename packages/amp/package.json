@@ -1,0 +1,38 @@
+{
+  "name": "@quantile-co/factory-amp",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Amp orb runtime and native Herdr connections.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quantile-co/factory.git",
+    "directory": "packages/amp"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./plugin": "./dist/plugin.js"
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./plugin": "./src/plugin.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --maxWorkers=4"
+  }
+}

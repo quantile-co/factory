@@ -96,8 +96,8 @@ Remove migration scaffolding after successful adoption and prove convergence.
 #decision [[factory-flake-direnv]] [[factory-managed-files]]
 Factory uses a locked flake shell and the same `.envrc` through direnv locally and
 in CI. Pnpm/Turbo workspaces separate thin commands in `apps/` from importable
-behavior in `packages/`. The apps are Nix, GitHub, Namespace and repo;
-the packages are Nix, GitHub, Namespace and Pi. Code packages use `src/` with colocated tests and
+behavior in `packages/`. The apps are Nix, GitHub, Namespace, Amp and repo;
+the packages are Nix, GitHub, Namespace, Amp and Pi. Code packages use `src/` with colocated tests and
 `index.ts` for actual root public entry points. Nix exposes separate `files` and
 `semgrep` subpaths without a forwarding barrel. Single-file CLI apps use root `cli.ts` entry points.
 Build tooling, manifests and skill assets remain at package roots. Native
@@ -205,10 +205,14 @@ for publishing outputs. Keep cleanup internal; do not add GitHub cache aliases.
 #preference [[factory-test-value]]
 Use small behavioral regressions for Factory-owned boundaries. Avoid configuration
 snapshots, tests of upstream behavior, unnecessary abstractions and repetitive
-validation. Minimize new files, directories and abstractions; add them only when
-required and list the additions at task completion. Prefer inlining small shell
-glue in its owning Nix module or native workflow rather than adding separate
-shell-script files. Declare runtime dependencies
+validation. Terraform policies retain permission and state-safety invariants, not
+exact resource inventories or root module-expression wiring. Workflow tests
+exercise input forwarding, failure handling and deployment gates without freezing
+shell formatting or asserting the absence of historical variable names. Minimize
+new files, directories and abstractions; add them only when required and list the
+additions at task completion. Prefer inlining small shell glue in its owning Nix
+module or native workflow rather than adding separate shell-script files. Declare
+runtime dependencies
 through pinned inputs/locks; never weaken
 assertions or skip coverage to conceal missing dependencies.
 Keep comments about current behavior, not historical migration narratives.
@@ -409,18 +413,20 @@ Destinations must retain the primary checkout's ancestor context guides. Keep
 machine-specific roots in local configuration, including devbox provisioning,
 not shared repository files. This does not impose a workstation directory layout.
 
-The guard operates without Herdr, uses shfmt's Bash parser, and blocks primary
-checkout file edits and Git mutations, including switch/checkout and GitHub PR
-checkout. Verified `--ff-only` pull/merge syncs of main's configured remote main
-branch do not require a second confirmation, including without a terminal UI.
-Other refs/options and missing upstreams remain blocked; Git rejects divergence
-and conflicting local edits without resetting or stashing.
-Branch drift and unresolved Git targets stop mutations; never automatically
-switch back, stash, reset or copy uncommitted files. Bash, foreground-terminal
-calls and Pi's user shell input are checked; PowerShell is unsupported. This is
-an accidental-action guard, not an OS sandbox: arbitrary scripts, other tools,
-interactive subprocess input and external processes are not fully inspected.
-Read-only tools remain available for diagnosing drift.
+The guard operates without Herdr and blocks direct primary-checkout file edits.
+For Bash, foreground-terminal calls and Pi's user shell input, shfmt identifies
+literal Git/gh calls and static directory changes; known primary mutations,
+including switch/checkout and GitHub PR checkout, are blocked. Verified
+`--ff-only` pull/merge syncs of main's configured remote main branch remain allowed;
+Git rejects divergence and conflicting local edits without resetting or stashing.
+Dynamic executables/targets, Git environment overrides, wrapper commands and
+sourced scripts are outside this narrow check, not rejected merely because they
+cannot be resolved. Never expand this into a general shell interpreter.
+Primary branch drift still stops guarded mutations; never automatically switch
+back, stash, reset or copy uncommitted files. PowerShell remains unsupported.
+This prevents common accidents, not hostile execution: arbitrary scripts, other
+tools, interactive input and external processes are not sandboxed. Read-only
+tools remain available for diagnosing drift.
 
 Global-to-project cutovers are operator-local migrations, not personal extension
 paths or exclusions baked into shared settings. Remove global copies only after
@@ -822,3 +828,68 @@ Git source when its explicit extension path is enabled.
 <!-- 2026-10-24 04:01:40 [01a16d44] -->
 #decision [[factory-module-composition]]
 Keep Nix leaf implementations and named exports independent: each `flake.nix` named export points directly to its own module, without sibling imports or dependency bundles. Callers compose the modules required by the defaults they use; `nix/default.nix` remains the explicit aggregate convenience. Missing sibling options fail when their dependent defaults are evaluated, not merely on import; callers can replace those defaults through existing overridable options. Native TypeScript, Firebase and pnpm renderers consume the overridable `biome.formatFile` interface. Kubeconform targets an explicitly selected pinned schema version through `kubeconform.kubernetesVersion` or `-kubernetes-version`, never the kubectl client version. Cold Files and Semgrep commands independently load their stdlib-only package implementations with pinned Node 24's native TypeScript support, without bundling the combined workspace CLI or requiring node_modules.
+
+<!-- 2026-11-10 18:21:15 [01a1c824] -->
+#decision [[factory-amp-orb-pilot]]
+Amp integration lives in `packages/amp` with a thin `apps/amp` Commander CLI
+(`pnpm amp`). Keep this an adapter to native Amp, Tailscale and Herdr surfaces:
+no webhook receiver, scheduler, task database, automatic prompts or transcript
+synchronization. Native Amp issue-only spawners remain separate operator setup.
+The first pilot is Factory's own executable `.agents/setup` / `.agents/resume`;
+do not roll hooks out to consumers before one-orb qualification.
+
+Setup enters the locked Nix shell, installs frozen workspace dependencies and
+builds the packages. The shared setup requires explicitly installed tools,
+prepares dormant dedicated systemd services, provisions the OpenSSH privilege-
+separation account when absent, and refuses activated runtime state. It preserves
+different user-owned `~/.local/bin/herdr` / `pi` entries; new entries reference
+the selected binaries, with Nix GC roots for store-backed executables. No shell
+profile replacement or downloaded Herdr fallback is intended.
+
+Runtime requires the approved workspace's nonsecret `TAILSCALE_CLIENT_ID` and
+`TAILSCALE_AUDIENCE`. The pilot also requires `FACTORY_AMP_SSH_PUBLIC_KEYS`
+containing the explicitly approved public authorized keys, never private keys.
+Resume obtains thread metadata from its runtime Amp token and enrolls with
+`--subject-scope workspace`, using ephemeral/preauthorized `tag:amp-orb` nodes.
+Preauthorization intentionally skips device approval; change that explicitly if
+the tailnet requires approval. Tailscale verifies identity; local JWT decoding is
+only naming metadata. Credentials never belong in setup snapshots.
+
+The dedicated tailscaled uses `/run/factory-amp/tailscaled.sock`; ordinary local
+discovery uses the workstation's daemon. SSH listens only on the tailnet IPv4,
+uses per-orb runtime host keys and public-key authentication, and disables
+passwords, forwarding and root login. Existing host daemon settings are not
+replaced. Herdr runs as the orb user in named session `orb`, inheriting the
+runtime environment. Browser/mobile Terminal attach command:
+`~/.local/bin/herdr --session orb`; start Pi in its repository pane with
+`nix develop --command pi`. Pi's own provider login/keys must be supplied at
+runtime, not cloned from a shared image. Reauthentication/environment changes
+and session restoration still need real sleep/wake qualification.
+
+Only `AMP_ORB=1` together with an exact canonical `FACTORY_AMP_REPOSITORY`
+allows Pi to edit the disposable primary checkout directly. Other repositories
+retain normal main/worktree guards, and direct Git-metadata edits remain blocked.
+This is an accidental-action policy, not a sandbox or proof of workload identity.
+
+`pnpm amp list` reports native Amp thread results, tagged Tailscale peers and
+saved Herdr profiles without inventing a cross-service registry. Explicit
+`connect --thread T-… --repo org/repo [--issue N] [--title text]` selects the
+unique online thread-named node and delegates profile creation to native
+`herdr machine add`. Labels start with org/repo, or a project name for non-GitHub
+work, and include a short thread suffix. The full thread UUID determines the
+hostname. Existing profiles are never replaced or automatically enabled.
+SSH cannot wake paused orbs; open the thread in Amp first. Inspect changed host
+keys, name collisions and stale profiles rather than bypassing SSH checks.
+
+`packages/amp/src/plugin.ts` builds to a standalone, import-free
+`dist/plugin.js`. Deploy that built artifact as a native Amp plugin file (project
+or workspace plugin repository) after review; do not assume remote npm imports
+work. Factory source remains canonical. Its explicit command toggles a billed,
+best-effort keep-awake lease, released on toggle or plugin process exit. It does
+not infer Pi busy state, wake machines or hold leases for saved Herdr profiles.
+
+These are source implementations, not a qualified live deployment. Still verify
+workspace identity/trust and administrative credential permissions, native plugin
+installation, SSH account/host-key behavior, mobile terminal keys, model login,
+pause/resume/reconnect and issue spawners before adoption/publication. No automatic
+npm release-pipeline expansion is included in the pilot.

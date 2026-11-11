@@ -127,6 +127,7 @@
               duckdb = pkgs.duckdb;
               postgresql = pkgs.postgresql;
               clickhouse = pkgs.clickhouse;
+              openssh = pkgs.openssh;
               tailscale = pkgs.tailscale;
               clickhousectl = factory.clickhousectl.package;
               langfuse = factory.langfuse.package;
@@ -175,6 +176,7 @@
                 agents.hunk
                 pkgs.clickhouse
                 pkgs.tailscale
+                pkgs.openssh
                 factory.clickhousectl.package
                 factory.langfuse.package
                 factory.pi.package
