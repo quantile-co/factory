@@ -20,6 +20,11 @@
       '';
       description = "Opt-in checkout-local Pi memory environment; select in the development shell.";
     };
+    goalSettingsFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/pi/pi-goal-x-settings.json;
+      description = "Native goal settings with a finite continuation allowance; seed explicitly so operators can tune it.";
+    };
     settingsFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/pi/settings.json;

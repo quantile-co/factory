@@ -297,10 +297,31 @@ vendoring framework.
 
 `etc/pi/settings.json` is the only native settings template. Factory overrides
 only its local package source when materializing `.pi/settings.json`.
-Preserve the five exact upstream npm recommendations. SDK-only settings entries
+Preserve the exact pinned upstream npm selections. SDK-only settings entries
 do not activate resources; Factory bundles its declared SDK dependencies from
 the workspace lock rather than searching Pi's installation directories.
 Npm transitives installed independently by Pi do not inherit the workspace lock.
+
+#decision [[factory-goal-and-mast-extensions]]
+Native settings select `pi-goal-x@0.34.1` and commit-pinned
+`dbreunig/pi-mast-steer` unchanged. Use Pi-native goals rather than adding Ralph's
+Amp/Claude process loop. Goal creation is explicit; continuation is unlimited
+unless configured. `pi.goalSettingsFile` provides native settings with
+`maxAutonomousRuns: 10`; Factory seeds `.pi/pi-goal-x-settings.json` from it so
+operators can tune the allowance through `/goal-settings` without reconciliation
+overwriting their choice. Consumers must explicitly seed this optional asset.
+The allowance resets on creation/resume; it is not a total token or cost cap.
+The optional completion auditor defaults to an isolated resource loader with
+Bash access: it does not inherit Factory guards and is not a read-only sandbox.
+Use goals in task worktrees; extension-owned state writes are outside the
+model-facing file-tool guards. Do not infer cross-worktree goal synchronization.
+
+MAST checks transcript excerpts with TypeSafe Jev, including tool results but
+excluding thinking and images. This is external transcript processing, not just
+metadata telemetry. `TYPESAFE_API_KEY` remains operator-owned; unavailable checks
+fail open. `/mast off` disables checks; `/mast shadow` still sends excerpts but
+withholds steering notes. Notes are advisory, not completion gates or proof of
+correctness. These package selections are not live end-to-end qualification.
 
 Nix supplies available skill binaries; downstreams independently choose their
 skill filters and development-shell packages. Do not add missing-binary warnings,

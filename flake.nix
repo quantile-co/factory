@@ -296,6 +296,10 @@
                 ]
               );
               ".pi/settings.json" = copy factory.pi.settingsFile;
+              ".pi/pi-goal-x-settings.json" = {
+                source = factory.pi.goalSettingsFile;
+                mode = "seed";
+              };
               ".qmd/index.yml" = {
                 source = factory.qmd.configFile;
                 mode = "seed";

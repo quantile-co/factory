@@ -16,6 +16,14 @@
       "prompts": [],
       "themes": []
     },
+    "npm:pi-goal-x@0.34.1",
+    {
+      "source": "git:github.com/dbreunig/pi-mast-steer@eb07aaa75de6cbd38f77feda7372d0c9b387b505",
+      "extensions": ["index.ts"],
+      "skills": [],
+      "prompts": [],
+      "themes": []
+    },
     "npm:pi-memory@0.4.2",
     "npm:pi-web-access@0.42.0",
     "npm:@langfuse/pi-observability-plugin@0.1.2",
