@@ -997,9 +997,11 @@ registered all three commands. A genuine Pi model/tool turn in the preserved
 session produced observed working/idle transitions; plugin logs recorded Auto
 acquisition at 06:23:50 UTC and release at 06:26:09 after the idle grace. The same
 Pi session and model login worked after the disconnect/reconnect. This verifies
-live activity-to-lease behavior, not normal provider idle pausing or web/mobile
-terminal continuity, which remain pending. Manual palette overrides and missing
-activity are unit-tested, not yet live-qualified. Actual plugin logs are JSON
+live activity-to-lease behavior, not normal provider idle pausing, which remains
+pending. The user subsequently confirmed the shared Amp Terminal/Herdr/Pi view
+works but found its UI clunky; device-specific mobile keyboard behavior remains
+unqualified. Manual palette overrides and missing activity are unit-tested, not
+yet live-qualified. Actual plugin logs are JSON
 `Plugin stderr` entries in `~/.cache/amp/logs/headless.log`, with text in `stderr`;
 exclude tool transcripts quoting source. Transfer and rollback scratch under
 `/tmp/factory-awake-stage/` was removed after activation. The per-orb plugin remains
