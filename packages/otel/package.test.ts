@@ -41,7 +41,8 @@ it("packs an installable CLI/subpaths and loads both standalone Amp plugins with
       "pnpm",
       [
         "add",
-        "--offline",
+        // Frozen workspace installs need not cache registry metadata.
+        "--prefer-offline",
         "--ignore-scripts",
         "--store-dir",
         dirname(store),

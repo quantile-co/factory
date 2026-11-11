@@ -1063,6 +1063,8 @@ root `pnpm otel -- <command>` and the packed `factory-otel` bin need no consumer
 copy of Factory source. `factory-otel collector` is the foreground agent mode.
 Publication remains separately approved; consumers must wait for a real registry
 release before adding a dependency. Build offers an explicit OTel package group.
+Packed-consumer smoke installs prefer cached packages but allow registry metadata
+fetches: a clean frozen workspace install does not populate pnpm's metadata cache.
 Namespace retains cache/platform ownership; Amp retains event/orb integration.
 
 Runtime-only vendor names remain `CLICKSTACK_OTLP_ENDPOINT` (HTTPS origin, optional
