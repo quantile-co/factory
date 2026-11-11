@@ -1144,6 +1144,28 @@ the separately landed shared OTel runtime and snapshot safeguards. A new billed
 qualification orb still needs separate approval. Source tests do not qualify
 live SSH, systemd namespace isolation or pause/reconnect.
 
+#deployment [[amp-native-ssh-snapshot-blocker]]
+Native SSH source `d15139e` passed staging Check and was published to main.
+The separately approved single Medium test on 2026-11-11 created
+`T-1db3458f-7590-4b2e-993d-d86588769d60` at that clean source. All build tasks
+passed, but setup correctly refused the inherited `factory-amp-sshd.service`:
+`Legacy orb: do not migrate an existing SSH service in place.` Read-only orb
+diagnostics found the old SSH/tailscaled units inactive, with no Tailscale state,
+thread activation marker or Pi auth file. No native SSH/Herdr connection was
+qualified, and no repair, rerun, migration or additional orb was attempted.
+The test thread was archived; readback found it only in the archived list, no
+matching tailnet peer, and no added Herdr profile or local host trust. Existing
+pilots and model credentials remain untouched. This test approval is consumed.
+
+[Amp's lifecycle](https://ampcode.com/docs/orbs/customizing#the-orb-lifecycle)
+refreshes stale snapshots by rerunning setup over the old filesystem, not a
+clean base. A new thread alone therefore does not remove a legacy unit. Before
+another native SSH test, obtain approval to delete only Factory's cached
+`a1.medium` project snapshot using native `amp projects snapshots delete` with
+that explicit resource, then separately approve one new billed orb. Do not
+remove active orb services, weaken the guard or delete every project snapshot.
+The cache deletion and another billed orb are not yet authorized.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
