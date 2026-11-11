@@ -1291,8 +1291,8 @@ consumed; no replacement orb or further snapshot deletion is authorized.
 
 ## Downstream Amp adoption
 
-The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
-the adapter is not yet published as a qualified downstream npm release. Factory's
+The lifecycle/connection library and plugins in `packages/amp` are published as
+`@quantile-co/factory-amp@0.1.0`, with release evidence below. Factory's
 protected Build now offers the `amp` package selection, using `amp:pack` and
 `amp:stage` with the existing isolated npm credential and maintainer-approval flow.
 Local `amp:pack` passed the normal checks/tests; its 0.1.0 tarball exported the
@@ -1305,12 +1305,13 @@ The separately approved protected Build `43122297383` succeeded on source
 `d3494282457444378b1892a424e1a78d73b11458` and staged only
 `@quantile-co/factory-amp@0.1.0` with ID
 `82b15fec-2e28-4442-a2f8-1e6b40eb190c`. Its seven-file tarball SHA-1 is
-`99a408a622f399dc7fddc8bc1121740f7b3f55c4`. The maintainer reported completing npm
-approval. Readback around 23:53 UTC still showed stage status `validating` and
-registry 404 after one short wait; publication and matching registry hash are not
-yet verified. Wait for npm validation, then check read-only; do not repeat approval
-or staging to force progress. The Build approval is consumed; do not dispatch
-another Build or activate a consumer implicitly.
+`99a408a622f399dc7fddc8bc1121740f7b3f55c4`. npm validation initially delayed
+publication; after the stage became ready, the maintainer completed native 2FA
+approval at 23:55 UTC on 2026-11-11. Public registry readback verified version
+0.1.0, `latest = 0.1.0`, that exact SHA-1 and the pinned
+`@quantile-co/factory-otel@0.1.0` dependency. The release is complete; its Build
+and approval are consumed. Consumer selection/activation remains separately
+approved; no downstream repository or Amp project was changed by publication.
 
 Consumers
 must supply their own thin setup/resume hooks, pinned tools/dependency build,
@@ -1357,8 +1358,8 @@ session and one issue-spawner delivery are qualified on the earlier lifecycle.
 The native SSH lifecycle and central policy are published. Cold bootstrap,
 native saved-profile connection, operator control selection and observed idle
 pause/wake/reconnect are qualified on `f3be934`, with limits recorded above.
-Factory label state adoption is also complete, as verified above. Next:
-approved downstream package publication/adoption and final artifact/worktree
+Factory label state adoption and Amp 0.1.0 publication are also complete, as
+verified above. Next: approved downstream adoption and final artifact/worktree
 accounting. Model-login changes are deferred, not a rollout
 prerequisite. A test issue/new billed orb and each protected Plan/Apply still
 require their own approval.
