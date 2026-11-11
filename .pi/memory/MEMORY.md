@@ -886,6 +886,15 @@ Amp integration lives in `packages/amp` with a thin `apps/amp` Commander CLI
 (`pnpm amp`). Keep this an adapter to native Amp, Tailscale and Herdr surfaces:
 no webhook receiver, scheduler, task database, automatic prompts or transcript
 synchronization. Native Amp issue-only spawners remain separate operator setup.
+Factory now has one enabled, unblocked, user-owned native spawner for newly
+opened `quantile-co/factory` issues with the exact label `amp-orb`, targeting the
+Factory workspace project in Medium mode. Its saved instructions permit only
+read-only issue triage and bootstrap diagnostics, then wait for the operator;
+no automatic code changes, deployments, Pi prompts or keep-awake. There is no PR
+or installation-wide trigger. The label must be present when the issue opens;
+adding it later does not trigger a run. Configuration was read back, but no test
+issue/delivery has been authorized or observed yet. Do not infer end-to-end
+qualification from an enabled subscription.
 The first pilot is Factory's own executable `.agents/setup` / `.agents/resume`;
 do not roll hooks out to consumers before one-orb qualification.
 
