@@ -737,6 +737,11 @@ this does not qualify multipart uploads. The corrected
 Custom-profile grant was still rejected without changing profiles. Distinguish
 runtime permission tuples from permissions accepted by the grant validator;
 conceptual read/write labels and schema presence are not acceptance evidence.
+A separately approved Limited workload test also lacked blob access: its token
+contained `cache/*`, not `blobs`, and the direct blob RPC returned PermissionDenied.
+Limited cache-service access is not raw blob access. The original Restricted
+profile was restored and read back unchanged apart from its version; no
+Permissive fallback was performed.
 
 ## Retained implementation decisions and open issues
 
