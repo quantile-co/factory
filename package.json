@@ -14,6 +14,8 @@
     "npm:pack": "pnpm test && pnpm --filter @quantile-co/factory-github pack --out dist/npm/factory-github.tgz && pnpm --filter @quantile-co/factory-pi pack --out dist/npm/factory-pi.tgz",
     "npm:stage": "npm stage publish dist/npm/factory-github.tgz --access public && npm stage publish dist/npm/factory-pi.tgz --access public",
     "amp": "tsx apps/amp/cli.ts",
+    "amp:pack": "pnpm test && pnpm --filter @quantile-co/factory-amp pack --out dist/npm/factory-amp.tgz",
+    "amp:stage": "npm stage publish dist/npm/factory-amp.tgz --access public",
     "otel": "tsx apps/otel/cli.ts",
     "otel:pack": "pnpm test && pnpm --filter @quantile-co/factory-otel pack --out dist/npm/factory-otel.tgz",
     "otel:stage": "npm stage publish dist/npm/factory-otel.tgz --access public",

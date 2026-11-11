@@ -1292,7 +1292,15 @@ consumed; no replacement orb or further snapshot deletion is authorized.
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugin in `packages/amp` are source-reusable;
-the adapter is not yet published as a qualified downstream npm release. Consumers
+the adapter is not yet published as a qualified downstream npm release. Factory's
+protected Build now offers the `amp` package selection, using `amp:pack` and
+`amp:stage` with the existing isolated npm credential and maintainer-approval flow.
+Local `amp:pack` passed the normal checks/tests; its 0.1.0 tarball exported the
+runtime/types, standalone keep-awake plugin and telemetry plugin without source or
+workspace paths. All three packed JavaScript exports imported outside the checkout;
+the workspace OTel dependency became exact published version 0.1.0. This is local
+artifact qualification, not publication or consumer activation. Both still need
+separate approval. Consumers
 must supply their own thin setup/resume hooks, pinned tools/dependency build,
 repository identity and explicit disposable checkout path. Factory's `.agents/`
 hooks are its pilot wiring, not generic files to copy unchanged.
@@ -1312,10 +1320,16 @@ Caller labels can override the preset. Singular `github_issue_label` resources
 leave unrelated labels alone; existing labels need explicit import. The pinned
 provider's Create implementation calls CreateLabel directly despite its docs'
 upsert claim. Factory declares the preset and an import for its renamed pilot
-label; protected Terraform state adoption still requires a fresh reviewed Plan
-and separately approved Apply. No infrastructure Apply has been performed for
-this change. Existing repositories receive the default on their next approved
-module update/deployment; repositories outside this module need separate adoption.
+label. A concurrent deployment completed adoption: protected Apply `43114066140`
+succeeded on 2026-11-11 at 22:44:29 UTC, applying exact saved Plan
+`43112662330/1/1794436512511243` from `f3be934`. Subsequent private inspection of
+that generation confirmed a no-change label import (plus the other rollout's
+Hindsight bank creation), with no drift, updates or deletions. Live GitHub readback
+retained label ID `13036342582`, name, color and description. This session did not
+dispatch that deployment; its consumed plan must not be replayed. No new label
+Plan/Apply is needed merely to repeat the completed adoption. Existing repositories
+receive the default on their next approved module update/deployment; repositories
+outside this module need separate adoption.
 No blanket cross-repository Apply is authorized by the default change.
 
 #decision [[moshi-not-adopted]]
@@ -1331,8 +1345,9 @@ session and one issue-spawner delivery are qualified on the earlier lifecycle.
 The native SSH lifecycle and central policy are published. Cold bootstrap,
 native saved-profile connection, operator control selection and observed idle
 pause/wake/reconnect are qualified on `f3be934`, with limits recorded above.
-Next: reviewed Terraform label adoption, downstream packaging/adoption and final
-artifact/worktree accounting. Model-login changes are deferred, not a rollout
+Factory label state adoption is also complete, as verified above. Next:
+approved downstream package publication/adoption and final artifact/worktree
+accounting. Model-login changes are deferred, not a rollout
 prerequisite. A test issue/new billed orb and each protected Plan/Apply still
 require their own approval.
 
@@ -1340,9 +1355,8 @@ require their own approval.
 - Keep Pi/model authentication unchanged. Investigation is complete for this
   rollout; API credentials, gateways, subscription federation and credential reuse
   are deferred. Credentials must stay out of source and shared snapshots.
-- Qualify the implemented authenticated Tailscale host-key discovery and native
-  SSH/Herdr connection on a separately approved new orb. Preserve strict trust
-  across reconnects; recreated nodes or changed keys require explicit review,
+- Native SSH/Herdr connection and reconnect are qualified as recorded above.
+  Preserve strict trust: recreated nodes or changed keys require explicit review,
   never blind acceptance or disabling host-key checks.
 - Clean up completed task worktrees after checking for uncommitted work, unmerged
   commits and active agents. Preserve ongoing work; do not force-remove checkouts.

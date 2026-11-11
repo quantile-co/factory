@@ -187,15 +187,16 @@ fs.appendFileSync(e.TEST_BUILD_LOG, JSON.stringify({
   contents: config ? fs.readFileSync(config, "utf8") : undefined,
   mode: config ? fs.statSync(config).mode & 0o777 : undefined
 }) + "\\n");
-process.exit(Number(process.argv[3] === "npm:pack" ? e.TEST_PACK_EXIT : e.TEST_STAGE_EXIT));
+process.exit(Number(process.argv[3].endsWith(":pack") ? e.TEST_PACK_EXIT : e.TEST_STAGE_EXIT));
 `,
     );
     chmodSync(pnpm, 0o755);
-    for (const [packExit, stageExit] of [
-      [17, 0],
-      [0, 23],
-      [0, 0],
-    ]) {
+    for (const [npmPackage, group, packExit, stageExit] of [
+      ["factory", "npm", 17, 0],
+      ["factory", "npm", 0, 23],
+      ["factory", "npm", 0, 0],
+      ["amp", "amp", 0, 0],
+    ] as const) {
       writeFileSync(log, "");
       const result = spawnSync(
         process.execPath,
@@ -215,6 +216,7 @@ process.exit(Number(process.argv[3] === "npm:pack" ? e.TEST_PACK_EXIT : e.TEST_S
             ...process.env,
             PATH: `${bin}:${process.env.PATH}`,
             NPM_TOKEN: "fixture-credential",
+            NPM_PACKAGE: npmPackage,
             NPM_CONFIG_USERCONFIG: "unapproved-config",
             TEST_BUILD_LOG: log,
             TEST_PACK_EXIT: String(packExit),
@@ -230,12 +232,12 @@ process.exit(Number(process.argv[3] === "npm:pack" ? e.TEST_PACK_EXIT : e.TEST_S
         .trim()
         .split("\n")
         .map((line) => JSON.parse(line));
-      expect(calls[0].args).toEqual(["run", "npm:pack"]);
+      expect(calls[0].args).toEqual(["run", `${group}:pack`]);
       expect(calls[0].token).toBeUndefined();
       expect(calls[0].config).toBeUndefined();
       expect(calls).toHaveLength(packExit ? 1 : 2);
       if (!packExit) {
-        expect(calls[1].args).toEqual(["run", "npm:stage"]);
+        expect(calls[1].args).toEqual(["run", `${group}:stage`]);
         expect(calls[1].token).toBe("fixture-credential");
         expect(calls[1].contents).toBe(
           `//registry.npmjs.org/:_authToken=\${NPM_TOKEN}\n`,

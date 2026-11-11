@@ -76,7 +76,7 @@ program
   )
   .addOption(
     new Option("--npm-package <package>", "Release selection")
-      .choices(["factory", "namespace", "otel"])
+      .choices(["factory", "namespace", "otel", "amp"])
       .env("NPM_PACKAGE")
       .default("factory"),
   )
@@ -103,11 +103,11 @@ program
             throw new CommandFailure(result.status ?? 1, `${task} failed`);
         };
         const group =
-          options.npmPackage === "namespace"
-            ? "namespace:nixcache"
-            : options.npmPackage === "otel"
-              ? "otel"
-              : "npm";
+          options.npmPackage === "factory"
+            ? "npm"
+            : options.npmPackage === "namespace"
+              ? "namespace:nixcache"
+              : options.npmPackage;
         run(`${group}:pack`, buildEnvironment);
         execFileSync("git", ["diff", "--exit-code", "HEAD"], {
           cwd: root,

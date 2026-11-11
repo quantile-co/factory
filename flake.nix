@@ -63,6 +63,7 @@
                     + "          - factory\n"
                     + "          - namespace\n"
                     + "          - otel\n"
+                    + "          - amp\n"
                   )
                 ]
                 source
