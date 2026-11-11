@@ -56,6 +56,37 @@ let
           "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" exec . pnpm install --frozen-lockfile"
         ]
         source;
+  collectorJob =
+    phase: source:
+    if !(builtins.elem phase cfg.clickstackJobs) then
+      source
+    else
+      let
+        task =
+          {
+            test = "Run checks, then tests";
+            build = "Build";
+            plan = "Plan";
+            apply = "Apply";
+          }
+          .${phase};
+        marker = "      - name: ${task}\n        env:\n";
+      in
+      assert lib.assertMsg (lib.hasInfix marker source) "Workflow task environment changed";
+      builtins.replaceStrings
+        [ marker "        run: |\n" "\"$direnv\" exec . pnpm run github:" ]
+        [
+          (
+            marker
+            + "          FACTORY_CLICKSTACK: '1'\n"
+            + "          CLICKSTACK_OTLP_ENDPOINT: \${{ vars.CLICKSTACK_OTLP_ENDPOINT }}\n"
+            + "          CLICKSTACK_API_KEY: \${{ secrets.CLICKSTACK_API_KEY }}\n"
+          )
+          # Shell-local until shell evaluation and frozen install have finished.
+          "        run: |\n          export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n"
+          "shell=$(\"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n          factory-otelcol -- pnpm run github:"
+        ]
+        source;
   render =
     name: source: layers:
     let
@@ -89,11 +120,25 @@ let
     builtins.toFile name (
       selectedHeader
       + "\njobs:\n"
-      + lib.concatStringsSep "\n" (map (layer: cacheJob jobs.${layer}) layers)
+      + lib.concatStringsSep "\n" (
+        map (layer: collectorJob (lib.removeSuffix ".yaml" name) (cacheJob jobs.${layer})) layers
+      )
     );
 in
 {
   options.quantile-co.factory.github.workflows = {
+    clickstackJobs = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.enum [
+          "test"
+          "build"
+          "plan"
+          "apply"
+        ]
+      );
+      default = [ ];
+      description = "Explicit credential-bearing managed Observability jobs; only protected workflow_dispatch main jobs, never Check/PRs. Select opentelemetry.package in the caller shell; native factory-otelcol owns lifecycle without an npm release.";
+    };
     nixCache = lib.mkOption {
       type = lib.types.enum [
         "cachix"
@@ -123,7 +168,7 @@ in
     test.configFile = lib.mkOption {
       type = lib.types.path;
       default = builtins.toFile "test.yaml" (
-        cacheJob (builtins.readFile ../../../etc/github/workflows/test.yaml)
+        collectorJob "test" (cacheJob (builtins.readFile ../../../etc/github/workflows/test.yaml))
       );
       description = "Test workflow.";
     };

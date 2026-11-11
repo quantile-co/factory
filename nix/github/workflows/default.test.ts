@@ -22,7 +22,7 @@ function workflow(path: string) {
   );
 }
 
-function namespaceWorkflows(): Record<string, string> {
+function namespaceWorkflows(clickstack = false): Record<string, string> {
   return JSON.parse(
     execFileSync(
       "nix",
@@ -41,7 +41,10 @@ function namespaceWorkflows(): Record<string, string> {
         specialArgs = { inherit pkgs; };
         modules = [
           ${root}/nix/github/workflows
-          { quantile-co.factory.github.workflows.nixCache = "namespace"; }
+          { quantile-co.factory.github.workflows = {
+              nixCache = "namespace";
+              clickstackJobs = ${clickstack ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
+          }; }
         ];
       }).config.quantile-co.factory.github.workflows;
     in builtins.mapAttrs (name: _: builtins.readFile workflows.\${name}.configFile) {
@@ -137,6 +140,84 @@ it("keeps Namespace lifecycle inside trusted GitHub task commands and leaves Che
         expect(
           job.steps.some((step) => step.name === "Publish Namespace Nix cache"),
         ).toBe(false);
+      }
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+it("releases ingestion credentials only to explicitly selected trusted-main native task wrappers", () => {
+  const temporary = mkdtempSync(
+    join(tmpdir(), "factory-observability-workflow-"),
+  );
+  try {
+    const disabled = namespaceWorkflows();
+    const enabled = namespaceWorkflows(true);
+    expect(enabled.check).toBe(disabled.check);
+    for (const name of ["test", "build", "plan", "apply"]) {
+      expect(disabled[name]).not.toContain("CLICKSTACK_API_KEY");
+      const path = join(temporary, `${name}.yaml`);
+      writeFileSync(path, enabled[name]);
+      const data = workflow(path);
+      for (const job of Object.values(data.jobs) as Array<{
+        if: string;
+        environment: string;
+        steps: Array<{ env?: Record<string, string>; run?: string }>;
+      }>) {
+        expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
+        expect(job.if).toContain("github.ref == 'refs/heads/main'");
+        expect(job.environment).toBe("prod");
+        const tasks = job.steps.filter((step) => step.env?.CLICKSTACK_API_KEY);
+        expect(tasks).toHaveLength(1);
+        const script = tasks[0].run ?? "";
+        expect(script).toContain(
+          "export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY",
+        );
+        expect(script.indexOf("pnpm install --frozen-lockfile")).toBeLessThan(
+          script.indexOf("export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY"),
+        );
+        expect(script).toContain(`factory-otelcol -- pnpm run github:${name}`);
+        if (name === "test") {
+          const bin = join(temporary, "bin");
+          mkdirSync(bin);
+          const record = join(temporary, "calls");
+          for (const tool of ["nix", "direnv", "factory-otelcol"]) {
+            const path = join(bin, tool);
+            writeFileSync(
+              path,
+              `#!${process.execPath}
+const fs = require('node:fs');
+fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ tool: ${JSON.stringify(tool)}, secret: !!process.env.CLICKSTACK_API_KEY, shell: process.env.TEST_SHELL }) + '\\n');
+if (${JSON.stringify(tool)} === 'nix') console.log(${JSON.stringify(temporary)});
+if (${JSON.stringify(tool)} === 'direnv' && process.argv[2] === 'export') console.log('export TEST_SHELL=ready');
+if (${JSON.stringify(tool)} === 'factory-otelcol') process.exit(23);
+`,
+            );
+            chmodSync(path, 0o755);
+          }
+          const result = spawnSync("bash", ["-euo", "pipefail", "-c", script], {
+            encoding: "utf8",
+            env: {
+              ...process.env,
+              PATH: `${bin}:${process.env.PATH}`,
+              TURBO_TOKEN: "",
+              CLICKSTACK_OTLP_ENDPOINT: "https://ingest.example.invalid",
+              CLICKSTACK_API_KEY: "fixture-key",
+            },
+          });
+          expect(result.status, result.stderr).toBe(23);
+          const calls = readFileSync(record, "utf8")
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line));
+          expect(calls.slice(0, -1).every((call) => !call.secret)).toBe(true);
+          expect(calls.at(-1)).toEqual({
+            tool: "factory-otelcol",
+            secret: true,
+            shell: "ready",
+          });
+        }
       }
     }
   } finally {

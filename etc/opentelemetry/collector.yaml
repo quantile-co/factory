@@ -1,0 +1,71 @@
+# Agent-only host metrics; no OTLP listener, logs, process scraper or disk queue.
+receivers:
+  host_metrics:
+    collection_interval: 30s
+    scrapers:
+      cpu: {}
+      memory: {}
+      disk: {}
+      filesystem: {}
+      network: {}
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+    spike_limit_mib: 32
+  resource:
+    attributes:
+      - key: service.name
+        value: factory-host
+        action: upsert
+      - key: service.instance.id
+        value: "${env:FACTORY_OTEL_INSTANCE_ID}"
+        action: upsert
+      - key: factory.platform
+        value: "${env:FACTORY_OTEL_PLATFORM}"
+        action: upsert
+      - key: vcs.repository.name
+        value: "${env:FACTORY_OTEL_REPOSITORY}"
+        action: upsert
+      - key: cicd.pipeline.run.id
+        value: "${env:FACTORY_OTEL_RUN_ID}"
+        action: upsert
+      - key: cicd.pipeline.run.attempt
+        value: "${env:FACTORY_OTEL_RUN_ATTEMPT}"
+        action: upsert
+      - key: amp.thread.id
+        value: "${env:FACTORY_OTEL_THREAD_ID}"
+        action: upsert
+  batch:
+    timeout: 5s
+    send_batch_size: 256
+    send_batch_max_size: 512
+
+exporters:
+  otlp_http:
+    endpoint: ${env:CLICKSTACK_OTLP_ENDPOINT}
+    headers:
+      Authorization: Bearer ${env:CLICKSTACK_API_KEY}
+    timeout: 3s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 2s
+      max_elapsed_time: 5s
+    sending_queue:
+      enabled: true
+      num_consumers: 1
+      queue_size: 16
+
+service:
+  telemetry:
+    logs:
+      level: error
+    metrics:
+      level: none
+  pipelines:
+    metrics:
+      receivers: [host_metrics]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_http]

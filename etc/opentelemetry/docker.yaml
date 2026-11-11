@@ -1,0 +1,14 @@
+# Explicit CLICKSTACK_DOCKER_STATS=1 only. Docker socket access is effectively
+# host-root authority, even when used for read-only stats. Never grant it by default.
+receivers:
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 30s
+    timeout: 3s
+    container_labels_to_metric_labels: {}
+    env_vars_to_metric_labels: {}
+
+service:
+  pipelines:
+    metrics:
+      receivers: [host_metrics, docker_stats]

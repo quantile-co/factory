@@ -1,5 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
@@ -7,6 +13,7 @@ import {
   identity,
   orbPeers,
   resume,
+  resumeCollector,
   resumeScript,
   setupScript,
 } from "./index.ts";
@@ -87,6 +94,54 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
   }
 });
 
+it("refreshes orb collector runtime credentials without arguments or persistent files, and fails open", () => {
+  const directory = mkdtempSync(join(tmpdir(), "factory-orb-otel-"));
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const record = join(directory, "operations");
+    const sudo = join(directory, "sudo");
+    writeFileSync(
+      sudo,
+      `#!${process.execPath}
+const fs = require('node:fs');
+const args = process.argv.slice(3);
+fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify(args) + '\\n');
+if (args[0] === 'install') fs.appendFileSync(${JSON.stringify(record)}, fs.readFileSync(0, 'utf8'));
+if (args.includes('restart')) { console.error('PRIVATE_ERROR'); process.exit(1); }
+if (args.includes('is-active')) process.exit(3);
+`,
+    );
+    chmodSync(sudo, 0o755);
+    vi.stubEnv("PATH", directory);
+    vi.stubEnv("AMP_ORB", "1");
+    vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
+    vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
+    expect(() => resumeCollector("org/repo", thread)).not.toThrow();
+    const operations = readFileSync(record, "utf8");
+    expect(operations).toContain(
+      '["install","-m","0600","/dev/stdin","/run/factory-amp/otel.env"]',
+    );
+    expect(operations).toContain('CLICKSTACK_API_KEY="fixture-runtime-key"');
+    expect(
+      operations.trim().endsWith('["rm","-f","/run/factory-amp/otel.env"]'),
+    ).toBe(true);
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(
+      /fixture-runtime-key|PRIVATE_ERROR/,
+    );
+    writeFileSync(record, "");
+    log.mockClear();
+    vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "");
+    vi.stubEnv("CLICKSTACK_API_KEY", "");
+    resumeCollector("org/repo", thread);
+    expect(readFileSync(record, "utf8")).not.toContain('"stop"');
+    expect(log).not.toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+    vi.unstubAllEnvs();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 it.each([true, false])(
   "resolves account tools only when sshd is missing (exists=%s)",
   (exists) => {
@@ -132,6 +187,7 @@ ${setupScript}
             HOME: home,
             AMP_ORB: "1",
             ACCOUNT_EXISTS: exists ? "1" : "0",
+            CLICKSTACK_API_KEY: "fixture-not-for-snapshots",
             PATH: `/pinned/bin:${process.env.PATH?.split(":")
               .filter((path) => !path.endsWith("/sbin"))
               .join(":")}`,
@@ -145,6 +201,9 @@ ${setupScript}
       expect(readFileSync(join(home, "units"), "utf8")).toContain(
         "Type=notify\nTimeoutStartSec=15\n",
       );
+      const units = readFileSync(join(home, "units"), "utf8");
+      expect(units).toContain("EnvironmentFile=/run/factory-amp/otel.env");
+      expect(units).not.toContain("fixture-not-for-snapshots");
       if (exists) {
         expect(lookups).toBe("");
         expect(operations).not.toContain("useradd");

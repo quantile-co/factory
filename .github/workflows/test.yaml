@@ -48,8 +48,12 @@ jobs:
 
       - name: Run checks, then tests
         env:
+          FACTORY_CLICKSTACK: '1'
+          CLICKSTACK_OTLP_ENDPOINT: ${{ vars.CLICKSTACK_OTLP_ENDPOINT }}
+          CLICKSTACK_API_KEY: ${{ secrets.CLICKSTACK_API_KEY }}
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
         run: |
+          export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY
           export TURBO_CACHE=local:rw
           if [ -n "$TURBO_TOKEN" ]; then
             export TURBO_CACHE=local:rw,remote:rw
@@ -57,4 +61,8 @@ jobs:
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile
-          "$direnv" exec . pnpm run github:test
+          shell=$("$direnv" export bash)
+          eval "$shell"
+          unset shell
+          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY
+          factory-otelcol -- pnpm run github:test

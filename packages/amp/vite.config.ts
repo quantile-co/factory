@@ -11,7 +11,11 @@ export default defineConfig(({ command }) => ({
     target: "node24",
     minify: false,
     lib: {
-      entry: { index: "src/index.ts", plugin: "src/plugin.ts" },
+      entry: {
+        index: "src/index.ts",
+        plugin: "src/plugin.ts",
+        telemetry: "src/telemetry.ts",
+      },
       formats: ["es"],
       fileName: (_format, name) => `${name}.js`,
     },
