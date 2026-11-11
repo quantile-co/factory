@@ -906,8 +906,11 @@ marker or bypass the activated-state guard to retry setup without explicit
 recovery approval. The next pilot verified setup, Tailscale enrollment and Herdr
 startup, but its dedicated sshd collided with Amp's wildcard port-22 listener.
 The old simple systemd unit let resume print Ready before that bind failure.
-The loopback/Serve and notify-readiness correction below still needs live
-qualification; do not treat the earlier Ready message as an SSH success.
+Fresh-orb verification of `9bd349c` subsequently confirmed setup, notify-ready
+sshd, Tailscale Serve, approved-key SSH and the native Herdr `orb` session API.
+The workstation pinned the host key against authenticated orb diagnostics before
+login. Earlier failed pilots were left untouched; their Ready messages are not
+SSH successes.
 
 Runtime requires the approved workspace's nonsecret `TAILSCALE_CLIENT_ID` and
 `TAILSCALE_AUDIENCE`. The pilot also requires `FACTORY_AMP_SSH_PUBLIC_KEYS`
@@ -927,8 +930,12 @@ supports systemd readiness notification; `Type=notify` and a bounded startup
 timeout prevent a successful restart from being reported before the listener
 binds. SSH uses per-orb runtime host keys and public-key authentication, disabling
 passwords, SSH forwarding and root login. Existing host daemon settings are not
-replaced. Herdr runs as the orb user in named session `orb`, inheriting the
-runtime environment. Browser/mobile Terminal attach command:
+replaced. E2B's envd automatically bridges the loopback port to its host-side
+interface, so loopback binding is not proof of exclusive tailnet reachability.
+The pilot had no public Amp portals, but raw provider ingress remains unverified;
+retain SSH key authentication and do not claim provider-side network isolation.
+Herdr runs as the orb user in named session `orb`, inheriting the runtime
+environment. Browser/mobile Terminal attach command:
 `~/.local/bin/herdr --session orb`; start Pi in its repository pane with
 `nix develop --command pi`. Pi's own provider login/keys must be supplied at
 runtime, not cloned from a shared image. Reauthentication/environment changes
@@ -969,7 +976,8 @@ URL or VM metrics alone does not establish successful setup/enrollment;
 `amp top --stream-jsonl` exposes executor connection state. Hook failures still
 require their setup/resume logs before recovery, not a duplicate orb launch.
 
-These are source implementations, not a qualified live deployment. Still verify
+Bootstrap, enrollment and SSH have fresh-orb verification; the full interactive
+session workflow remains unqualified. Still verify
 workspace identity/trust and administrative credential permissions, native plugin
 installation, SSH account/host-key behavior, mobile terminal keys, model login,
 pause/resume/reconnect and issue spawners before adoption/publication. No automatic

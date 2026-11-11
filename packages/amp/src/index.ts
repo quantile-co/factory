@@ -264,8 +264,8 @@ EOF
 sudo "$(command -v sshd)" -t -f /run/factory-amp/sshd_config
 # The pinned OpenSSH notifies systemd only after binding its listeners.
 sudo systemctl restart factory-amp-sshd.service
-# Amp owns the wildcard port-22 listener. Serve intercepts tailnet TCP traffic
-# without changing that daemon or exposing the loopback backend publicly.
+# Amp owns the wildcard port-22 listener. Serve adds a tailnet-only route
+# without changing that daemon; provider-side forwarding remains separate.
 sudo "$TAILSCALE" --socket="$socket" serve --bg --tcp=22 tcp://127.0.0.1:2222
 ssh-keygen -lf "$key.pub"
 `;
