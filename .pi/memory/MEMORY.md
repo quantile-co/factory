@@ -1252,7 +1252,7 @@ post-archive peer read still showed online, so do not claim an independently
 confirmed offline transition. No retry, additional orb or infrastructure phase
 was run; the test approval is consumed.
 
-#deployment [[amp-cold-lifecycle-qualification-in-progress]]
+#deployment [[amp-cold-lifecycle-qualified]]
 The operator approved deleting only Factory's cached `a1.medium` snapshot and
 one new Medium orb for cold-start, UI and pause/wake qualification. Deletion
 returned success and an empty snapshot list. Test thread
@@ -1267,12 +1267,27 @@ preceded Herdr readiness. A provider redactor 401 warning did not fail setup.
 Published `amp connect` succeeded and saved temporary profile
 `2617ae64c3ef33247a7971243b3fdf1d`, labelled
 `quantile-co/factory · Lifecycle test · T-0d0273b0`, session `orb`.
-Operator UI and native Auto/On/Off confirmation are pending, followed by the
-approved idle pause/wake test. No manual hold, Pi login or model prompt was
-started. This test is intentionally not archived yet; finish the approved checks
-or stop safely, then archive only this thread and remove only its test profile
-and newly pinned hostname records. Preserve the original pilot/profile/login.
-Do not launch a replacement orb or delete another snapshot under this approval.
+The operator reported completing the UI/control steps. Actual plugin logs show
+On acquiring a lease at 22:53:30.717 UTC and Off releasing it at 22:53:37.850;
+the operator left Auto selected. No Pi agent was running. After no orb interaction
+from 22:55:22 through 23:15:52, local tailnet status showed offline and Amp's
+executor was disconnected with no work. No manual pause/archive was issued in
+that interval, consistent with normal automatic idle pausing. The reported peer
+LastSeen was inconsistent with workstation time, so it is not used as an exact
+pause timestamp.
+
+One approved read-only Amp message woke the same thread. Automatic resume
+finished in about 3–6 seconds, with the same clean `f3be934` checkout, tailscaled
+at zero restarts, and Herdr workspace/tab `w1` / `w1:t1`. Remote origin/main had
+advanced independently; the orb checkout was not updated. Published `amp connect`
+reused the existing profile after strict fresh SSH and unchanged key-set checks;
+native `herdr --machine` returned the same workspace and status was reachable.
+No model login/turn or fault-injected missing-activity/key-rotation test was run.
+
+The test was then archived and confirmed only in archived thread listings. Only
+its temporary profile and three new known-hosts records were removed. The original
+pilot/profile/login remain unchanged. This cache-deletion/one-orb approval is
+consumed; no replacement orb or further snapshot deletion is authorized.
 
 ## Downstream Amp adoption
 
@@ -1313,10 +1328,10 @@ pilots or reverting unrelated shared infrastructure.
 #decision [[amp-orb-qualification-order]]
 Activity-driven lease acquisition/release, the shared Amp-terminal/Herdr Pi
 session and one issue-spawner delivery are qualified on the earlier lifecycle.
-The native SSH lifecycle and central policy are published. Qualify the cache
-bootstrap fix and native SSH/host-key/Herdr on a separately approved new orb.
-Finish automatic idle pause, wake/reconnect and operator Auto/On/Off qualification;
-then reviewed Terraform label adoption, downstream packaging/adoption and final
+The native SSH lifecycle and central policy are published. Cold bootstrap,
+native saved-profile connection, operator control selection and observed idle
+pause/wake/reconnect are qualified on `f3be934`, with limits recorded above.
+Next: reviewed Terraform label adoption, downstream packaging/adoption and final
 artifact/worktree accounting. Model-login changes are deferred, not a rollout
 prerequisite. A test issue/new billed orb and each protected Plan/Apply still
 require their own approval.
