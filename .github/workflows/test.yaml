@@ -64,7 +64,7 @@ jobs:
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile
-          shell=$("$direnv" export bash)
+          shell=$(env -u NIX_CACHE_PRIVATE_KEY "$direnv" export bash)
           eval "$shell"
           unset shell
           export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY

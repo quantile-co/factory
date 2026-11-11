@@ -188,7 +188,7 @@ it("releases ingestion credentials only to explicitly selected trusted-main nati
               path,
               `#!${process.execPath}
 const fs = require('node:fs');
-fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ tool: ${JSON.stringify(tool)}, secret: !!process.env.CLICKSTACK_API_KEY, shell: process.env.TEST_SHELL }) + '\\n');
+fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ tool: ${JSON.stringify(tool)}, secret: !!process.env.CLICKSTACK_API_KEY, signingKey: !!process.env.NIX_CACHE_PRIVATE_KEY, shell: process.env.TEST_SHELL }) + '\\n');
 if (${JSON.stringify(tool)} === 'nix') console.log(${JSON.stringify(temporary)});
 if (${JSON.stringify(tool)} === 'direnv' && process.argv[2] === 'export') console.log('export TEST_SHELL=ready');
 if (${JSON.stringify(tool)} === 'pnpm') {
@@ -207,6 +207,7 @@ if (${JSON.stringify(tool)} === 'pnpm') {
               TURBO_TOKEN: "",
               CLICKSTACK_OTLP_ENDPOINT: "https://ingest.example.invalid",
               CLICKSTACK_API_KEY: "fixture-key",
+              NIX_CACHE_PRIVATE_KEY: "fixture-signing-key",
             },
           });
           expect(result.status, result.stderr).toBe(23);
@@ -214,10 +215,15 @@ if (${JSON.stringify(tool)} === 'pnpm') {
             .trim()
             .split("\n")
             .map((line) => JSON.parse(line));
-          expect(calls.slice(0, -1).every((call) => !call.secret)).toBe(true);
+          expect(
+            calls
+              .slice(0, -1)
+              .every((call) => !call.secret && !call.signingKey),
+          ).toBe(true);
           expect(calls.at(-1)).toEqual({
             tool: "pnpm",
             secret: true,
+            signingKey: true,
             shell: "ready",
           });
         }
