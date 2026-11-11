@@ -1035,6 +1035,17 @@ this change. Existing repositories receive the default on their next approved
 module update/deployment; repositories outside this module need separate adoption.
 No blanket cross-repository Apply is authorized by the default change.
 
+#decision [[amp-orb-qualification-order]]
+Continue in this order: (1) current-pilot automatic keep-awake qualification,
+(2) shared-session and pause/wake/reconnect verification, (3) approved issue-spawner
+delivery test, (4) easier Pi/model login and authenticated SSH host-key discovery,
+(5) reviewed Terraform label adoption/consumer deployments, then (6) downstream
+packaging and final artifact/worktree accounting. Step 4 is no longer a post-rollout
+deferral: investigate options and review credential/trust changes before deploying
+them. Manual login and explicit Herdr profiles remain current until replacements
+are approved and qualified. A test issue/new billed orb and each protected Apply
+still require their own approval.
+
 #todo [[amp-orb-login-friction]]
 - Explore lower-friction Pi/model authentication for new orbs: native remote/device
   login, scoped runtime secret injection or safe per-user credential reuse.
