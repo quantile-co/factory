@@ -94,7 +94,7 @@ it("wires explicit packages and local/generated files without repository policy"
           quantile-co.factory.flake.devShell.packages = [ pkgs.hello ];
           quantile-co.factory.flake.devShell.shellHook = pkgs.lib.concatStringsSep "\\n" [
             config.quantile-co.factory.files.shellHook
-            config.quantile-co.factory.pi.shellHook
+            config.quantile-co.factory.hindsight.shellHook
             config.quantile-co.factory.uv.shellHook
             config.quantile-co.factory.turbo.shellHook
           ];
@@ -208,7 +208,7 @@ it("wires explicit packages and local/generated files without repository policy"
         [
           "-c",
           `${environment}
-printf '%s\\0%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" "$UV_PYTHON" "$UV_PYTHON_DOWNLOADS" "$LD_LIBRARY_PATH" "$TURBO_CACHE"
+printf '%s\\0%s\\0%s\\0%s\\0%s\\0%s' "$HINDSIGHT_CONFIG" "$HINDSIGHT_OPT_IN_PATHS" "$UV_PYTHON" "$UV_PYTHON_DOWNLOADS" "$LD_LIBRARY_PATH" "$TURBO_CACHE"
 `,
         ],
         {
@@ -228,8 +228,8 @@ printf '%s\\0%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" 
         },
       ).split("\0");
     const expectedEnvironment = [
-      join(root, ".pi/memory"),
-      "0",
+      join(root, ".pi/hindsight.json"),
+      root,
       wiring.python,
       "never",
       `${wiring.libraries}/existing/library`,

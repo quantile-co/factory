@@ -11,15 +11,6 @@
       default = llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.pi;
       description = "Pi coding agent; executable updates remain Nix-owned.";
     };
-    shellHook = lib.mkOption {
-      type = lib.types.lines;
-      default = ''
-        PI_MEMORY_DIR="$(${lib.getExe pkgs.git} rev-parse --show-toplevel)" || return
-        PI_MEMORY_DIR="$PI_MEMORY_DIR/.pi/memory"
-        export PI_MEMORY_DIR PI_MEMORY_EXIT_SUMMARY=0
-      '';
-      description = "Opt-in checkout-local Pi memory environment; select in the development shell.";
-    };
     goalSettingsFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/pi/pi-goal-x-settings.json;

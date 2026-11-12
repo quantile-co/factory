@@ -1,6 +1,33 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { expect, it } from "vitest";
+
+it("selects native Hindsight for Factory without legacy memory resources", () => {
+  const root = new URL("../../", import.meta.url);
+  const settings = JSON.parse(
+    readFileSync(new URL(".pi/settings.json", root), "utf8"),
+  );
+  const config = JSON.parse(
+    readFileSync(new URL(".pi/hindsight.json", root), "utf8"),
+  );
+  expect(config.bankId).toBe("quantile-co--factory");
+  expect(config.observationScopes).toBe("shared");
+  expect(config.autoSeed).toBe(false);
+  expect(config).not.toHaveProperty("apiToken");
+  expect(settings.packages).toContain(
+    "npm:@vectorize-io/hindsight-coding-agents@0.8.7",
+  );
+  expect(settings.packages).toContain(
+    "npm:@langfuse/pi-observability-plugin@0.1.2",
+  );
+  expect(
+    settings.packages.some(
+      (p: unknown) => typeof p === "string" && p.startsWith("npm:pi-memory"),
+    ),
+  ).toBe(false);
+  expect(existsSync(new URL(".pi/memory", root))).toBe(false);
+  expect(existsSync(new URL(".qmd", root))).toBe(false);
+});
 
 it("renders independent consumer configuration and replacement Pi settings", () => {
   const root = new URL("../../", import.meta.url);

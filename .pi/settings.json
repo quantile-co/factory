@@ -1,37 +1,45 @@
 {
-  "defaultTools": ["+codemode", "+tool_search"],
-  "showCacheMissNotices": true,
+  "defaultTools": [
+    "+codemode",
+    "+tool_search"
+  ],
+  "extensions": [
+    "./git/github.com/herdrdev/herdr/src/integration/assets/pi/herdr-agent-state.ts",
+    "./npm/node_modules/@vectorize-io/hindsight-coding-agents/dist/pi.js"
+  ],
   "packages": [
     {
-      "source": "../node_modules/@quantile-co/factory-pi",
-      "extensions": ["dist/index.js"],
-      "skills": [],
+      "extensions": [
+        "dist/index.js"
+      ],
       "prompts": [],
+      "skills": [],
+      "source": "../node_modules/@quantile-co/factory-pi",
       "themes": []
     },
     {
-      "source": "git:github.com/herdrdev/herdr@2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01",
       "extensions": [],
-      "skills": [],
       "prompts": [],
+      "skills": [],
+      "source": "git:github.com/herdrdev/herdr@2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01",
       "themes": []
     },
     "npm:pi-goal-x@0.34.1",
     {
-      "source": "git:github.com/dbreunig/pi-mast-steer@eb07aaa75de6cbd38f77feda7372d0c9b387b505",
-      "extensions": ["index.ts"],
-      "skills": [],
+      "extensions": [
+        "index.ts"
+      ],
       "prompts": [],
+      "skills": [],
+      "source": "git:github.com/dbreunig/pi-mast-steer@eb07aaa75de6cbd38f77feda7372d0c9b387b505",
       "themes": []
     },
-    "npm:pi-memory@0.4.2",
     "npm:pi-web-access@0.42.0",
     "npm:@langfuse/pi-observability-plugin@0.1.2",
     "npm:@langfuse/tracing@5.14.0",
-    "npm:@opentelemetry/api@1.9.0"
+    "npm:@opentelemetry/api@1.9.0",
+    "npm:@vectorize-io/hindsight-coding-agents@0.8.7"
   ],
-  "skills": [],
-  "extensions": [
-    "./git/github.com/herdrdev/herdr/src/integration/assets/pi/herdr-agent-state.ts"
-  ]
+  "showCacheMissNotices": true,
+  "skills": []
 }

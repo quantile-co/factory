@@ -2,19 +2,13 @@
 
 Factory is the public `quantile-co/factory` shared Nix flake.
 
-Read [project memory](.pi/memory/MEMORY.md) before working here. It holds repository
-rules, decisions, preferences and deployment outcomes.
+Repository memory: [Hindsight workflow](packages/pi/skills/hindsight/SKILL.md) and
+[native configuration](.pi/hindsight.json).
 
 **Maintain this file as a lightweight navigation index.** Only add or update
 pointers to repository entry points. Do not add policies, preferences, decisions,
-runbooks, implementation details or session notes here; put durable guidance in
-`MEMORY.md`. Link to them rather than
-copying their contents into this file.
-
-**Memory hygiene:** Before finishing, leave no uncommitted or untracked memory
-files, including ignored working notes. Reconcile durable repository knowledge
-into tracked memory and commit it with the owning change; remove session logs
-and scratchpads. Never commit credentials or private cross-repository details.
+runbooks, implementation details or session notes here. Link to the owning
+repository guides and Hindsight workflow rather than copying their contents.
 
 ## Repository map
 
