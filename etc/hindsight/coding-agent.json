@@ -10,6 +10,7 @@
   "codebaseSurvey": false,
   "retainSessions": true,
   "retainExtractionMode": "concise",
+  "observationScopes": "shared",
   "autoInject": "recall",
   "injectTimeoutMs": 3000,
   "recallOptions": {

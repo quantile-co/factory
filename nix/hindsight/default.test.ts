@@ -42,6 +42,7 @@ it("renders independent consumer configuration and replacement Pi settings", () 
   const config = JSON.parse(readFileSync(paths.config, "utf8"));
   const settings = JSON.parse(readFileSync(paths.settings, "utf8"));
   expect(config.bankId).toBe("example--project");
+  expect(config.observationScopes).toBe("shared");
   expect(config).not.toHaveProperty("factory");
   expect(config).not.toHaveProperty("apiToken");
   expect(

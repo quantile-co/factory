@@ -48,7 +48,9 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
     method?: string;
     body: RequestInit["body"];
   }> = [];
-  let document: { original_text: string } | undefined;
+  let document:
+    | { original_text: string; observation_scopes: "shared" | "combined" }
+    | undefined;
   const operations = new Set<string>();
   let status = "pending";
   const request: NonNullable<Parameters<typeof main>[2]> = async (
@@ -70,9 +72,14 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
     const body = JSON.parse(String(init.body));
     expect(body.items).toHaveLength(1);
     expect(body.items[0].update_mode).toBe("replace");
+    expect(body.items[0].tags).toEqual(["source:factory-import"]);
+    expect(body.items[0].observation_scopes).toBe("shared");
     // Cloud deduplicates completed operation IDs even after document deletion.
     if (!operations.has(body.operation_id)) {
-      document = { original_text: body.items[0].content };
+      document = {
+        original_text: body.items[0].content,
+        observation_scopes: body.items[0].observation_scopes,
+      };
       operations.add(body.operation_id);
     }
     return Response.json({ operation_id: body.operation_id });
@@ -84,6 +91,7 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
     expect(plan.document_id).toBe(
       "factory-import:example--project:.pi/memory/MEMORY.md",
     );
+    expect(plan.observation_scopes).toBe("shared");
     expect(JSON.stringify(plan)).not.toContain("Reviewed fixture decision");
     expect(await main(["plan", ...args], {}, request)).toEqual(plan);
     await expect(main(["apply", ...args], env, request)).rejects.toThrow(
@@ -107,6 +115,8 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
         .submitted,
     ).toBe(false);
     expect(writes()).toHaveLength(1);
+    // Same-text retries must not silently change existing document scopes.
+    expect(calls.filter((call) => call.method === "PATCH")).toHaveLength(0);
     await expect(
       main(["verify", ...args, "--approve", plan.sha256], env, request),
     ).rejects.toThrow("not completed");
@@ -115,6 +125,19 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
       (await main(["verify", ...args, "--approve", plan.sha256], env, request))
         .verified,
     ).toBe(true);
+
+    if (!document) throw new Error("Expected retained fixture document");
+    document.observation_scopes = "combined";
+    expect(
+      (await main(["apply", ...args, "--approve", plan.sha256], env, request))
+        .submitted,
+    ).toBe(false);
+    await expect(
+      main(["verify", ...args, "--approve", plan.sha256], env, request),
+    ).rejects.toThrow("observation scope");
+    expect(writes()).toHaveLength(1);
+    expect(calls.filter((call) => call.method === "PATCH")).toHaveLength(0);
+    document.observation_scopes = "shared";
 
     await writeFile(file, "Explicitly corrected fixture decision.\n");
     const changed = await main(["plan", ...args], {}, request);

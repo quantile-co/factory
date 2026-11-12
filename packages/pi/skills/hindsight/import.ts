@@ -10,6 +10,7 @@ interface ImportResult {
   sha256: string;
   bytes: number;
   operation_id: string;
+  observation_scopes: "shared";
   replay?: string;
   submitted?: boolean;
   verified?: boolean;
@@ -80,6 +81,7 @@ export async function main(
     sha256: hash,
     bytes: bytes.length,
     operation_id: operationId,
+    observation_scopes: "shared" as const,
     ...(values.replay ? { replay: values.replay } : {}),
   };
   if (action === "plan") return plan;
@@ -134,6 +136,10 @@ export async function main(
       throw new Error(
         "Remote source content does not match the approved file.",
       );
+    if (document?.observation_scopes !== "shared")
+      throw new Error(
+        "Remote document observation scope is not explicitly shared. Review a native scope migration; no repair performed.",
+      );
     const operation = await api(`/operations/${operationId}`);
     if (operation?.status !== "completed")
       throw new Error(
@@ -150,7 +156,8 @@ export async function main(
     return {
       ...plan,
       submitted: false,
-      reason: "Source already matches; verify extraction before cutover.",
+      reason:
+        "Source already matches; verify extraction and observation scope before cutover.",
     };
   if (
     document !== undefined &&
@@ -169,6 +176,8 @@ export async function main(
         content,
         context: `Explicitly approved repository memory import/correction from ${source}; claims require current-source verification.`,
         tags: ["source:factory-import"],
+        // Provenance must not isolate imports from native Pi/correction observations.
+        observation_scopes: plan.observation_scopes,
         metadata: { source, sha256: hash },
         update_mode: "replace",
       },
