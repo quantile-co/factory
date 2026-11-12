@@ -1293,8 +1293,8 @@ consumed; no replacement orb or further snapshot deletion is authorized.
 Protected Build supports `npm_package=pi`, staging only the Pi tarball through
 `pi:pack` / `pi:stage` and the existing isolated credential/maintainer-2FA flow.
 This avoids republishing the unrelated GitHub package in the combined `factory`
-group. Pi 0.1.4 is prepared to deliver the existing disposable-orb guard and
-current extension to downstream repositories; no guard is disabled or copied.
+group. Published Pi 0.1.4 delivers the existing disposable-orb guard and current
+extension to downstream repositories; no guard is disabled or copied.
 Ordinary checkouts and Git metadata remain protected. The native package load,
 checkout guard and exact-orb opt-in regressions pass, and the packed extension
 contains both ordinary protection and the two-variable orb check.
@@ -1302,12 +1302,21 @@ contains both ordinary protection and the two-variable orb check.
 Approved Pi-only Build `43128120585` succeeded on source
 `5ff0a140390cd040fdafdc5ad2881c3638b51afe`, staging `factory-pi@0.1.4` with ID
 `49c248d8-5e66-4638-9c39-c516a4a5a094` and SHA-1
-`b8190d8ee997bf2fb3099eb0fee08fcb130174a2`. Initial npm status is `validating`;
-wait for `staged` before maintainer 2FA approval, then verify the registry hash.
-No other package was staged. This Build approval is consumed; no orb or consumer
-activation is authorized by it.
+`b8190d8ee997bf2fb3099eb0fee08fcb130174a2`. After npm validation reached `staged`,
+the maintainer completed native 2FA approval. Public registry readback verified
+0.1.4, `latest = 0.1.4` and the exact staged SHA-1. No other package was staged.
+The release is complete and its Build/approval consumed; it does not authorize
+an orb or consumer activation.
 
 ## Downstream Amp adoption
+
+Public `quantile-co/quantile.co` adopted source on main at
+`d9d984112f0e8f7dd9bb5e328ff66dd877f2a0a1` after exact-SHA Check `43129978221`.
+Its thin CLI/hooks pin Amp 0.1.0 and Pi 0.1.4, reusing patched Tailscale from its
+existing Factory flake pin. Concurrent tracing source was preserved; there was
+no website/source-release Build, infrastructure deployment, Amp project change
+or billed orb. Consumer guidance stays in that repository. Live manual-orb
+qualification and final worktree/artifact accounting remain outstanding.
 
 The lifecycle/connection library and plugins in `packages/amp` are published as
 `@quantile-co/factory-amp@0.1.0`, with release evidence below. Factory's
