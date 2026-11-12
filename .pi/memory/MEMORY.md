@@ -1299,6 +1299,14 @@ Ordinary checkouts and Git metadata remain protected. The native package load,
 checkout guard and exact-orb opt-in regressions pass, and the packed extension
 contains both ordinary protection and the two-variable orb check.
 
+Approved Pi-only Build `43128120585` succeeded on source
+`5ff0a140390cd040fdafdc5ad2881c3638b51afe`, staging `factory-pi@0.1.4` with ID
+`49c248d8-5e66-4638-9c39-c516a4a5a094` and SHA-1
+`b8190d8ee997bf2fb3099eb0fee08fcb130174a2`. Initial npm status is `validating`;
+wait for `staged` before maintainer 2FA approval, then verify the registry hash.
+No other package was staged. This Build approval is consumed; no orb or consumer
+activation is authorized by it.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugins in `packages/amp` are published as
