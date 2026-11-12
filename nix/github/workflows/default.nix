@@ -103,12 +103,23 @@ let
     else
       let
         marker = "          GH_REPO_TOKEN: \${{ secrets.GH_REPO_TOKEN }}\n";
+        wrapped = builtins.elem phase cfg.otelJobs;
+        task = if wrapped then "pnpm otel -- pnpm run github:" else "\"$direnv\" exec . pnpm run github:";
       in
       assert lib.assertMsg (lib.hasInfix marker source)
         "Workflow provider credential environment changed";
       builtins.replaceStrings
-        [ marker ]
-        [ (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n") ]
+        [ marker "        run: |\n" task ]
+        [
+          (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n")
+          "        run: |\n          export -n HINDSIGHT_API_TOKEN\n"
+          (
+            lib.optionalString (!wrapped)
+              "shell=$(env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          "
+            + "export HINDSIGHT_API_TOKEN\n          "
+            + (if wrapped then task else "pnpm run github:")
+          )
+        ]
         source;
   render =
     name: source: layers:
