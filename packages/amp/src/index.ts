@@ -278,7 +278,7 @@ if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ] && [ -n "\${FACTORY_AMP_OTEL_CLI:-}" ]; 
   collector=$OTEL_COLLECTOR_BINARY
   install="$HOME/.local/share/factory-amp/otel"
   for path in "$node" "$collector" "$install" "$FACTORY_AMP_OTEL_CLI" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}"; do
-    [[ "$path" =~ ^/[a-zA-Z0-9/._+-]+$ ]] || { echo 'Select plain absolute OTel artifact paths.' >&2; exit 1; }
+    [[ "$path" =~ ^/[a-zA-Z0-9/._+@-]+$ ]] || { echo 'Select plain absolute OTel artifact paths.' >&2; exit 1; }
   done
   mkdir -p "$install"
   cp -R "$(dirname "$FACTORY_AMP_OTEL_CLI")/." "$install/"

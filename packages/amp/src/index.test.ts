@@ -156,9 +156,14 @@ it.each(["1.104.5", "1.104.1"])(
   (version) => {
     const home = mkdtempSync(join(tmpdir(), "factory-amp-setup-"));
     try {
-      mkdirSync(join(home, "artifacts"));
-      writeFileSync(join(home, "artifacts/cli.js"), "import './chunk.js';");
-      writeFileSync(join(home, "artifacts/chunk.js"), "export {};");
+      // Match a downstream pnpm install, not Factory's unscoped workspace path.
+      const artifacts = join(
+        home,
+        "node_modules/.pnpm/@quantile-co+factory-otel@0.1.0/node_modules/@quantile-co/factory-otel/dist",
+      );
+      mkdirSync(artifacts, { recursive: true });
+      writeFileSync(join(artifacts, "cli.js"), "import './chunk.js';");
+      writeFileSync(join(artifacts, "chunk.js"), "export {};");
       writeFileSync(join(home, "host.yaml"), "host fixture");
       writeFileSync(join(home, "docker.yaml"), "docker fixture");
       const collector = join(home, ".local/share/factory-amp/otel");
@@ -204,7 +209,7 @@ ${setupScript}
             VERSION: version,
             PATH: process.env.PATH,
             CLICKSTACK_API_KEY: "fixture-not-for-snapshots",
-            FACTORY_AMP_OTEL_CLI: join(home, "artifacts/cli.js"),
+            FACTORY_AMP_OTEL_CLI: join(artifacts, "cli.js"),
             OTEL_COLLECTOR_BINARY:
               "/nix/store/fixture-collector/bin/otelcol-contrib",
             OTEL_COLLECTOR_CONFIG: join(home, "host.yaml"),
