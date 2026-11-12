@@ -398,8 +398,9 @@ export function resumeCollector(
       CLICKSTACK_API_KEY: config.key,
       OTEL_DOCKER_STATS: process.env.OTEL_DOCKER_STATS === "1" ? "1" : "0",
     };
+    run(["install", "-m", "0600", "/dev/null", file]);
     run(
-      ["install", "-m", "0600", "/dev/stdin", file],
+      ["tee", file],
       `${Object.entries(values)
         .map(([name, value]) => `${name}=${JSON.stringify(value)}`)
         .join("\n")}\n`,

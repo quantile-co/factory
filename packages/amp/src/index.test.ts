@@ -103,53 +103,86 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
   }
 });
 
-it("refreshes orb collector runtime credentials without arguments or persistent files, and fails open", () => {
-  const directory = mkdtempSync(join(tmpdir(), "factory-orb-otel-"));
-  const log = vi.spyOn(console, "error").mockImplementation(() => {});
-  try {
-    const record = join(directory, "operations");
-    const sudo = join(directory, "sudo");
-    writeFileSync(
-      sudo,
-      `#!${process.execPath}
+it.each(["none", "tee", "restart"])(
+  "refreshes collector credentials through native stdin, cleans up and fails open (%s failure)",
+  (failure) => {
+    const directory = mkdtempSync(join(tmpdir(), "factory-orb-otel-"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const record = join(directory, "operations");
+      const sudo = join(directory, "sudo");
+      const file = join(directory, "otel.env");
+      writeFileSync(
+        sudo,
+        `#!${process.execPath}
 const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const args = process.argv.slice(3);
+const file = ${JSON.stringify(file)};
 fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify(args) + '\\n');
-if (args[0] === 'install') fs.appendFileSync(${JSON.stringify(record)}, fs.readFileSync(0, 'utf8'));
-if (args.includes('restart')) { console.error('PRIVATE_ERROR'); process.exit(1); }
+if (args[0] === 'tee') {
+  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  assert.equal(fs.readFileSync(file, 'utf8'), '');
+}
+if (['install', 'tee', 'rm'].includes(args[0])) {
+  // Inherit Node's actual stdin descriptor: reopening /dev/stdin fails on Linux.
+  const result = spawnSync(args[0], args.slice(1).map(arg =>
+    arg === '/run/factory-amp/otel.env' ? file : arg), { stdio: 'inherit' });
+  if (result.status !== 0) process.exit(1);
+}
+if (args.includes('restart')) {
+  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  assert.ok(fs.readFileSync(file, 'utf8').includes('CLICKSTACK_API_KEY="fixture-runtime-key"\\n'));
+}
+if (args.includes(${JSON.stringify(failure)})) { console.error('PRIVATE_ERROR'); process.exit(1); }
 if (args.includes('is-active')) process.exit(3);
 `,
-    );
-    chmodSync(sudo, 0o755);
-    vi.stubEnv("PATH", directory);
-    vi.stubEnv("AMP_ORB", "1");
-    vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
-    vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
-    expect(() => resumeCollector("org/repo", thread)).not.toThrow();
-    const operations = readFileSync(record, "utf8");
-    expect(operations).toContain(
-      '["install","-m","0600","/dev/stdin","/run/factory-amp/otel.env"]',
-    );
-    expect(operations).toContain('CLICKSTACK_API_KEY="fixture-runtime-key"');
-    expect(
-      operations.trim().endsWith('["rm","-f","/run/factory-amp/otel.env"]'),
-    ).toBe(true);
-    expect(JSON.stringify(log.mock.calls)).not.toMatch(
-      /fixture-runtime-key|PRIVATE_ERROR/,
-    );
-    writeFileSync(record, "");
-    log.mockClear();
-    vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "");
-    vi.stubEnv("CLICKSTACK_API_KEY", "");
-    resumeCollector("org/repo", thread);
-    expect(readFileSync(record, "utf8")).not.toContain('"stop"');
-    expect(log).not.toHaveBeenCalled();
-  } finally {
-    log.mockRestore();
-    vi.unstubAllEnvs();
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
+      );
+      chmodSync(sudo, 0o755);
+      vi.stubEnv("PATH", `${directory}:${process.env.PATH}`);
+      vi.stubEnv("AMP_ORB", "1");
+      vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
+      vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
+      expect(() => resumeCollector("org/repo", thread)).not.toThrow();
+      const operations = readFileSync(record, "utf8");
+      expect(
+        operations
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line)),
+      ).toEqual([
+        ["systemctl", "stop", "factory-amp-otel.service"],
+        ["install", "-m", "0600", "/dev/null", "/run/factory-amp/otel.env"],
+        ["tee", "/run/factory-amp/otel.env"],
+        ...(failure === "tee"
+          ? []
+          : [["systemctl", "restart", "factory-amp-otel.service"]]),
+        ["rm", "-f", "/run/factory-amp/otel.env"],
+      ]);
+      expect(() => statSync(file)).toThrow(/ENOENT/);
+      expect(log.mock.calls).toEqual(
+        failure === "none"
+          ? []
+          : [["OTel orb collector unavailable; resume continues."]],
+      );
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /fixture-runtime-key|PRIVATE_ERROR/,
+      );
+      writeFileSync(record, "");
+      log.mockClear();
+      vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "");
+      vi.stubEnv("CLICKSTACK_API_KEY", "");
+      resumeCollector("org/repo", thread);
+      expect(readFileSync(record, "utf8")).not.toContain('"stop"');
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+      vi.unstubAllEnvs();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
 
 it.each(["1.104.5", "1.104.1"])(
   "prepares only safe Tailscale SSH snapshots (%s)",
