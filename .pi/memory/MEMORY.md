@@ -1289,6 +1289,16 @@ its temporary profile and three new known-hosts records were removed. The origin
 pilot/profile/login remain unchanged. This cache-deletion/one-orb approval is
 consumed; no replacement orb or further snapshot deletion is authorized.
 
+#decision [[pi-only-release-for-orb-adoption]]
+Protected Build supports `npm_package=pi`, staging only the Pi tarball through
+`pi:pack` / `pi:stage` and the existing isolated credential/maintainer-2FA flow.
+This avoids republishing the unrelated GitHub package in the combined `factory`
+group. Pi 0.1.4 is prepared to deliver the existing disposable-orb guard and
+current extension to downstream repositories; no guard is disabled or copied.
+Ordinary checkouts and Git metadata remain protected. The native package load,
+checkout guard and exact-orb opt-in regressions pass, and the packed extension
+contains both ordinary protection and the two-variable orb check.
+
 ## Downstream Amp adoption
 
 The lifecycle/connection library and plugins in `packages/amp` are published as

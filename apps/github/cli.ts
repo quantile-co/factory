@@ -76,7 +76,7 @@ program
   )
   .addOption(
     new Option("--npm-package <package>", "Release selection")
-      .choices(["factory", "namespace", "otel", "amp"])
+      .choices(["factory", "namespace", "otel", "amp", "pi"])
       .env("NPM_PACKAGE")
       .default("factory"),
   )

@@ -196,6 +196,7 @@ process.exit(Number(process.argv[3].endsWith(":pack") ? e.TEST_PACK_EXIT : e.TES
       ["factory", "npm", 0, 23],
       ["factory", "npm", 0, 0],
       ["amp", "amp", 0, 0],
+      ["pi", "pi", 0, 0],
     ] as const) {
       writeFileSync(log, "");
       const result = spawnSync(

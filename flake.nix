@@ -64,6 +64,7 @@
                     + "          - namespace\n"
                     + "          - otel\n"
                     + "          - amp\n"
+                    + "          - pi\n"
                   )
                 ]
                 source
