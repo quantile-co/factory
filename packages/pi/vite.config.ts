@@ -34,7 +34,7 @@ export default defineConfig(({ command }) => ({
     },
     rolldownOptions: {
       platform: "node",
-      external: [/^node:/, /^@earendil-works\//],
+      external: [/^node:/, /^@earendil-works\//, /^typebox(?:\/|$)/],
     },
   },
 }));

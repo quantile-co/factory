@@ -12,13 +12,14 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { type ClassifierResult, Type, type Usage } from "@earendil-works/pi-ai";
+import type { ClassifierResult, Usage } from "@earendil-works/pi-ai";
 import {
   type ExtensionAPI,
   type ExtensionContext,
   getShellConfig,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
 
 interface Repository {
   primary: string;
