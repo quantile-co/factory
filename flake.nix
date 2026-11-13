@@ -294,6 +294,7 @@
                     types = [ "node" ];
                   };
                   include = [
+                    ".github/actions/**/*.ts"
                     "*.test.ts"
                     "nix/**/*.test.ts"
                     "tf/**/*.test.ts"

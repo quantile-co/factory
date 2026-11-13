@@ -71,6 +71,7 @@ switch (action) {
       "biome",
       "check",
       "--error-on-warnings",
+      ".github/actions",
       "nix",
       "tf",
       "apps",
@@ -84,6 +85,7 @@ switch (action) {
     ]);
     break;
   case "test":
+    run("node", ["--test", ".github/actions/otel/index.test.ts"]);
     run("pnpm", [
       "exec",
       "vitest",
@@ -111,6 +113,7 @@ switch (action) {
       "check",
       "--write",
       "--error-on-warnings",
+      ".github/actions",
       "nix",
       "tf",
       "apps",
