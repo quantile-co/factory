@@ -1,6 +1,6 @@
 {
   "name": "@quantile-co/factory-amp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "license": "MIT",
   "description": "Amp orb runtime and native Herdr connections.",
   "type": "module",
