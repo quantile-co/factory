@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 import {
   chmodSync,
   copyFileSync,
-  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -13,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
+import { manageFiles } from "../../packages/nix/src/files.ts";
 
 it("runs consumer-native Google and Quantile prose rules read-only with scoped Git selection", () => {
   const root = new URL("../../", import.meta.url);
@@ -53,10 +53,11 @@ it("runs consumer-native Google and Quantile prose rules read-only with scoped G
     const config = join(work, ".vale.ini");
     copyFileSync(join(bundle, "config"), config);
     chmodSync(config, 0o644);
-    cpSync(join(bundle, "styles"), join(work, ".vale"), {
-      recursive: true,
-      dereference: true,
-    });
+    manageFiles(
+      work,
+      { ".vale": { source: join(bundle, "styles"), mode: "copy" } },
+      "write",
+    );
     const baseline = readFileSync(config, "utf8");
     mkdirSync(join(work, "docs"));
     const guide = join(work, "docs/guide with spaces.md");

@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, it } from "vitest";
 
 it("keeps loopback emulator defaults and deny-all Rules when a site adds hosting", () => {
@@ -8,9 +9,9 @@ it("keeps loopback emulator defaults and deny-all Rules when a site adds hosting
     f = builtins.getFlake ${JSON.stringify(`git+${root.href}`)};
     pkgs = f.inputs.nixpkgs.legacyPackages.\${builtins.currentSystem};
     config = (pkgs.lib.evalModules { modules = [ f.nixModules.firebase f.nixModules.biome ]; specialArgs = { inherit pkgs; }; }).config;
-  in [
-    (config.quantile-co.factory.firebase.withOverrides { hosting.public = "out"; })
-    (pkgs.writeText "firestore.rules" (builtins.readFile config.quantile-co.factory.firebase.rulesFile))
+  in pkgs.linkFarm "firebase-consumer-test" [
+    { name = "config"; path = config.quantile-co.factory.firebase.withOverrides { hosting.public = "out"; }; }
+    { name = "rules"; path = pkgs.writeText "firestore.rules" (builtins.readFile config.quantile-co.factory.firebase.rulesFile); }
   ]`;
   const result = spawnSync(
     "nix",
@@ -19,8 +20,8 @@ it("keeps loopback emulator defaults and deny-all Rules when a site adds hosting
   );
   if (result.error) throw result.error;
   expect(result.status, result.stderr).toBe(0);
-  const [configFile, rulesFile] = result.stdout.trim().split("\n");
-  const rendered = JSON.parse(readFileSync(configFile, "utf8"));
+  const bundle = result.stdout.trim();
+  const rendered = JSON.parse(readFileSync(join(bundle, "config"), "utf8"));
   expect(rendered).toMatchObject({
     hosting: { public: "out" },
     firestore: { rules: "firestore.rules" },
@@ -29,7 +30,7 @@ it("keeps loopback emulator defaults and deny-all Rules when a site adds hosting
       ui: { enabled: false },
     },
   });
-  const rules = readFileSync(rulesFile, "utf8");
+  const rules = readFileSync(join(bundle, "rules"), "utf8");
   expect(rules).toContain("rules_version = '2'");
   expect(rules).toContain("allow read, write: if false;");
   expect(rules).not.toContain("if true;");

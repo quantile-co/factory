@@ -48,7 +48,7 @@ pnpm test
 
 ## Skills
 
-Run from this repository with Pi:
+Run from this repository with Pi.
 
 - **Day Zero deployment**
 

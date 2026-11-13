@@ -3,7 +3,12 @@
   options.quantile-co.factory.otelcol-contrib = {
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.opentelemetry-collector-contrib;
+      default =
+        (pkgs.opentelemetry-collector-releases.override {
+          # The Collector's Swiss dependency does not yet support Go 1.27.
+          buildGoModule = pkgs.buildGo126Module;
+          go = pkgs.go_1_26;
+        }).otelcol-contrib;
       description = "Upstream contrib collector from the locked Nixpkgs input; starts nothing on import.";
     };
     hostConfigFile = lib.mkOption {
