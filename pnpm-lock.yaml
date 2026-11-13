@@ -257,12 +257,6 @@ importers:
         specifier: workspace:*
         version: link:../../packages/nix
 
-  apps/otel:
-    dependencies:
-      '@quantile-co/factory-otel':
-        specifier: workspace:*
-        version: link:../../packages/otel
-
   apps/repo: {}
 
   packages/amp:

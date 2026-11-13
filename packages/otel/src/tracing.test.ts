@@ -8,7 +8,7 @@ import {
   type MockInstance,
   vi,
 } from "vitest";
-import { initializeTracing, type TracingPolicy } from "./tracing.ts";
+import { initializeTracing, type TracingOptions } from "./tracing.ts";
 
 const transport = vi.hoisted(() => ({
   spans: [] as ReadableSpan[],
@@ -26,14 +26,7 @@ vi.mock("@opentelemetry/exporter-trace-otlp-http", () => ({
     async shutdown() {}
   },
 }));
-const policy: TracingPolicy = {
-  serviceName: "fixture-app",
-  spanName: "Application request",
-  sample: ({ kind, attributes }) =>
-    kind === SpanKind.SERVER && attributes.operation === "approved",
-  attributes: (attributes): Record<string, string> =>
-    attributes.result === "ok" ? { result: "ok" } : {},
-};
+const policy: TracingOptions = { serviceName: "fixture-app" };
 let registration: MockInstance<typeof trace.setGlobalTracerProvider>;
 beforeEach(() => {
   vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
@@ -53,7 +46,7 @@ afterEach(async () => {
   vi.unstubAllEnvs();
 });
 
-it("requires an explicit policy and rejects ambiguous ambient headers without changing them", async () => {
+it("requires application opt-in and rejects ambiguous ambient headers without changing them", async () => {
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   expect(await initializeTracing()).toBeUndefined();
   vi.stubEnv("OTEL_EXPORTER_OTLP_HEADERS", "authorization=PRIVATE_KEY");
@@ -65,7 +58,7 @@ it("requires an explicit policy and rejects ambiguous ambient headers without ch
   expect(JSON.stringify(log.mock.calls)).not.toContain("PRIVATE_KEY");
 });
 
-it("initializes once and batches only fresh caller-approved spans through the official exporter", async () => {
+it("initializes once and preserves native span names, attributes, status, events, links and resources", async () => {
   vi.stubEnv("OTEL_RESOURCE_ATTRIBUTES", "secret=PRIVATE_RESOURCE");
   vi.stubEnv("OTEL_SERVICE_NAME", "PRIVATE_SERVICE");
   vi.stubEnv(
@@ -81,8 +74,7 @@ it("initializes once and batches only fresh caller-approved spans through the of
   expect(transport.constructor).toHaveBeenCalledExactlyOnceWith({
     url: "https://ingest.example.invalid/v1/traces",
     headers: { authorization: "Bearer fixture-key" },
-    timeoutMillis: 1500,
-    concurrencyLimit: 1,
+    timeoutMillis: 10_000,
     httpAgentOptions: { keepAlive: true },
   });
   const tracer = trace.getTracer("PRIVATE_SCOPE", "PRIVATE_VERSION");
@@ -92,6 +84,8 @@ it("initializes once and batches only fresh caller-approved spans through the of
       operation: "approved",
       url: "PRIVATE_URL",
       cookie: "PRIVATE_COOKIE",
+      long: "x".repeat(1024),
+      list: ["one", "two"],
     },
     links: [
       {
@@ -110,15 +104,33 @@ it("initializes once and batches only fresh caller-approved spans through the of
   span.end();
   tracer.startSpan("PRIVATE_UNSAMPLED").end();
   await first?.flush();
-  expect(transport.spans).toHaveLength(1);
-  const safe = transport.spans[0];
-  expect(safe.name).toBe("Application request");
-  expect(safe.attributes).toEqual({ result: "ok" });
-  expect(safe.status).toEqual({ code: SpanStatusCode.ERROR });
-  expect(safe.resource.attributes).toEqual({ "service.name": "fixture-app" });
-  expect(safe.events).toEqual([]);
-  expect(safe.links).toEqual([]);
-  expect(JSON.stringify(safe)).not.toContain("PRIVATE_");
+  expect(transport.spans).toHaveLength(2);
+  const exported = transport.spans[0];
+  expect(exported.name).toBe("PRIVATE_NAME");
+  expect(exported.attributes).toMatchObject({
+    result: "ok",
+    url: "PRIVATE_URL",
+    cookie: "PRIVATE_COOKIE",
+    long: "x".repeat(1024),
+    list: ["one", "two"],
+  });
+  expect(exported.status).toEqual({
+    code: SpanStatusCode.ERROR,
+    message: "PRIVATE_STATUS",
+  });
+  expect(exported.resource.attributes).toMatchObject({
+    "service.name": "fixture-app",
+    secret: "PRIVATE_RESOURCE",
+  });
+  expect(exported.events.map((event) => event.name)).toEqual([
+    "PRIVATE_EVENT",
+    "exception",
+  ]);
+  expect(exported.links[0].context.traceId).toBe("1".repeat(32));
+  expect(exported.instrumentationScope).toMatchObject({
+    name: "PRIVATE_SCOPE",
+    version: "PRIVATE_VERSION",
+  });
 });
 
 it("leaves an existing provider untouched instead of attaching another integration's exporter", async () => {

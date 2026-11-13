@@ -80,6 +80,8 @@ run "${visibility}_fork_approval" {
       contains(github_actions_repository_permissions.self.allowed_actions_config[0].patterns_allowed,
         "quantile-co/factory/.github/workflows/*@*") &&
       contains(github_actions_repository_permissions.self.allowed_actions_config[0].patterns_allowed,
+        "quantile-co/factory/.github/actions/otel@38aedb9583cdd78d121f949ff94f603982f39eee") &&
+      contains(github_actions_repository_permissions.self.allowed_actions_config[0].patterns_allowed,
         "cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702")
     )
     error_message = "Default selected actions must retain pinned Factory workflows."

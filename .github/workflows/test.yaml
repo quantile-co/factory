@@ -18,6 +18,11 @@ jobs:
     environment: prod
     timeout-minutes: 30
     steps:
+      - name: Start OpenTelemetry Collector
+        uses: quantile-co/factory/.github/actions/otel@38aedb9583cdd78d121f949ff94f603982f39eee
+        env:
+          CLICKSTACK_OTLP_ENDPOINT: ${{ vars.CLICKSTACK_OTLP_ENDPOINT }}
+          CLICKSTACK_API_KEY: ${{ secrets.CLICKSTACK_API_KEY }}
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,15 +53,8 @@ jobs:
 
       - name: Run checks, then tests
         env:
-          OTEL_AGENT_PLATFORM: namespace
-          OTEL_AGENT_REPOSITORY: ${{ github.repository }}
-          OTEL_AGENT_RUN_ID: ${{ github.run_id }}
-          OTEL_AGENT_RUN_ATTEMPT: ${{ github.run_attempt }}
-          CLICKSTACK_OTLP_ENDPOINT: ${{ vars.CLICKSTACK_OTLP_ENDPOINT }}
-          CLICKSTACK_API_KEY: ${{ secrets.CLICKSTACK_API_KEY }}
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
         run: |
-          export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY
           export TURBO_CACHE=local:rw
           if [ -n "$TURBO_TOKEN" ]; then
             export TURBO_CACHE=local:rw,remote:rw
@@ -64,8 +62,4 @@ jobs:
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile
-          shell=$(env -u NIX_CACHE_PRIVATE_KEY "$direnv" export bash)
-          eval "$shell"
-          unset shell
-          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY
-          pnpm otel -- pnpm run github:test
+          "$direnv" exec . pnpm run github:test

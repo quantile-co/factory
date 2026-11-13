@@ -25,6 +25,7 @@ function workflow(path: string) {
 function namespaceWorkflows(
   otel = false,
   hindsight = false,
+  actionRef: string | null = null,
 ): Record<string, string> {
   return JSON.parse(
     execFileSync(
@@ -48,6 +49,7 @@ function namespaceWorkflows(
               nixCache = "namespace";
               hindsight = ${hindsight ? "true" : "false"};
               otelJobs = ${otel ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
+              otelActionRef = ${actionRef ? JSON.stringify(actionRef) : "null"};
           }; }
         ];
       }).config.quantile-co.factory.github.workflows;
@@ -151,86 +153,41 @@ it("keeps Namespace lifecycle inside trusted GitHub task commands and leaves Che
   }
 });
 
-it("releases ingestion credentials only to explicitly selected trusted-main native task wrappers", () => {
+it("requires a published action ref instead of falling back to a task wrapper", () => {
+  expect(() => namespaceWorkflows(true)).toThrow(
+    "Set otelActionRef to a published Factory commit",
+  );
+});
+
+it("starts the pinned native action first and confines ingestion credentials to it", () => {
   const temporary = mkdtempSync(
-    join(tmpdir(), "factory-observability-workflow-"),
+    join(tmpdir(), "factory-otel-action-workflow-"),
   );
   try {
-    const disabled = namespaceWorkflows();
-    const enabled = namespaceWorkflows(true);
-    expect(enabled.check).toBe(disabled.check);
+    const ref = "a".repeat(40);
+    const files = namespaceWorkflows(true, false, ref);
+    expect(files.check).toBe(namespaceWorkflows().check);
     for (const name of ["test", "build", "plan", "apply"]) {
-      expect(disabled[name]).not.toContain("CLICKSTACK_API_KEY");
       const path = join(temporary, `${name}.yaml`);
-      writeFileSync(path, enabled[name]);
-      const data = workflow(path);
-      for (const job of Object.values(data.jobs) as Array<{
+      writeFileSync(path, files[name]);
+      expect(files[name]).not.toContain("pnpm otel");
+      for (const job of Object.values(workflow(path).jobs) as Array<{
         if: string;
         environment: string;
-        steps: Array<{ env?: Record<string, string>; run?: string }>;
+        steps: Array<{ uses?: string; env?: Record<string, string> }>;
       }>) {
-        expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
         expect(job.if).toContain("github.ref == 'refs/heads/main'");
+        expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
         expect(job.environment).toBe("prod");
-        const tasks = job.steps.filter((step) => step.env?.CLICKSTACK_API_KEY);
-        expect(tasks).toHaveLength(1);
-        const script = tasks[0].run ?? "";
-        expect(script).toContain(
-          "export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY",
+        expect(job.steps[0].uses).toBe(
+          `quantile-co/factory/.github/actions/otel@${ref}`,
         );
-        expect(script.indexOf("pnpm install --frozen-lockfile")).toBeLessThan(
-          script.indexOf("export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY"),
+        expect(job.steps[0].env?.CLICKSTACK_API_KEY).toBe(
+          `\${{ secrets.CLICKSTACK_API_KEY }}`,
         );
-        expect(script).toContain(`pnpm otel -- pnpm run github:${name}`);
-        if (name === "test") {
-          const bin = join(temporary, "bin");
-          mkdirSync(bin);
-          const record = join(temporary, "calls");
-          for (const tool of ["nix", "direnv", "pnpm"]) {
-            const path = join(bin, tool);
-            writeFileSync(
-              path,
-              `#!${process.execPath}
-const fs = require('node:fs');
-fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ tool: ${JSON.stringify(tool)}, secret: !!process.env.CLICKSTACK_API_KEY, signingKey: !!process.env.NIX_CACHE_PRIVATE_KEY, shell: process.env.TEST_SHELL }) + '\\n');
-if (${JSON.stringify(tool)} === 'nix') console.log(${JSON.stringify(temporary)});
-if (${JSON.stringify(tool)} === 'direnv' && process.argv[2] === 'export') console.log('export TEST_SHELL=ready');
-if (${JSON.stringify(tool)} === 'pnpm') {
-  if (process.argv[2] !== 'otel' || process.argv[3] !== '--') process.exit(91);
-  process.exit(23);
-}
-`,
-            );
-            chmodSync(path, 0o755);
-          }
-          const result = spawnSync("bash", ["-euo", "pipefail", "-c", script], {
-            encoding: "utf8",
-            env: {
-              ...process.env,
-              PATH: `${bin}:${process.env.PATH}`,
-              TURBO_TOKEN: "",
-              CLICKSTACK_OTLP_ENDPOINT: "https://ingest.example.invalid",
-              CLICKSTACK_API_KEY: "fixture-key",
-              NIX_CACHE_PRIVATE_KEY: "fixture-signing-key",
-            },
-          });
-          expect(result.status, result.stderr).toBe(23);
-          const calls = readFileSync(record, "utf8")
-            .trim()
-            .split("\n")
-            .map((line) => JSON.parse(line));
-          expect(
-            calls
-              .slice(0, -1)
-              .every((call) => !call.secret && !call.signingKey),
-          ).toBe(true);
-          expect(calls.at(-1)).toEqual({
-            tool: "pnpm",
-            secret: true,
-            signingKey: true,
-            shell: "ready",
-          });
-        }
+        expect(
+          job.steps.slice(1).every((step) => !step.env?.CLICKSTACK_API_KEY),
+        ).toBe(true);
       }
     }
   } finally {
@@ -241,8 +198,9 @@ if (${JSON.stringify(tool)} === 'pnpm') {
 it("selects Hindsight credentials only for protected Plan/Apply jobs", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-hindsight-workflow-"));
   try {
-    const disabled = namespaceWorkflows(true);
-    const enabled = namespaceWorkflows(true, true);
+    const ref = "a".repeat(40);
+    const disabled = namespaceWorkflows(true, false, ref);
+    const enabled = namespaceWorkflows(true, true, ref);
     for (const [name, source] of Object.entries(enabled)) {
       expect(disabled[name]).not.toContain("HINDSIGHT_API_TOKEN");
       if (!["plan", "apply"].includes(name)) {

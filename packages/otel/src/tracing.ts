@@ -1,47 +1,33 @@
-import type { Attributes, SpanKind } from "@opentelemetry/api";
-import type { ReadableSpan } from "@opentelemetry/sdk-trace";
 import { managedConfig } from "./config.ts";
 
-export type TracingPolicy = {
-  serviceName: string;
-  spanName: string;
-  sample(span: {
-    name: string;
-    kind: SpanKind;
-    attributes: Attributes;
-  }): boolean;
-  attributes(attributes: Attributes): Record<string, string | number | boolean>;
-};
+export type TracingOptions = { serviceName: string };
 export type Tracing = { flush(): Promise<void> };
 const state = globalThis as typeof globalThis & {
   __factoryOtelTracing?: Promise<Tracing | undefined>;
 };
 
-// Explicit application-owned policy only. Never attach to Langfuse's provider,
-// install auto-instrumentation/propagators or enable ambient OTEL exporters.
+// Application opt-in only. Preserve native SDK spans and do not attach an
+// exporter to another integration's provider (including Langfuse).
 export async function initializeTracing(
-  policy?: TracingPolicy,
+  options?: TracingOptions,
   env = process.env,
 ): Promise<Tracing | undefined> {
-  if (
-    !policy ||
-    typeof policy.sample !== "function" ||
-    typeof policy.attributes !== "function"
-  )
-    return;
+  if (!options) return;
   try {
     const config = managedConfig(env);
     if (!config) return;
-    if (
-      !/^[\w.-]{1,100}$/.test(policy.serviceName) ||
-      !/^[\w .-]{1,80}$/.test(policy.spanName)
-    )
-      throw new Error();
-    const selected = { ...policy };
+    if (!/^[\w.-]{1,100}$/.test(options.serviceName)) throw new Error();
     state.__factoryOtelTracing ??= (async () => {
       const [
         { trace, context },
-        { resourceFromAttributes },
+        {
+          detectResources,
+          envDetector,
+          processDetector,
+          hostDetector,
+          defaultResource,
+          resourceFromAttributes,
+        },
         sdk,
         { OTLPTraceExporter },
         { AsyncLocalStorageContextManager },
@@ -52,100 +38,33 @@ export async function initializeTracing(
         import("@opentelemetry/exporter-trace-otlp-http"),
         import("@opentelemetry/context-async-hooks"),
       ]);
-      const resource = resourceFromAttributes({
-        "service.name": selected.serviceName,
-      });
-      // The exporter snapshots fallback headers in its constructor. No async gap
-      // after this guard, and no mutation of another integration's environment.
+      // Avoid accidentally mixing another integration's authentication headers.
+      // This guard never mutates process-global exporter configuration.
       if (
         process.env.OTEL_EXPORTER_OTLP_HEADERS ||
         process.env.OTEL_EXPORTER_OTLP_TRACES_HEADERS
-      )
+      ) {
         throw new Error();
-      const batch = new sdk.BatchSpanProcessor({
-        maxExportBatchSize: 1,
-        maxQueueSize: 128,
-        exportTimeoutMillis: 2_000,
-        exporter: new OTLPTraceExporter({
-          url: `${config.endpoint}/v1/traces`,
-          headers: { authorization: `Bearer ${config.key}` },
-          timeoutMillis: 1_500,
-          httpAgentOptions: { keepAlive: true },
-          concurrencyLimit: 1,
-        }),
-      });
+      }
       const provider = new sdk.TracerProvider({
-        resource,
-        sampler: {
-          shouldSample: (_context, _id, name, kind, values) => {
-            let sample = false;
-            try {
-              sample =
-                selected.sample({ name, kind, attributes: values }) === true;
-            } catch {
-              /* Fail closed. */
-            }
-            return {
-              decision: sample
-                ? sdk.SamplingDecision.RECORD_AND_SAMPLED
-                : sdk.SamplingDecision.NOT_RECORD,
-            };
-          },
-          toString: () => "CallerPrivacyPolicy",
-        },
-        spanLimits: {
-          eventCountLimit: 0,
-          linkCountLimit: 0,
-          attributeCountLimit: 64,
-          attributeValueLengthLimit: 512,
-        },
+        resource: defaultResource()
+          .merge(
+            detectResources({
+              detectors: [envDetector, processDetector, hostDetector],
+            }),
+          )
+          .merge(
+            resourceFromAttributes({ "service.name": options.serviceName }),
+          ),
         spanProcessors: [
-          {
-            onStart() {},
-            onEnd(span) {
-              try {
-                const values: Attributes = {};
-                for (const [key, value] of Object.entries(
-                  selected.attributes(span.attributes),
-                ).slice(0, 32)) {
-                  if (
-                    key.length <= 128 &&
-                    ((typeof value === "string" && value.length <= 256) ||
-                      typeof value === "boolean" ||
-                      (typeof value === "number" && Number.isFinite(value)))
-                  )
-                    values[key] = value;
-                }
-                // Construct a fresh allowlisted span BEFORE batching. Raw names,
-                // status messages, events, links, scope and discovered resources
-                // never enter the exporter queue.
-                const { traceId, spanId, traceFlags } = span.spanContext();
-                const safe: ReadableSpan = {
-                  name: selected.spanName,
-                  kind: span.kind,
-                  spanContext: () => ({ traceId, spanId, traceFlags }),
-                  startTime: span.startTime,
-                  endTime: span.endTime,
-                  duration: span.duration,
-                  ended: span.ended,
-                  status: { code: span.status.code },
-                  attributes: values,
-                  events: [],
-                  links: [],
-                  resource,
-                  instrumentationScope: { name: "factory.otel" },
-                  droppedAttributesCount: 0,
-                  droppedEventsCount: 0,
-                  droppedLinksCount: 0,
-                };
-                batch.onEnd(safe);
-              } catch {
-                /* A failed policy drops the span, never the workload. */
-              }
-            },
-            forceFlush: () => batch.forceFlush(),
-            shutdown: () => batch.shutdown(),
-          },
+          new sdk.BatchSpanProcessor({
+            exporter: new OTLPTraceExporter({
+              url: `${config.endpoint}/v1/traces`,
+              headers: { authorization: `Bearer ${config.key}` },
+              timeoutMillis: 10_000,
+              httpAgentOptions: { keepAlive: true },
+            }),
+          }),
         ],
       });
       const manager = new AsyncLocalStorageContextManager().enable();
@@ -161,18 +80,10 @@ export async function initializeTracing(
       }
       return {
         async flush() {
-          let timer: ReturnType<typeof setTimeout> | undefined;
           try {
-            await Promise.race([
-              provider.forceFlush(),
-              new Promise<void>((resolve) => {
-                timer = setTimeout(resolve, 2_000);
-              }),
-            ]);
+            await provider.forceFlush();
           } catch {
-            /* Best effort; no raw provider diagnostics. */
-          } finally {
-            clearTimeout(timer);
+            console.error("OTel trace flush failed.");
           }
         },
       };
@@ -182,9 +93,7 @@ export async function initializeTracing(
     });
     return await state.__factoryOtelTracing;
   } catch {
-    console.error(
-      "OTel tracing disabled: invalid runtime configuration or privacy policy.",
-    );
+    console.error("OTel tracing disabled: invalid runtime configuration.");
     return undefined;
   }
 }

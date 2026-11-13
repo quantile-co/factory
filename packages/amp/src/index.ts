@@ -3,7 +3,6 @@ import { appendFileSync, existsSync, mkdirSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { fileURLToPath } from "node:url";
 import { managedConfig } from "@quantile-co/factory-otel/config";
 
 export type Orb = {
@@ -271,45 +270,35 @@ for tool in herdr pi; do
     nix-store --add-root "$HOME/.local/share/factory-amp/$tool" --indirect --realise "$store" >/dev/null
   fi
 done
-# Explicit native selection prepares a dormant agent. Copy nonsecret configs
-# and the complete JS distribution so the service needs no checkout/node_modules.
-if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ] && [ -n "\${FACTORY_AMP_OTEL_CLI:-}" ]; then
-  node=$(command -v node)
+# The native Collector needs only its pinned binary and nonsecret configuration.
+if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ]; then
   collector=$OTEL_COLLECTOR_BINARY
   install="$HOME/.local/share/factory-amp/otel"
-  for path in "$node" "$collector" "$install" "$FACTORY_AMP_OTEL_CLI" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}"; do
+  for path in "$collector" "$install" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}"; do
     [[ "$path" =~ ^/[a-zA-Z0-9/._+@-]+$ ]] || { echo 'Select plain absolute OTel artifact paths.' >&2; exit 1; }
   done
   mkdir -p "$install"
-  cp -R "$(dirname "$FACTORY_AMP_OTEL_CLI")/." "$install/"
-  printf '%s\\n' '{"type":"module"}' > "$install/package.json"
   # Refresh read-only copies inherited from a prepared Nix snapshot.
-  install -m 0644 "$OTEL_COLLECTOR_CONFIG" "$install/host.yaml"
+  install -m 0644 "$OTEL_COLLECTOR_CONFIG" "$install/config.yaml"
   install -m 0644 "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
-  # Store-backed Node and collector executables must survive orb GC too.
-  for tool in node otelcol-contrib; do
-    target=$node
-    [ "$tool" != otelcol-contrib ] || target=$collector
-    if [[ "$target" == /nix/store/* ]]; then
-      store=\${target#/nix/store/}
-      store="/nix/store/\${store%%/*}"
-      nix-store --add-root "$HOME/.local/share/factory-amp/otel-$tool" --indirect --realise "$store" >/dev/null
-    fi
-  done
+  # The native executable must survive orb garbage collection.
+  if [[ "$collector" == /nix/store/* ]]; then
+    store=\${collector#/nix/store/}
+    store="/nix/store/\${store%%/*}"
+    nix-store --add-root "$HOME/.local/share/factory-amp/otel-otelcol-contrib" --indirect --realise "$store" >/dev/null
+  fi
   sudo tee /etc/systemd/system/factory-amp-otel.service >/dev/null <<EOF
 [Unit]
-Description=Factory host metrics to ClickHouse Observability
+Description=Factory OpenTelemetry Collector
+After=network-online.target
 [Service]
 User=$(id -un)
 EnvironmentFile=/run/factory-amp/otel.env
-Environment=OTEL_COLLECTOR_BINARY=$collector
-Environment=OTEL_COLLECTOR_CONFIG=$install/host.yaml
-Environment=OTEL_COLLECTOR_DOCKER_CONFIG=$install/docker.yaml
-ExecStart=$node $install/cli.js collector
-TimeoutStopSec=6
+ExecStart=$collector --config=$install/config.yaml \\$OTEL_COLLECTOR_EXTRA_ARGS
+TimeoutStopSec=30
 KillMode=control-group
-StandardOutput=null
-StandardError=null
+StandardOutput=journal
+StandardError=journal
 EOF
 fi
 sudo systemctl daemon-reload
@@ -353,12 +342,7 @@ export function setup(): void {
   interactive(
     "bash",
     ["--noprofile", "--norc", "-euo", "pipefail", "-c", setupScript],
-    {
-      ...process.env,
-      FACTORY_AMP_OTEL_CLI: fileURLToPath(
-        import.meta.resolve("@quantile-co/factory-otel/cli"),
-      ),
-    },
+    process.env,
   );
 }
 
@@ -373,7 +357,7 @@ export function resumeCollector(
   const run = (args: string[], input?: string) =>
     execFileSync("sudo", ["-n", ...args], {
       input,
-      timeout: 8_000,
+      timeout: 35_000,
       stdio: [input === undefined ? "ignore" : "pipe", "ignore", "ignore"],
     });
   const disabled =
@@ -393,10 +377,16 @@ export function resumeCollector(
     const values = {
       OTEL_AGENT_PLATFORM: "amp-orb",
       OTEL_AGENT_THREAD_ID: thread,
+      OTEL_AGENT_INSTANCE_ID: thread,
       OTEL_AGENT_REPOSITORY: repository ?? "",
+      OTEL_AGENT_RUN_ID: "",
+      OTEL_AGENT_RUN_ATTEMPT: "",
       CLICKSTACK_OTLP_ENDPOINT: config.endpoint,
       CLICKSTACK_API_KEY: config.key,
-      OTEL_DOCKER_STATS: process.env.OTEL_DOCKER_STATS === "1" ? "1" : "0",
+      OTEL_COLLECTOR_EXTRA_ARGS:
+        process.env.OTEL_DOCKER_STATS === "1"
+          ? `--config=${join(homedir(), ".local/share/factory-amp/otel/docker.yaml")}`
+          : "",
     };
     run(["install", "-m", "0600", "/dev/null", file]);
     run(
