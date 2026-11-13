@@ -1,0 +1,78 @@
+# Runner-visible process, mount and network metrics, not physical-host telemetry.
+# CPU/memory/disk are per-process: host_metrics' system CPU/memory counters are
+# not cgroup-aware. Container aggregate accounting remains a separate capability.
+receivers:
+  host_metrics:
+    collection_interval: 30s
+    scrapers:
+      process: {}
+      filesystem: {}
+      network: {}
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+      http:
+        endpoint: 127.0.0.1:4318
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+    spike_limit_mib: 32
+  resource:
+    attributes:
+      - key: service.name
+        value: factory-ci
+        action: insert
+      - key: service.instance.id
+        value: ${env:GITHUB_RUN_ID}.${env:GITHUB_RUN_ATTEMPT}.${env:GITHUB_JOB}
+        action: insert
+      - key: factory.platform
+        value: namespace
+        action: upsert
+      - key: vcs.repository.name
+        value: ${env:GITHUB_REPOSITORY}
+        action: upsert
+      - key: cicd.pipeline.run.id
+        value: ${env:GITHUB_RUN_ID}
+        action: upsert
+      - key: cicd.pipeline.run.attempt
+        value: ${env:GITHUB_RUN_ATTEMPT}
+        action: upsert
+      - key: cicd.pipeline.task.name
+        value: ${env:GITHUB_JOB}
+        action: upsert
+  batch:
+    timeout: 1s
+exporters:
+  otlp_http:
+    endpoint: ${env:CLICKSTACK_OTLP_ENDPOINT}
+    headers:
+      Authorization: Bearer ${env:CLICKSTACK_API_KEY}
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+    sending_queue:
+      enabled: true
+      queue_size: 256
+extensions:
+  health_check:
+    endpoint: 127.0.0.1:13133
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    metrics:
+      receivers: [host_metrics, otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_http]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_http]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_http]
