@@ -71,10 +71,15 @@ jobs:
           HINDSIGHT_API_TOKEN: ${{ secrets.HINDSIGHT_API_TOKEN }}
           GH_PLAN_REF: ${{ inputs.gh_plan_ref }} # Prevent shell injection from operator-controlled input.
         run: |
+          export -n HINDSIGHT_API_TOKEN
           direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
           "$direnv" allow .
           "$direnv" exec . pnpm install --frozen-lockfile
-          "$direnv" exec . pnpm run github:apply \
+          shell=$(env -u NIX_CACHE_PRIVATE_KEY "$direnv" export bash)
+          eval "$shell"
+          unset shell
+          export HINDSIGHT_API_TOKEN
+          pnpm run github:apply \
             --tf-layer infrastructure \
             --gcp-tf-state-bucket '${{ vars.GCP_TF_STATE_BUCKET }}' \
             --gcp-wif-pool '${{ vars.GCP_WIF_POOL }}' \

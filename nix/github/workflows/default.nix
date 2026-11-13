@@ -97,8 +97,16 @@ let
       assert lib.assertMsg (lib.hasInfix marker source)
         "Workflow provider credential environment changed";
       builtins.replaceStrings
-        [ marker ]
-        [ (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n") ]
+        [ marker "        run: |\n" "\"$direnv\" exec . pnpm run github:" ]
+        [
+          (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n")
+          "        run: |\n          export -n HINDSIGHT_API_TOKEN\n"
+          (
+            "shell=$(env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" export bash)\n"
+            + "          eval \"$shell\"\n          unset shell\n"
+            + "          export HINDSIGHT_API_TOKEN\n          pnpm run github:"
+          )
+        ]
         source;
   render =
     name: source: layers:
