@@ -18,6 +18,15 @@ let
         authToken: ''${{ secrets.CACHIX_AUTH_TOKEN }}
         useDaemon: false
   '';
+  loadTaskShell =
+    builtins.replaceStrings
+      [ "\"$direnv\" exec . pnpm run github:" ]
+      [
+        (
+          "shell=$(env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" export bash)\n"
+          + "          eval \"$shell\"\n          unset shell\n          pnpm run github:"
+        )
+      ];
   cacheJob =
     source:
     let
@@ -35,27 +44,29 @@ let
     else
       assert lib.assertMsg (lib.hasInfix cachixSetup source) "Workflow Cachix setup changed";
       assert lib.assertMsg (marker != null) "Workflow task environment changed";
-      builtins.replaceStrings
-        [
-          cachixSetup
-          marker
-          "nix build --no-link --print-out-paths"
-          "\"$direnv\" allow ."
-          "\"$direnv\" exec . pnpm install --frozen-lockfile"
-        ]
-        [
-          ""
-          (
+      loadTaskShell (
+        builtins.replaceStrings
+          [
+            cachixSetup
             marker
-            + "          NIX_CACHE_PROVIDER: namespace\n"
-            + "          NIX_CACHE_PUBLIC_KEY: \${{ vars.NIX_CACHE_PUBLIC_KEY }}\n"
-            + "          NIX_CACHE_PRIVATE_KEY: \${{ secrets.NIX_CACHE_PRIVATE_KEY }}\n"
-          )
-          "env -u NIX_CACHE_PRIVATE_KEY nix build --no-link --print-out-paths"
-          "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" allow ."
-          "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" exec . pnpm install --frozen-lockfile"
-        ]
-        source;
+            "nix build --no-link --print-out-paths"
+            "\"$direnv\" allow ."
+            "\"$direnv\" exec . pnpm install --frozen-lockfile"
+          ]
+          [
+            ""
+            (
+              marker
+              + "          NIX_CACHE_PROVIDER: namespace\n"
+              + "          NIX_CACHE_PUBLIC_KEY: \${{ vars.NIX_CACHE_PUBLIC_KEY }}\n"
+              + "          NIX_CACHE_PRIVATE_KEY: \${{ secrets.NIX_CACHE_PRIVATE_KEY }}\n"
+            )
+            "env -u NIX_CACHE_PRIVATE_KEY nix build --no-link --print-out-paths"
+            "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" allow ."
+            "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" exec . pnpm install --frozen-lockfile"
+          ]
+          source
+      );
   collectorJob =
     phase: source:
     if !(builtins.elem phase cfg.otelJobs) then
@@ -97,9 +108,13 @@ let
       assert lib.assertMsg (lib.hasInfix marker source)
         "Workflow provider credential environment changed";
       builtins.replaceStrings
-        [ marker ]
-        [ (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n") ]
-        source;
+        [ marker "        run: |\n" "          pnpm run github:" ]
+        [
+          (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n")
+          "        run: |\n          export -n HINDSIGHT_API_TOKEN\n"
+          "          export HINDSIGHT_API_TOKEN\n          pnpm run github:"
+        ]
+        (loadTaskShell source);
   render =
     name: source: layers:
     let
