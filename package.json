@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",
-    "@earendil-works/pi-ai": "1.4.0",
+    "@earendil-works/pi-ai": "1.5.0",
     "@earendil-works/pi-coding-agent": "1.4.0",
     "@langfuse/tracing": "6.1.1",
     "@opentelemetry/api": "1.9.1",
