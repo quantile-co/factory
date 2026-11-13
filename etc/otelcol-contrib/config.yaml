@@ -49,12 +49,6 @@ processors:
       - key: vcs.repository.name
         value: "${env:OTEL_AGENT_REPOSITORY}"
         action: upsert
-      - key: cicd.pipeline.run.id
-        value: "${env:OTEL_AGENT_RUN_ID}"
-        action: upsert
-      - key: cicd.pipeline.run.attempt
-        value: "${env:OTEL_AGENT_RUN_ATTEMPT}"
-        action: upsert
       - key: amp.thread.id
         value: "${env:OTEL_AGENT_THREAD_ID}"
         action: upsert

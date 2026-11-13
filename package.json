@@ -30,14 +30,14 @@
     "github:apply": "tsx apps/github/cli.ts apply"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.5",
     "@earendil-works/pi-ai": "1.4.0",
     "@earendil-works/pi-coding-agent": "1.4.0",
     "@langfuse/tracing": "6.0.1",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/sdk-trace": "2.12.0",
     "@quantile-co/factory-pi": "workspace:*",
-    "@types/node": "26.6.5",
+    "@types/node": "26.6.6",
     "@vectorize-io/hindsight-coding-agents": "0.8.7",
     "husky": "9.1.7",
     "rolldown-plugin-dts": "0.29.0",
