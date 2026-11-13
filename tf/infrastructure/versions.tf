@@ -8,7 +8,7 @@ terraform {
     }
     google = {
       source  = "hashicorp/google"
-      version = "= 8.7.0"
+      version = "8.10.0"
     }
     random = {
       source  = "hashicorp/random"
