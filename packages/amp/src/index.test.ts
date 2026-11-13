@@ -242,19 +242,11 @@ it.each(["1.104.5", "1.104.1"])(
   (version) => {
     const home = mkdtempSync(join(tmpdir(), "factory-amp-setup-"));
     try {
-      // Match a downstream pnpm install, not Factory's unscoped workspace path.
-      const artifacts = join(
-        home,
-        "node_modules/.pnpm/@quantile-co+factory-otel@0.1.0/node_modules/@quantile-co/factory-otel/dist",
-      );
-      mkdirSync(artifacts, { recursive: true });
-      writeFileSync(join(artifacts, "cli.js"), "import './chunk.js';");
-      writeFileSync(join(artifacts, "chunk.js"), "export {};");
-      writeFileSync(join(home, "host.yaml"), "host fixture");
+      writeFileSync(join(home, "config.yaml"), "config fixture");
       writeFileSync(join(home, "docker.yaml"), "docker fixture");
       const collector = join(home, ".local/share/factory-amp/otel");
       mkdirSync(collector, { recursive: true });
-      for (const name of ["host", "docker"]) {
+      for (const name of ["config", "docker"]) {
         chmodSync(join(home, `${name}.yaml`), 0o444);
         writeFileSync(join(collector, `${name}.yaml`), "stale config", {
           mode: 0o444,
@@ -295,10 +287,9 @@ ${setupScript}
             VERSION: version,
             PATH: process.env.PATH,
             CLICKSTACK_API_KEY: "fixture-not-for-snapshots",
-            FACTORY_AMP_OTEL_CLI: join(artifacts, "cli.js"),
             OTEL_COLLECTOR_BINARY:
               "/nix/store/fixture-collector/bin/otelcol-contrib",
-            OTEL_COLLECTOR_CONFIG: join(home, "host.yaml"),
+            OTEL_COLLECTOR_CONFIG: join(home, "config.yaml"),
             OTEL_COLLECTOR_DOCKER_CONFIG: join(home, "docker.yaml"),
           },
           encoding: "utf8",
@@ -310,7 +301,7 @@ ${setupScript}
         return;
       }
       expect(result.status, result.stdout + result.stderr).toBe(0);
-      for (const name of ["host", "docker"]) {
+      for (const name of ["config", "docker"]) {
         const config = join(collector, `${name}.yaml`);
         expect(readFileSync(config, "utf8")).toBe(`${name} fixture`);
         expect(statSync(config).mode & 0o777).toBe(0o644);
@@ -323,16 +314,12 @@ ${setupScript}
         /fixture-not-for-snapshots|ExecStart=.*sshd|authorized_keys/,
       );
       expect(units).toContain(
-        `ExecStart=/nix/store/fixture-node/bin/node ${home}/.local/share/factory-amp/otel/cli.js collector`,
+        `ExecStart=/nix/store/fixture-collector/bin/otelcol-contrib --config=${home}/.local/share/factory-amp/otel/config.yaml $OTEL_COLLECTOR_EXTRA_ARGS`,
       );
-      expect(
-        readFileSync(
-          join(home, ".local/share/factory-amp/otel/chunk.js"),
-          "utf8",
-        ),
-      ).toBe("export {};");
+      expect(units).toContain("StandardError=journal");
+      expect(units).toContain("TimeoutStopSec=30");
       const operations = readFileSync(join(home, "operations"), "utf8");
-      expect(operations).toContain(
+      expect(operations).not.toContain(
         "--indirect --realise /nix/store/fixture-node",
       );
       expect(operations).toContain(

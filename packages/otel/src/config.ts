@@ -24,10 +24,3 @@ export function managedConfig(env: NodeJS.ProcessEnv = process.env) {
 }
 
 export type ManagedConfig = NonNullable<ReturnType<typeof managedConfig>>;
-
-export function withoutCredentials(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const result = { ...env };
-  delete result.CLICKSTACK_OTLP_ENDPOINT;
-  delete result.CLICKSTACK_API_KEY;
-  return result;
-}

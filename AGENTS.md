@@ -23,7 +23,8 @@ repository guides and Hindsight workflow rather than copying their contents.
 - [nix/hindsight/](nix/hindsight/) and [Hindsight skill](packages/pi/skills/hindsight/SKILL.md): opt-in Cloud memory configuration, native CLI and migration entry points.
 - [nix/files/](nix/files/): generic manifest and cold-bootstrap command module.
 - [nix/otelcol-contrib/](nix/otelcol-contrib/) and [etc/otelcol-contrib/](etc/otelcol-contrib/): upstream collector and native pipeline configurations.
-- [packages/otel/](packages/otel/) and [apps/otel/](apps/otel/): shared OTel runtime, tracing and CLI.
+- [packages/otel/](packages/otel/): shared OTel runtime configuration, metadata export and SDK tracing.
+- [.github/actions/otel/](.github/actions/otel/): standalone upstream Collector action and post-job lifecycle.
 - [nix/flake/](nix/flake/): per-system output module and consumer-bootstrap tests.
 - [etc/](etc/): reusable native-format configuration assets.
 - [etc/flake/](etc/flake/): native downstream flake starter.
