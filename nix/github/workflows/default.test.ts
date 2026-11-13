@@ -101,57 +101,77 @@ it("renders selected workflows as readable data without building for the target 
   expect(files.apply).toContain("--gh-plan-ref");
 });
 
-it("keeps Namespace lifecycle inside trusted GitHub task commands and leaves Check unchanged", () => {
-  const temporary = mkdtempSync(join(tmpdir(), "factory-namespace-workflow-"));
-  try {
-    const files = namespaceWorkflows();
-    for (const [name, source] of Object.entries(files)) {
-      const path = join(temporary, `${name}.yaml`);
-      expect(source).not.toMatch(/[ \t]+\n/);
-      writeFileSync(path, source as string);
-      const data = workflow(path);
-      for (const job of Object.values(data.jobs) as Array<{
-        if: string;
-        steps: Array<{
-          name: string;
-          if?: string;
-          env?: Record<string, string>;
-          run?: string;
-        }>;
-      }>) {
-        const tasks = job.steps.filter(
-          (step) => step.env?.NIX_CACHE_PROVIDER === "namespace",
-        );
-        if (name === "check") {
-          expect(tasks).toHaveLength(0);
-          expect(source).not.toContain("NIX_CACHE_PRIVATE_KEY");
-          continue;
+it.each([false, true])(
+  "isolates Namespace setup and leaves Check unchanged (Collector: %s)",
+  (otel) => {
+    const temporary = mkdtempSync(
+      join(tmpdir(), "factory-namespace-workflow-"),
+    );
+    try {
+      const files = namespaceWorkflows(otel, false, "a".repeat(40));
+      for (const [name, source] of Object.entries(files)) {
+        const path = join(temporary, `${name}.yaml`);
+        expect(source).not.toMatch(/[ \t]+\n/);
+        writeFileSync(path, source as string);
+        const data = workflow(path);
+        for (const job of Object.values(data.jobs) as Array<{
+          if: string;
+          steps: Array<{
+            name: string;
+            if?: string;
+            env?: Record<string, string>;
+            run?: string;
+          }>;
+        }>) {
+          const tasks = job.steps.filter(
+            (step) => step.env?.NIX_CACHE_PROVIDER === "namespace",
+          );
+          if (name === "check") {
+            expect(tasks).toHaveLength(0);
+            expect(source).not.toContain("NIX_CACHE_PRIVATE_KEY");
+            continue;
+          }
+          expect(job.if).toContain("github.ref == 'refs/heads/main'");
+          expect(source).not.toContain("cachix/cachix-action@");
+          expect(tasks).toHaveLength(1);
+          expect(tasks[0].env?.NIX_CACHE_PUBLIC_KEY).toBe(
+            `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
+          );
+          expect(tasks[0].env?.NIX_CACHE_PRIVATE_KEY).toBe(
+            `\${{ secrets.NIX_CACHE_PRIVATE_KEY }}`,
+          );
+          expect(tasks[0].run).toContain(
+            'env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile',
+          );
+          let previous = -1;
+          for (const marker of [
+            'shell=$(env -u NIX_CACHE_PRIVATE_KEY "$direnv" export bash)',
+            'eval "$shell"',
+            "unset shell",
+            `pnpm run github:${name}`,
+          ]) {
+            const index = tasks[0].run?.indexOf(marker) ?? -1;
+            expect(index, marker).toBeGreaterThan(previous);
+            previous = index;
+          }
+          expect(tasks[0].run).not.toContain(
+            '"$direnv" exec . pnpm run github:',
+          );
+          expect(
+            job.steps.filter((step) => step.env?.NIX_CACHE_PRIVATE_KEY),
+          ).toHaveLength(1);
+          expect(
+            job.steps.some(
+              (step) => step.name === "Publish Namespace Nix cache",
+            ),
+          ).toBe(false);
         }
-        expect(job.if).toContain("github.ref == 'refs/heads/main'");
-        expect(source).not.toContain("cachix/cachix-action@");
-        expect(tasks).toHaveLength(1);
-        expect(tasks[0].env?.NIX_CACHE_PUBLIC_KEY).toBe(
-          `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
-        );
-        expect(tasks[0].env?.NIX_CACHE_PRIVATE_KEY).toBe(
-          `\${{ secrets.NIX_CACHE_PRIVATE_KEY }}`,
-        );
-        expect(tasks[0].run).toContain(
-          'env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile',
-        );
-        expect(tasks[0].run).toContain(`pnpm run github:${name}`);
-        expect(
-          job.steps.filter((step) => step.env?.NIX_CACHE_PRIVATE_KEY),
-        ).toHaveLength(1);
-        expect(
-          job.steps.some((step) => step.name === "Publish Namespace Nix cache"),
-        ).toBe(false);
       }
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
     }
-  } finally {
-    rmSync(temporary, { recursive: true, force: true });
-  }
-});
+  },
+);
 
 it("requires a published action ref instead of falling back to a task wrapper", () => {
   expect(() => namespaceWorkflows(true)).toThrow(
