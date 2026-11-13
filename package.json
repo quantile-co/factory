@@ -44,6 +44,7 @@
     "skills": "1.7.4",
     "tsx": "4.23.15",
     "turbo": "2.11.10",
+    "typebox": "1.3.27",
     "typescript": "7.0.2",
     "vite": "8.3.5",
     "vite-plugin-static-copy": "4.1.1",
