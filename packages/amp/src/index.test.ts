@@ -103,6 +103,59 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
   }
 });
 
+it("installs skills before building the orb runtime and stops on provisioning failure", () => {
+  const directory = mkdtempSync(join(tmpdir(), "factory-orb-provision-"));
+  const log = join(directory, "calls");
+  const hook = readFileSync(
+    new URL("../../../.agents/setup", import.meta.url),
+    "utf8",
+  );
+  const command = hook.match(/bash -euo pipefail -c '([\s\S]+)'/)?.[1];
+  const expected = [
+    "install --frozen-lockfile",
+    "run skills:sync",
+    "run build",
+    "amp setup",
+  ];
+  try {
+    expect(command).toBeDefined();
+    for (const tool of ["pnpm", "install"]) {
+      const path = join(directory, tool);
+      writeFileSync(
+        path,
+        `#!${process.execPath}
+const args = process.argv.slice(2).join(" ");
+if (${JSON.stringify(tool)} === "pnpm") {
+  require("node:fs").appendFileSync(${JSON.stringify(log)}, args + "\\n");
+  if (args === process.env.FAIL_COMMAND) process.exit(17);
+}
+`,
+      );
+      chmodSync(path, 0o755);
+    }
+    for (const failCommand of ["", ...expected.slice(0, 2)]) {
+      writeFileSync(log, "");
+      const result = spawnSync("bash", ["-euo", "pipefail"], {
+        input: command,
+        encoding: "utf8",
+        env: {
+          PATH: `${directory}:${process.env.PATH}`,
+          HOME: directory,
+          FAIL_COMMAND: failCommand,
+        },
+      });
+      expect(result.status, result.stderr).toBe(failCommand ? 17 : 0);
+      expect(readFileSync(log, "utf8").trim().split("\n")).toEqual(
+        failCommand
+          ? expected.slice(0, expected.indexOf(failCommand) + 1)
+          : expected,
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 it.each(["none", "tee", "restart"])(
   "refreshes collector credentials through native stdin, cleans up and fails open (%s failure)",
   (failure) => {
