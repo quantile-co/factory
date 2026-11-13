@@ -11,6 +11,7 @@ source .agents/nix-env
 # shellcheck disable=SC2016
 nix develop --command bash -euo pipefail -c '
   pnpm install --frozen-lockfile
+  pnpm run skills:sync
   pnpm run build
   pnpm amp setup
   install -D -m 0644 packages/amp/dist/plugin.js "${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins/factory-orb-awake.js"

@@ -1,0 +1,14 @@
+name: OpenTelemetry Collector
+description: Run the pinned upstream Collector until post-job cleanup, without Nix or Docker.
+inputs:
+  config:
+    description: Optional native Collector YAML path. Must expose health_check on 127.0.0.1:13133.
+    required: false
+outputs:
+  log-file:
+    description: Collector diagnostics under RUNNER_TEMP.
+runs:
+  using: node24
+  main: index.ts
+  post: index.ts
+  post-if: always()

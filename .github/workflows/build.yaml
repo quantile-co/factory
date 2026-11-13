@@ -11,6 +11,8 @@ on:
           - factory
           - namespace
           - otel
+          - amp
+          - pi
       tf_layer:
         description: Layer
         required: true

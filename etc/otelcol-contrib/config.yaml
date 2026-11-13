@@ -1,13 +1,34 @@
-# Agent-only host metrics; no OTLP listener, logs, process scraper or disk queue.
+# Amp orb VM metrics, readable OS log files and explicitly routed application OTLP.
+# No root access or extra journal permissions are granted by this configuration.
 receivers:
   host_metrics:
     collection_interval: 30s
     scrapers:
-      cpu: {}
-      memory: {}
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
       disk: {}
       filesystem: {}
       network: {}
+      load: {}
+      paging: {}
+      processes: {}
+      process: {}
+  filelog:
+    include: [/var/log/syslog, /var/log/messages, /var/log/kern.log, /var/log/*.log]
+    include_file_path: true
+    start_at: end
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+      http:
+        endpoint: 127.0.0.1:4318
 
 processors:
   memory_limiter:
@@ -18,21 +39,15 @@ processors:
     attributes:
       - key: service.name
         value: factory-host
-        action: upsert
+        action: insert
       - key: service.instance.id
         value: "${env:OTEL_AGENT_INSTANCE_ID}"
-        action: upsert
+        action: insert
       - key: factory.platform
         value: "${env:OTEL_AGENT_PLATFORM}"
         action: upsert
       - key: vcs.repository.name
         value: "${env:OTEL_AGENT_REPOSITORY}"
-        action: upsert
-      - key: cicd.pipeline.run.id
-        value: "${env:OTEL_AGENT_RUN_ID}"
-        action: upsert
-      - key: cicd.pipeline.run.attempt
-        value: "${env:OTEL_AGENT_RUN_ATTEMPT}"
         action: upsert
       - key: amp.thread.id
         value: "${env:OTEL_AGENT_THREAD_ID}"
@@ -47,25 +62,27 @@ exporters:
     endpoint: ${env:CLICKSTACK_OTLP_ENDPOINT}
     headers:
       Authorization: Bearer ${env:CLICKSTACK_API_KEY}
-    timeout: 3s
+    timeout: 10s
     retry_on_failure:
       enabled: true
-      initial_interval: 1s
-      max_interval: 2s
-      max_elapsed_time: 5s
     sending_queue:
       enabled: true
-      num_consumers: 1
-      queue_size: 16
+      queue_size: 256
 
 service:
   telemetry:
     logs:
-      level: error
-    metrics:
-      level: none
+      level: info
   pipelines:
     metrics:
-      receivers: [host_metrics]
+      receivers: [host_metrics, otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_http]
+    logs:
+      receivers: [filelog, otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_http]
+    traces:
+      receivers: [otlp]
       processors: [memory_limiter, resource, batch]
       exporters: [otlp_http]

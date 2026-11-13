@@ -117,15 +117,15 @@
       "source": "@quantile-co/factory-pi",
       "sourceType": "node_modules",
       "skillPath": "skills/day-zero-deploy/SKILL.md",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "computedHash": "8993eca7032082d214652aac7df2cf3254296477044557b731b381fa2b23030f"
     },
     "deploy": {
       "source": "@quantile-co/factory-pi",
       "sourceType": "node_modules",
       "skillPath": "skills/deploy/SKILL.md",
-      "version": "0.1.3",
-      "computedHash": "23f2220554d93faaa4cdf8c45688b0e6c7e23176541a1ab03e85d986cfad60c0"
+      "version": "0.1.4",
+      "computedHash": "babcb28d4e1554d4eafcfcc246b942bedf36984ca8f8441f80595617194349c8"
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
@@ -270,6 +270,13 @@
       "skillPath": "skills/productivity/grilling/SKILL.md",
       "computedHash": "e40cc1d348f6d935e28f1e24474302d7368f0a400429271a43b35fe154891dc5",
       "via": "@quantile-co/factory-pi"
+    },
+    "hindsight": {
+      "source": "@quantile-co/factory-pi",
+      "sourceType": "node_modules",
+      "skillPath": "skills/hindsight/SKILL.md",
+      "version": "0.1.4",
+      "computedHash": "78f62b76c2208f9739e02cc746ee7fba26fadab4ca12ca5a44bd9cf6f57e86b4"
     },
     "hunk-review": {
       "source": "modem-dev/hunk",

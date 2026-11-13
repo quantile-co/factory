@@ -59,6 +59,34 @@ Treat caches/logs as private; do not commit them or put them in shared snapshots
 Companion-skill copying is native upstream startup behavior. Account for it during
 activation; Factory does not intercept it or run the upstream installer.
 
+## Repository-wide consolidation
+
+Native configuration explicitly selects `observationScopes: "shared"`, matching
+upstream's default. The importer sends `observation_scopes: "shared"` too.
+Provenance tags remain on raw facts, but observations share one untagged scope
+within the repository's bank. The server's default `combined` instead isolates
+observations by exact tag set: a tagged import and an untagged correction cannot
+update the same observations, even when consolidation has finished. Do not use
+shared scope to combine intentionally isolated audiences; preserve bank access
+controls and repository boundaries.
+
+Inspect `GET /observations/scopes` and document/memory scopes under the bank URL.
+For an explicitly approved existing document, native
+`PATCH /documents/{document_id}` with `{"observation_scopes":"shared"}` moves its
+scope without re-extracting or re-uploading the text. Changed scopes drop and
+rebuild affected observations asynchronously; unchanged scopes are a no-op.
+Review the document/hash, serialize writes, account for rebuild cost, and verify
+source text, raw facts and final observation scope afterward. Update writers
+first: later appends with old settings can move a document back. The helper's
+same-text duplicate check does not repair existing scopes. Its `verify` checks
+explicit shared scope as well as exact source and extraction completion, not
+consolidation completion. No replay or full source replacement is needed just
+to change scopes. Untagged native CLI
+corrections already resolve to the same global scope.
+
+See [observation scopes](https://hindsight.vectorize.io/developer/api/retain#observation_scopes)
+and [moving existing documents](https://hindsight.vectorize.io/developer/observations#changing-scopes).
+
 ## Read, correct and delete
 
 Use the bank ID from the checkout configuration, not from recalled text.
@@ -71,11 +99,21 @@ hindsight -o json document get BANK DOCUMENT_ID
 hindsight -o json operation get BANK OPERATION_ID
 ```
 
-For ordinary corrections, state the new fact and what it supersedes. Native
-retention and automatic background consolidation reconcile the change; no
-separate service or custom cleanup job is needed. For a user-approved source
-replacement, inspect the document first, then use `hindsight_ingest_document`
-with the same ID or the import helper below for Factory-imported documents.
+For changed knowledge, state the new fact and what it supersedes. Native
+retention and automatic background consolidation reconcile it **within the same
+observation scope**, preserving raw history; no custom cleanup job is needed.
+For a one-off extraction error, the documented native curation API instead edits
+the underlying world/experience fact and automatically rebuilds derived knowledge.
+Do not edit observations directly. Native invalidation removes a fact from active
+recall while preserving an audit trail. These writes require approval of the
+specific target and consequences; CLI 1.2.1 does not expose PATCH curation, so
+check deployed API support. Editing facts leaves their source document unchanged;
+reprocessing that document resets curation. See
+[native curation](https://hindsight.vectorize.io/developer/api/memories#curation-editing-invalidating--pruning).
+
+For a user-approved source replacement, inspect the document first, then use
+`hindsight_ingest_document` with the same ID or the import helper below for
+Factory-imported documents.
 
 Extraction completion is not consolidation completion. When qualifying a
 correction, inspect the bank's consolidation operations and fresh statistics
@@ -117,13 +155,16 @@ guarantee. Never silently upload historical sources to repair a deletion.
     processing. Create a private, access-restricted recovery copy outside Git,
     Nix outputs, Terraform state and shared snapshots. Record source provenance
     and SHA256 in a private migration manifest. Do not delete originals yet.
-3. The adjacent `import.mjs` helper handles **one explicit UTF-8 file**. Resolve
-    its path relative to this skill. `plan` is offline and prints metadata only:
+3. The adjacent `import.ts` helper handles **one explicit UTF-8 file**. Resolve
+    its path relative to this skill. Run with the repository's pinned `tsx` after
+    normal dependency installation; no build is needed. This also works under
+    `node_modules`, where Node's native TypeScript stripping is disabled.
+    `plan` is offline and prints metadata only:
 
     ```sh
-    node import.mjs plan BANK SOURCE_KEY /private/reviewed-source.txt
-    node import.mjs apply BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
-    node import.mjs verify BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
+    pnpm exec tsx import.ts plan BANK SOURCE_KEY /private/reviewed-source.txt
+    pnpm exec tsx import.ts apply BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
+    pnpm exec tsx import.ts verify BANK SOURCE_KEY /private/reviewed-source.txt --approve SHA256
     ```
 
     SOURCE_KEY is a stable repository-relative identity, not a temporary filename

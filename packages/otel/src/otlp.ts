@@ -22,11 +22,9 @@ export type MetadataSpan = {
 };
 
 export function attributes(values: Attributes): MetadataSpan["attributes"] {
-  return Object.entries(values)
-    .slice(0, 32)
-    .flatMap(([key, value]): MetadataSpan["attributes"] => {
-      if (key.length > 128) return [];
-      if (typeof value === "string" && value.length <= 256)
+  return Object.entries(values).flatMap(
+    ([key, value]): MetadataSpan["attributes"] => {
+      if (typeof value === "string")
         return [{ key, value: { stringValue: value } }];
       if (typeof value === "boolean")
         return [{ key, value: { boolValue: value } }];
@@ -40,7 +38,8 @@ export function attributes(values: Attributes): MetadataSpan["attributes"] {
           },
         ];
       return [];
-    });
+    },
+  );
 }
 
 export function metadataSpan(
@@ -70,7 +69,6 @@ export async function exportSpans(
 ): Promise<boolean> {
   if (!spans.length) return true;
   try {
-    if (spans.length > 64) return false;
     const body = JSON.stringify({
       resourceSpans: [
         {
@@ -79,7 +77,6 @@ export async function exportSpans(
         },
       ],
     });
-    if (Buffer.byteLength(body) > 262_144) return false;
     for (
       let attempt = 0;
       attempt < Math.min(2, Math.max(1, attempts));

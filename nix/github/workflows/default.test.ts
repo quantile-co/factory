@@ -25,6 +25,7 @@ function workflow(path: string) {
 function namespaceWorkflows(
   otel = false,
   hindsight = false,
+  actionRef: string | null = null,
 ): Record<string, string> {
   return JSON.parse(
     execFileSync(
@@ -48,6 +49,7 @@ function namespaceWorkflows(
               nixCache = "namespace";
               hindsight = ${hindsight ? "true" : "false"};
               otelJobs = ${otel ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
+              otelActionRef = ${actionRef ? JSON.stringify(actionRef) : "null"};
           }; }
         ];
       }).config.quantile-co.factory.github.workflows;
@@ -99,177 +101,177 @@ it("renders selected workflows as readable data without building for the target 
   expect(files.apply).toContain("--gh-plan-ref");
 });
 
-it("keeps Namespace lifecycle inside trusted GitHub task commands and leaves Check unchanged", () => {
-  const temporary = mkdtempSync(join(tmpdir(), "factory-namespace-workflow-"));
-  try {
-    const files = namespaceWorkflows();
-    for (const [name, source] of Object.entries(files)) {
-      const path = join(temporary, `${name}.yaml`);
-      expect(source).not.toMatch(/[ \t]+\n/);
-      writeFileSync(path, source as string);
-      const data = workflow(path);
-      for (const job of Object.values(data.jobs) as Array<{
-        if: string;
-        steps: Array<{
-          name: string;
-          if?: string;
-          env?: Record<string, string>;
-          run?: string;
-        }>;
-      }>) {
-        const tasks = job.steps.filter(
-          (step) => step.env?.NIX_CACHE_PROVIDER === "namespace",
-        );
-        if (name === "check") {
-          expect(tasks).toHaveLength(0);
-          expect(source).not.toContain("NIX_CACHE_PRIVATE_KEY");
-          continue;
+it.each([false, true])(
+  "isolates Namespace setup and leaves Check unchanged (Collector: %s)",
+  (otel) => {
+    const temporary = mkdtempSync(
+      join(tmpdir(), "factory-namespace-workflow-"),
+    );
+    try {
+      const files = namespaceWorkflows(otel, false, "a".repeat(40));
+      for (const [name, source] of Object.entries(files)) {
+        const path = join(temporary, `${name}.yaml`);
+        expect(source).not.toMatch(/[ \t]+\n/);
+        writeFileSync(path, source as string);
+        const data = workflow(path);
+        for (const job of Object.values(data.jobs) as Array<{
+          if: string;
+          steps: Array<{
+            name: string;
+            if?: string;
+            env?: Record<string, string>;
+            run?: string;
+          }>;
+        }>) {
+          const tasks = job.steps.filter(
+            (step) => step.env?.NIX_CACHE_PROVIDER === "namespace",
+          );
+          if (name === "check") {
+            expect(tasks).toHaveLength(0);
+            expect(source).not.toContain("NIX_CACHE_PRIVATE_KEY");
+            continue;
+          }
+          expect(job.if).toContain("github.ref == 'refs/heads/main'");
+          expect(source).not.toContain("cachix/cachix-action@");
+          expect(tasks).toHaveLength(1);
+          expect(tasks[0].env?.NIX_CACHE_PUBLIC_KEY).toBe(
+            `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
+          );
+          expect(tasks[0].env?.NIX_CACHE_PRIVATE_KEY).toBe(
+            `\${{ secrets.NIX_CACHE_PRIVATE_KEY }}`,
+          );
+          expect(tasks[0].run).toContain(
+            'env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile',
+          );
+          let previous = -1;
+          for (const marker of [
+            'shell=$(env -u NIX_CACHE_PRIVATE_KEY "$direnv" export bash)',
+            'eval "$shell"',
+            "unset shell",
+            `pnpm run github:${name}`,
+          ]) {
+            const index = tasks[0].run?.indexOf(marker) ?? -1;
+            expect(index, marker).toBeGreaterThan(previous);
+            previous = index;
+          }
+          expect(tasks[0].run).not.toContain(
+            '"$direnv" exec . pnpm run github:',
+          );
+          expect(
+            job.steps.filter((step) => step.env?.NIX_CACHE_PRIVATE_KEY),
+          ).toHaveLength(1);
+          expect(
+            job.steps.some(
+              (step) => step.name === "Publish Namespace Nix cache",
+            ),
+          ).toBe(false);
         }
-        expect(job.if).toContain("github.ref == 'refs/heads/main'");
-        expect(source).not.toContain("cachix/cachix-action@");
-        expect(tasks).toHaveLength(1);
-        expect(tasks[0].env?.NIX_CACHE_PUBLIC_KEY).toBe(
-          `\${{ vars.NIX_CACHE_PUBLIC_KEY }}`,
-        );
-        expect(tasks[0].env?.NIX_CACHE_PRIVATE_KEY).toBe(
-          `\${{ secrets.NIX_CACHE_PRIVATE_KEY }}`,
-        );
-        expect(tasks[0].run).toContain(
-          'env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile',
-        );
-        expect(tasks[0].run).toContain(`pnpm run github:${name}`);
-        expect(
-          job.steps.filter((step) => step.env?.NIX_CACHE_PRIVATE_KEY),
-        ).toHaveLength(1);
-        expect(
-          job.steps.some((step) => step.name === "Publish Namespace Nix cache"),
-        ).toBe(false);
       }
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
     }
-  } finally {
-    rmSync(temporary, { recursive: true, force: true });
-  }
+  },
+);
+
+it("requires a published action ref instead of falling back to a task wrapper", () => {
+  expect(() => namespaceWorkflows(true)).toThrow(
+    "Set otelActionRef to a published Factory commit",
+  );
 });
 
-it("releases ingestion credentials only to explicitly selected trusted-main native task wrappers", () => {
+it("starts the pinned native action first and confines ingestion credentials to it", () => {
   const temporary = mkdtempSync(
-    join(tmpdir(), "factory-observability-workflow-"),
+    join(tmpdir(), "factory-otel-action-workflow-"),
   );
   try {
-    const disabled = namespaceWorkflows();
-    const enabled = namespaceWorkflows(true);
-    expect(enabled.check).toBe(disabled.check);
+    const ref = "a".repeat(40);
+    const files = namespaceWorkflows(true, false, ref);
+    expect(files.check).toBe(namespaceWorkflows().check);
     for (const name of ["test", "build", "plan", "apply"]) {
-      expect(disabled[name]).not.toContain("CLICKSTACK_API_KEY");
       const path = join(temporary, `${name}.yaml`);
-      writeFileSync(path, enabled[name]);
-      const data = workflow(path);
-      for (const job of Object.values(data.jobs) as Array<{
-        if: string;
-        environment: string;
-        steps: Array<{ env?: Record<string, string>; run?: string }>;
-      }>) {
-        expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
-        expect(job.if).toContain("github.ref == 'refs/heads/main'");
-        expect(job.environment).toBe("prod");
-        const tasks = job.steps.filter((step) => step.env?.CLICKSTACK_API_KEY);
-        expect(tasks).toHaveLength(1);
-        const script = tasks[0].run ?? "";
-        expect(script).toContain(
-          "export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY",
-        );
-        expect(script.indexOf("pnpm install --frozen-lockfile")).toBeLessThan(
-          script.indexOf("export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY"),
-        );
-        expect(script).toContain(`pnpm otel -- pnpm run github:${name}`);
-        if (name === "test") {
-          const bin = join(temporary, "bin");
-          mkdirSync(bin);
-          const record = join(temporary, "calls");
-          for (const tool of ["nix", "direnv", "pnpm"]) {
-            const path = join(bin, tool);
-            writeFileSync(
-              path,
-              `#!${process.execPath}
-const fs = require('node:fs');
-fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify({ tool: ${JSON.stringify(tool)}, secret: !!process.env.CLICKSTACK_API_KEY, signingKey: !!process.env.NIX_CACHE_PRIVATE_KEY, shell: process.env.TEST_SHELL }) + '\\n');
-if (${JSON.stringify(tool)} === 'nix') console.log(${JSON.stringify(temporary)});
-if (${JSON.stringify(tool)} === 'direnv' && process.argv[2] === 'export') console.log('export TEST_SHELL=ready');
-if (${JSON.stringify(tool)} === 'pnpm') {
-  if (process.argv[2] !== 'otel' || process.argv[3] !== '--') process.exit(91);
-  process.exit(23);
-}
-`,
-            );
-            chmodSync(path, 0o755);
-          }
-          const result = spawnSync("bash", ["-euo", "pipefail", "-c", script], {
-            encoding: "utf8",
-            env: {
-              ...process.env,
-              PATH: `${bin}:${process.env.PATH}`,
-              TURBO_TOKEN: "",
-              CLICKSTACK_OTLP_ENDPOINT: "https://ingest.example.invalid",
-              CLICKSTACK_API_KEY: "fixture-key",
-              NIX_CACHE_PRIVATE_KEY: "fixture-signing-key",
-            },
-          });
-          expect(result.status, result.stderr).toBe(23);
-          const calls = readFileSync(record, "utf8")
-            .trim()
-            .split("\n")
-            .map((line) => JSON.parse(line));
-          expect(
-            calls
-              .slice(0, -1)
-              .every((call) => !call.secret && !call.signingKey),
-          ).toBe(true);
-          expect(calls.at(-1)).toEqual({
-            tool: "pnpm",
-            secret: true,
-            signingKey: true,
-            shell: "ready",
-          });
-        }
-      }
-    }
-  } finally {
-    rmSync(temporary, { recursive: true, force: true });
-  }
-});
-
-it("selects Hindsight credentials only for protected Plan/Apply jobs", () => {
-  const temporary = mkdtempSync(join(tmpdir(), "factory-hindsight-workflow-"));
-  try {
-    const disabled = namespaceWorkflows(true);
-    const enabled = namespaceWorkflows(true, true);
-    for (const [name, source] of Object.entries(enabled)) {
-      expect(disabled[name]).not.toContain("HINDSIGHT_API_TOKEN");
-      if (!["plan", "apply"].includes(name)) {
-        expect(source).toBe(disabled[name]);
-        continue;
-      }
-      const path = join(temporary, `${name}.yaml`);
-      writeFileSync(path, source);
+      writeFileSync(path, files[name]);
+      expect(files[name]).not.toContain("pnpm otel");
       for (const job of Object.values(workflow(path).jobs) as Array<{
         if: string;
         environment: string;
-        steps: Array<{ env?: Record<string, string> }>;
+        steps: Array<{ uses?: string; env?: Record<string, string> }>;
       }>) {
         expect(job.if).toContain("github.ref == 'refs/heads/main'");
         expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
         expect(job.environment).toBe("prod");
-        const tasks = job.steps.filter((step) => step.env?.HINDSIGHT_API_TOKEN);
-        expect(tasks).toHaveLength(1);
-        expect(tasks[0].env?.HINDSIGHT_API_TOKEN).toBe(
-          `\${{ secrets.HINDSIGHT_API_TOKEN }}`,
+        expect(job.steps[0].uses).toBe(
+          `quantile-co/factory/.github/actions/otel@${ref}`,
         );
+        expect(job.steps[0].env?.CLICKSTACK_API_KEY).toBe(
+          `\${{ secrets.CLICKSTACK_API_KEY }}`,
+        );
+        expect(
+          job.steps.slice(1).every((step) => !step.env?.CLICKSTACK_API_KEY),
+        ).toBe(true);
       }
     }
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
 });
+
+it.each([false, true])(
+  "isolates protected Hindsight credentials during setup (Collector: %s)",
+  (otel) => {
+    const temporary = mkdtempSync(
+      join(tmpdir(), "factory-hindsight-workflow-"),
+    );
+    try {
+      const ref = "a".repeat(40);
+      const disabled = namespaceWorkflows(otel, false, ref);
+      const enabled = namespaceWorkflows(otel, true, ref);
+      for (const [name, source] of Object.entries(enabled)) {
+        expect(disabled[name]).not.toContain("HINDSIGHT_API_TOKEN");
+        if (!["plan", "apply"].includes(name)) {
+          expect(source).toBe(disabled[name]);
+          continue;
+        }
+        const path = join(temporary, `${name}.yaml`);
+        writeFileSync(path, source);
+        for (const job of Object.values(workflow(path).jobs) as Array<{
+          if: string;
+          environment: string;
+          steps: Array<{ env?: Record<string, string>; run?: string }>;
+        }>) {
+          expect(job.if).toContain("github.ref == 'refs/heads/main'");
+          expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
+          expect(job.environment).toBe("prod");
+          const tasks = job.steps.filter(
+            (step) => step.env?.HINDSIGHT_API_TOKEN,
+          );
+          expect(tasks).toHaveLength(1);
+          expect(tasks[0].env?.HINDSIGHT_API_TOKEN).toBe(
+            `\${{ secrets.HINDSIGHT_API_TOKEN }}`,
+          );
+          const markers = [
+            "export -n HINDSIGHT_API_TOKEN",
+            'direnv="$(env -u NIX_CACHE_PRIVATE_KEY nix build',
+            'env -u NIX_CACHE_PRIVATE_KEY "$direnv" exec . pnpm install --frozen-lockfile',
+            'shell=$(env -u NIX_CACHE_PRIVATE_KEY "$direnv" export bash)',
+            'eval "$shell"',
+            "unset shell",
+            "export HINDSIGHT_API_TOKEN",
+            `pnpm run github:${name}`,
+          ];
+          let previous = -1;
+          for (const marker of markers) {
+            const index = tasks[0].run?.indexOf(marker) ?? -1;
+            expect(index, marker).toBeGreaterThan(previous);
+            previous = index;
+          }
+          expect(tasks[0].run).not.toContain("pnpm otel");
+        }
+      }
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  },
+);
 
 it("runs layer-specific workflow tasks at the repository root and forwards failures", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-workflow-task-"));

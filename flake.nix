@@ -63,6 +63,8 @@
                     + "          - factory\n"
                     + "          - namespace\n"
                     + "          - otel\n"
+                    + "          - amp\n"
+                    + "          - pi\n"
                   )
                 ]
                 source
@@ -70,10 +72,13 @@
         in
         {
           quantile-co.factory = {
+            hindsight.bankId = "quantile-co--factory";
+
             github.workflows = {
               layers = [ "infrastructure" ];
               build.layers = [ "application" ];
               otelJobs = [ "test" ];
+              otelActionRef = "38aedb9583cdd78d121f949ff94f603982f39eee";
               hindsight = true;
             };
 
@@ -152,7 +157,7 @@
             flake.devShell = {
               shellHook = lib.concatStringsSep "\n" [
                 factory.files.shellHook
-                factory.pi.shellHook
+                factory.hindsight.shellHook
                 factory.uv.shellHook
                 factory.turbo.shellHook
                 ''
@@ -201,7 +206,7 @@
                 factory.clickhousectl.package
                 factory.langfuse.package
                 factory.pi.package
-                factory.qmd.package
+                factory.hindsight.package
                 factory.prek.package
                 factory.prek.tools.package
                 factory.dependabot.check.package
@@ -290,6 +295,7 @@
                     types = [ "node" ];
                   };
                   include = [
+                    ".github/actions/**/*.ts"
                     "*.test.ts"
                     "nix/**/*.test.ts"
                     "tf/**/*.test.ts"
@@ -316,13 +322,10 @@
                   "nix"
                 ]
               );
-              ".pi/settings.json" = copy factory.pi.settingsFile;
+              ".pi/settings.json" = copy factory.hindsight.piSettingsFile;
+              ".pi/hindsight.json" = copy factory.hindsight.configFile;
               ".pi/pi-goal-x-settings.json" = {
                 source = factory.pi.goalSettingsFile;
-                mode = "seed";
-              };
-              ".qmd/index.yml" = {
-                source = factory.qmd.configFile;
                 mode = "seed";
               };
               ".semgrep/tf" = copy (factory.semgrep.rulesDir + "/tf");
@@ -401,7 +404,6 @@
         protoc = ./nix/protoc;
         pylint = ./nix/pylint;
         hindsight = ./nix/hindsight;
-        qmd = ./nix/qmd;
         readme = ./nix/readme;
         resend-cli = ./nix/resend-cli;
         ruff = ./nix/ruff;

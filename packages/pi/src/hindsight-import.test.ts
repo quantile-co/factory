@@ -1,21 +1,66 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { expect, it } from "vitest";
-import { main } from "../skills/hindsight/import.mjs";
+import { main } from "../skills/hindsight/import.ts";
+
+it("runs the TypeScript importer from an installed skill without a build", async () => {
+  const root = await mkdtemp(join(tmpdir(), "hindsight-installed-"));
+  try {
+    const pkg = join(root, "node_modules", "fixture-skill");
+    await mkdir(pkg, { recursive: true });
+    await writeFile(
+      join(pkg, "package.json"),
+      JSON.stringify({ type: "module" }),
+    );
+    const entry = join(pkg, "import.ts");
+    await copyFile(
+      fileURLToPath(new URL("../skills/hindsight/import.ts", import.meta.url)),
+      entry,
+    );
+    const source = join(root, "source.txt");
+    await writeFile(source, "Fixture memory.\n");
+    const args = ["plan", "example--project", "memory", source];
+    const expected = await main(args);
+    const result = await promisify(execFile)(process.execPath, [
+      "--import",
+      "tsx",
+      entry,
+      ...args,
+    ]);
+    expect(JSON.parse(result.stdout)).toEqual(expected);
+    expect(result.stderr).toBe("");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 it("gates imports, stable retries, corrections and explicit recovery replays", async () => {
   const root = await mkdtemp(join(tmpdir(), "hindsight-import-"));
   const file = join(root, "reviewed.txt");
   const args = ["example--project", ".pi/memory/MEMORY.md", file];
   const env = { HINDSIGHT_API_TOKEN: "fixture-not-a-credential" };
-  const calls = [];
-  let document;
-  const operations = new Set();
+  const calls: Array<{
+    path: string;
+    method?: string;
+    body: RequestInit["body"];
+  }> = [];
+  let document:
+    | { original_text: string; observation_scopes: "shared" | "combined" }
+    | undefined;
+  const operations = new Set<string>();
   let status = "pending";
-  const request = async (url, init) => {
+  const request: NonNullable<Parameters<typeof main>[2]> = async (
+    url,
+    init,
+  ) => {
     expect(init.redirect).toBe("error");
-    expect(init.headers.Authorization).toBe("Bearer fixture-not-a-credential");
+    expect(new Headers(init.headers).get("Authorization")).toBe(
+      "Bearer fixture-not-a-credential",
+    );
     const path = new URL(url).pathname;
     calls.push({ path, method: init.method, body: init.body });
     if (path.endsWith("/config")) return Response.json({});
@@ -24,12 +69,17 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
         ? Response.json(document)
         : new Response("", { status: 404 });
     if (path.includes("/operations/")) return Response.json({ status });
-    const body = JSON.parse(init.body);
+    const body = JSON.parse(String(init.body));
     expect(body.items).toHaveLength(1);
     expect(body.items[0].update_mode).toBe("replace");
+    expect(body.items[0].tags).toEqual(["source:factory-import"]);
+    expect(body.items[0].observation_scopes).toBe("shared");
     // Cloud deduplicates completed operation IDs even after document deletion.
     if (!operations.has(body.operation_id)) {
-      document = { original_text: body.items[0].content };
+      document = {
+        original_text: body.items[0].content,
+        observation_scopes: body.items[0].observation_scopes,
+      };
       operations.add(body.operation_id);
     }
     return Response.json({ operation_id: body.operation_id });
@@ -41,6 +91,7 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
     expect(plan.document_id).toBe(
       "factory-import:example--project:.pi/memory/MEMORY.md",
     );
+    expect(plan.observation_scopes).toBe("shared");
     expect(JSON.stringify(plan)).not.toContain("Reviewed fixture decision");
     expect(await main(["plan", ...args], {}, request)).toEqual(plan);
     await expect(main(["apply", ...args], env, request)).rejects.toThrow(
@@ -64,6 +115,8 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
         .submitted,
     ).toBe(false);
     expect(writes()).toHaveLength(1);
+    // Same-text retries must not silently change existing document scopes.
+    expect(calls.filter((call) => call.method === "PATCH")).toHaveLength(0);
     await expect(
       main(["verify", ...args, "--approve", plan.sha256], env, request),
     ).rejects.toThrow("not completed");
@@ -72,6 +125,19 @@ it("gates imports, stable retries, corrections and explicit recovery replays", a
       (await main(["verify", ...args, "--approve", plan.sha256], env, request))
         .verified,
     ).toBe(true);
+
+    if (!document) throw new Error("Expected retained fixture document");
+    document.observation_scopes = "combined";
+    expect(
+      (await main(["apply", ...args, "--approve", plan.sha256], env, request))
+        .submitted,
+    ).toBe(false);
+    await expect(
+      main(["verify", ...args, "--approve", plan.sha256], env, request),
+    ).rejects.toThrow("observation scope");
+    expect(writes()).toHaveLength(1);
+    expect(calls.filter((call) => call.method === "PATCH")).toHaveLength(0);
+    document.observation_scopes = "shared";
 
     await writeFile(file, "Explicitly corrected fixture decision.\n");
     const changed = await main(["plan", ...args], {}, request);
@@ -168,7 +234,10 @@ it("refuses missing banks and API failures without submitting or logging respons
     const plan = await main(["plan", ...args]);
     for (const status of [401, 403, 404, 500]) {
       let calls = 0;
-      const request = async (_url, init) => {
+      const request: NonNullable<Parameters<typeof main>[2]> = async (
+        _url,
+        init,
+      ) => {
         calls++;
         expect(init.method).toBe("GET");
         return new Response("PRIVATE_RESPONSE_MUST_NOT_BE_LOGGED", { status });

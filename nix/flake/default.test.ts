@@ -94,7 +94,7 @@ it("wires explicit packages and local/generated files without repository policy"
           quantile-co.factory.flake.devShell.packages = [ pkgs.hello ];
           quantile-co.factory.flake.devShell.shellHook = pkgs.lib.concatStringsSep "\\n" [
             config.quantile-co.factory.files.shellHook
-            config.quantile-co.factory.pi.shellHook
+            config.quantile-co.factory.hindsight.shellHook
             config.quantile-co.factory.uv.shellHook
             config.quantile-co.factory.turbo.shellHook
           ];
@@ -208,7 +208,7 @@ it("wires explicit packages and local/generated files without repository policy"
         [
           "-c",
           `${environment}
-printf '%s\\0%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" "$UV_PYTHON" "$UV_PYTHON_DOWNLOADS" "$LD_LIBRARY_PATH" "$TURBO_CACHE"
+printf '%s\\0%s\\0%s\\0%s\\0%s\\0%s' "$HINDSIGHT_CONFIG" "$HINDSIGHT_OPT_IN_PATHS" "$UV_PYTHON" "$UV_PYTHON_DOWNLOADS" "$LD_LIBRARY_PATH" "$TURBO_CACHE"
 `,
         ],
         {
@@ -228,8 +228,8 @@ printf '%s\\0%s\\0%s\\0%s\\0%s\\0%s' "$PI_MEMORY_DIR" "$PI_MEMORY_EXIT_SUMMARY" 
         },
       ).split("\0");
     const expectedEnvironment = [
-      join(root, ".pi/memory"),
-      "0",
+      join(root, ".pi/hindsight.json"),
+      root,
       wiring.python,
       "never",
       `${wiring.libraries}/existing/library`,
@@ -326,13 +326,13 @@ it("initializes the native downstream starter and preserves repository-owned wor
     ]);
     expect(manifest.scripts.check).toBe("turbo run check");
     expect(manifest.scripts.fix).toBe("turbo run fix");
-    expect(existsSync(join(root, "apps/repo/cli.js"))).toBe(true);
+    expect(existsSync(join(root, "apps/repo/cli.ts"))).toBe(true);
     expect(readFileSync(join(root, ".envrc"), "utf8")).toContain("use flake");
     const selected = {
       "package.json": `${JSON.stringify({ ...manifest, name: "reviewed-project" }, null, 2)}\n`,
       "pnpm-workspace.yaml": `${readFileSync(join(root, "pnpm-workspace.yaml"), "utf8")}# Repository-owned workspace.\n`,
       ".gitignore": `${readFileSync(join(root, ".gitignore"), "utf8")}# Repository-owned ignores.\n`,
-      "apps/repo/cli.js": `${readFileSync(join(root, "apps/repo/cli.js"), "utf8")}// Repository-owned checks.\n`,
+      "apps/repo/cli.ts": `${readFileSync(join(root, "apps/repo/cli.ts"), "utf8")}// Repository-owned checks.\n`,
       "turbo.json": `${JSON.stringify({ ...JSON.parse(readFileSync(join(root, "turbo.json"), "utf8")), ui: "stream" }, null, 2)}\n`,
     };
     execFileSync("git", ["add", "."], options);
@@ -347,7 +347,7 @@ it("initializes the native downstream starter and preserves repository-owned wor
     execFileSync(join(files, "bin/factory-files"), ["check"], options);
     execFileSync(
       "bash",
-      ["-c", `${environment}\nnode apps/repo/cli.js check`],
+      ["-c", `${environment}\nnode apps/repo/cli.ts check`],
       options,
     );
     for (const [name, contents] of Object.entries(selected))

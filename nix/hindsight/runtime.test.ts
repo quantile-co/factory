@@ -167,6 +167,9 @@ it.each(["fresh", "resumed"])(
         r.path.endsWith("/memories"),
       );
       expect(retains).toHaveLength(1);
+      expect(retains[0].body.items).toHaveLength(1);
+      expect(retains[0].body.items[0].tags.length).toBeGreaterThan(0);
+      expect(retains[0].body.items[0].observation_scopes).toBe("shared");
       // Document upstream behavior honestly: resume uploads the full active branch,
       // including old messages. Disabling autoSeed prevents archive scans, not this.
       expect(JSON.stringify(retains)).toContain("ACTIVE_BRANCH_HISTORY");

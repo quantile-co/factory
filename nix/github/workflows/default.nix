@@ -18,6 +18,15 @@ let
         authToken: ''${{ secrets.CACHIX_AUTH_TOKEN }}
         useDaemon: false
   '';
+  loadTaskShell =
+    builtins.replaceStrings
+      [ "\"$direnv\" exec . pnpm run github:" ]
+      [
+        (
+          "shell=$(env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" export bash)\n"
+          + "          eval \"$shell\"\n          unset shell\n          pnpm run github:"
+        )
+      ];
   cacheJob =
     source:
     let
@@ -35,59 +44,51 @@ let
     else
       assert lib.assertMsg (lib.hasInfix cachixSetup source) "Workflow Cachix setup changed";
       assert lib.assertMsg (marker != null) "Workflow task environment changed";
-      builtins.replaceStrings
-        [
-          cachixSetup
-          marker
-          "nix build --no-link --print-out-paths"
-          "\"$direnv\" allow ."
-          "\"$direnv\" exec . pnpm install --frozen-lockfile"
-        ]
-        [
-          ""
-          (
+      loadTaskShell (
+        builtins.replaceStrings
+          [
+            cachixSetup
             marker
-            + "          NIX_CACHE_PROVIDER: namespace\n"
-            + "          NIX_CACHE_PUBLIC_KEY: \${{ vars.NIX_CACHE_PUBLIC_KEY }}\n"
-            + "          NIX_CACHE_PRIVATE_KEY: \${{ secrets.NIX_CACHE_PRIVATE_KEY }}\n"
-          )
-          "env -u NIX_CACHE_PRIVATE_KEY nix build --no-link --print-out-paths"
-          "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" allow ."
-          "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" exec . pnpm install --frozen-lockfile"
-        ]
-        source;
+            "nix build --no-link --print-out-paths"
+            "\"$direnv\" allow ."
+            "\"$direnv\" exec . pnpm install --frozen-lockfile"
+          ]
+          [
+            ""
+            (
+              marker
+              + "          NIX_CACHE_PROVIDER: namespace\n"
+              + "          NIX_CACHE_PUBLIC_KEY: \${{ vars.NIX_CACHE_PUBLIC_KEY }}\n"
+              + "          NIX_CACHE_PRIVATE_KEY: \${{ secrets.NIX_CACHE_PRIVATE_KEY }}\n"
+            )
+            "env -u NIX_CACHE_PRIVATE_KEY nix build --no-link --print-out-paths"
+            "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" allow ."
+            "env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" exec . pnpm install --frozen-lockfile"
+          ]
+          source
+      );
   collectorJob =
     phase: source:
     if !(builtins.elem phase cfg.otelJobs) then
       source
     else
-      let
-        task =
-          {
-            test = "Run checks, then tests";
-            build = "Build";
-            plan = "Plan";
-            apply = "Apply";
-          }
-          .${phase};
-        marker = "      - name: ${task}\n        env:\n";
-      in
-      assert lib.assertMsg (lib.hasInfix marker source) "Workflow task environment changed";
+      assert lib.assertMsg (
+        cfg.otelActionRef != null
+      ) "Set otelActionRef to a published Factory commit before enabling OTel jobs.";
+      assert lib.assertMsg (lib.hasInfix "    steps:\n" source) "Workflow steps changed";
       builtins.replaceStrings
-        [ marker "        run: |\n" "\"$direnv\" exec . pnpm run github:" ]
+        [ "    steps:\n" ]
         [
           (
-            marker
-            + "          OTEL_AGENT_PLATFORM: namespace\n"
-            + "          OTEL_AGENT_REPOSITORY: \${{ github.repository }}\n"
-            + "          OTEL_AGENT_RUN_ID: \${{ github.run_id }}\n"
-            + "          OTEL_AGENT_RUN_ATTEMPT: \${{ github.run_attempt }}\n"
-            + "          CLICKSTACK_OTLP_ENDPOINT: \${{ vars.CLICKSTACK_OTLP_ENDPOINT }}\n"
-            + "          CLICKSTACK_API_KEY: \${{ secrets.CLICKSTACK_API_KEY }}\n"
+            "    steps:\n"
+            + indent 6 ''
+              - name: Start OpenTelemetry Collector
+                uses: quantile-co/factory/.github/actions/otel@${cfg.otelActionRef}
+                env:
+                  CLICKSTACK_OTLP_ENDPOINT: ''${{ vars.CLICKSTACK_OTLP_ENDPOINT }}
+                  CLICKSTACK_API_KEY: ''${{ secrets.CLICKSTACK_API_KEY }}
+            ''
           )
-          # Shell-local until shell evaluation and frozen install have finished.
-          "        run: |\n          export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n"
-          "shell=$(env -u NIX_CACHE_PRIVATE_KEY \"$direnv\" export bash)\n          eval \"$shell\"\n          unset shell\n          export CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY\n          pnpm otel -- pnpm run github:"
         ]
         source;
   hindsightJob =
@@ -107,9 +108,13 @@ let
       assert lib.assertMsg (lib.hasInfix marker source)
         "Workflow provider credential environment changed";
       builtins.replaceStrings
-        [ marker ]
-        [ (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n") ]
-        source;
+        [ marker "        run: |\n" "          pnpm run github:" ]
+        [
+          (marker + "          HINDSIGHT_API_TOKEN: \${{ secrets.HINDSIGHT_API_TOKEN }}\n")
+          "        run: |\n          export -n HINDSIGHT_API_TOKEN\n"
+          "          export HINDSIGHT_API_TOKEN\n          pnpm run github:"
+        ]
+        (loadTaskShell source);
   render =
     name: source: layers:
     let
@@ -157,6 +162,11 @@ in
 {
   options.quantile-co.factory.github.workflows = {
     hindsight = lib.mkEnableOption "the Hindsight runtime credential in protected Plan/Apply jobs";
+    otelActionRef = lib.mkOption {
+      type = lib.types.nullOr (lib.types.strMatching "[0-9a-f]{40}");
+      default = null;
+      description = "Published Factory commit containing .github/actions/otel. Required when otelJobs is nonempty; starts the native Collector before checkout.";
+    };
     otelJobs = lib.mkOption {
       type = lib.types.listOf (
         lib.types.enum [
@@ -167,7 +177,7 @@ in
         ]
       );
       default = [ ];
-      description = "Explicit ClickHouse Observability jobs, only protected workflow_dispatch main jobs, never Check/PRs. Caller supplies pnpm otel and selected native collector/config paths.";
+      description = "Explicit ClickHouse Observability jobs, only protected workflow_dispatch main jobs, never Check/PRs. Requires a published otelActionRef; there is no task-wrapper fallback.";
     };
     nixCache = lib.mkOption {
       type = lib.types.enum [

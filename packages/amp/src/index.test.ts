@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -102,64 +103,155 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
   }
 });
 
-it("refreshes orb collector runtime credentials without arguments or persistent files, and fails open", () => {
-  const directory = mkdtempSync(join(tmpdir(), "factory-orb-otel-"));
-  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+it("installs skills before building the orb runtime and stops on provisioning failure", () => {
+  const directory = mkdtempSync(join(tmpdir(), "factory-orb-provision-"));
+  const log = join(directory, "calls");
+  const hook = readFileSync(
+    new URL("../../../.agents/setup", import.meta.url),
+    "utf8",
+  );
+  const command = hook.match(/bash -euo pipefail -c '([\s\S]+)'/)?.[1];
+  const expected = [
+    "install --frozen-lockfile",
+    "run skills:sync",
+    "run build",
+    "amp setup",
+  ];
   try {
-    const record = join(directory, "operations");
-    const sudo = join(directory, "sudo");
-    writeFileSync(
-      sudo,
-      `#!${process.execPath}
-const fs = require('node:fs');
-const args = process.argv.slice(3);
-fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify(args) + '\\n');
-if (args[0] === 'install') fs.appendFileSync(${JSON.stringify(record)}, fs.readFileSync(0, 'utf8'));
-if (args.includes('restart')) { console.error('PRIVATE_ERROR'); process.exit(1); }
-if (args.includes('is-active')) process.exit(3);
+    expect(command).toBeDefined();
+    for (const tool of ["pnpm", "install"]) {
+      const path = join(directory, tool);
+      writeFileSync(
+        path,
+        `#!${process.execPath}
+const args = process.argv.slice(2).join(" ");
+if (${JSON.stringify(tool)} === "pnpm") {
+  require("node:fs").appendFileSync(${JSON.stringify(log)}, args + "\\n");
+  if (args === process.env.FAIL_COMMAND) process.exit(17);
+}
 `,
-    );
-    chmodSync(sudo, 0o755);
-    vi.stubEnv("PATH", directory);
-    vi.stubEnv("AMP_ORB", "1");
-    vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
-    vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
-    expect(() => resumeCollector("org/repo", thread)).not.toThrow();
-    const operations = readFileSync(record, "utf8");
-    expect(operations).toContain(
-      '["install","-m","0600","/dev/stdin","/run/factory-amp/otel.env"]',
-    );
-    expect(operations).toContain('CLICKSTACK_API_KEY="fixture-runtime-key"');
-    expect(
-      operations.trim().endsWith('["rm","-f","/run/factory-amp/otel.env"]'),
-    ).toBe(true);
-    expect(JSON.stringify(log.mock.calls)).not.toMatch(
-      /fixture-runtime-key|PRIVATE_ERROR/,
-    );
-    writeFileSync(record, "");
-    log.mockClear();
-    vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "");
-    vi.stubEnv("CLICKSTACK_API_KEY", "");
-    resumeCollector("org/repo", thread);
-    expect(readFileSync(record, "utf8")).not.toContain('"stop"');
-    expect(log).not.toHaveBeenCalled();
+      );
+      chmodSync(path, 0o755);
+    }
+    for (const failCommand of ["", ...expected.slice(0, 2)]) {
+      writeFileSync(log, "");
+      const result = spawnSync("bash", ["-euo", "pipefail"], {
+        input: command,
+        encoding: "utf8",
+        env: {
+          PATH: `${directory}:${process.env.PATH}`,
+          HOME: directory,
+          FAIL_COMMAND: failCommand,
+        },
+      });
+      expect(result.status, result.stderr).toBe(failCommand ? 17 : 0);
+      expect(readFileSync(log, "utf8").trim().split("\n")).toEqual(
+        failCommand
+          ? expected.slice(0, expected.indexOf(failCommand) + 1)
+          : expected,
+      );
+    }
   } finally {
-    log.mockRestore();
-    vi.unstubAllEnvs();
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+it.each(["none", "tee", "restart"])(
+  "refreshes collector credentials through native stdin, cleans up and fails open (%s failure)",
+  (failure) => {
+    const directory = mkdtempSync(join(tmpdir(), "factory-orb-otel-"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const record = join(directory, "operations");
+      const sudo = join(directory, "sudo");
+      const file = join(directory, "otel.env");
+      writeFileSync(
+        sudo,
+        `#!${process.execPath}
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
+const args = process.argv.slice(3);
+const file = ${JSON.stringify(file)};
+fs.appendFileSync(${JSON.stringify(record)}, JSON.stringify(args) + '\\n');
+if (args[0] === 'tee') {
+  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  assert.equal(fs.readFileSync(file, 'utf8'), '');
+}
+if (['install', 'tee', 'rm'].includes(args[0])) {
+  // Inherit Node's actual stdin descriptor: reopening /dev/stdin fails on Linux.
+  const result = spawnSync(args[0], args.slice(1).map(arg =>
+    arg === '/run/factory-amp/otel.env' ? file : arg), { stdio: 'inherit' });
+  if (result.status !== 0) process.exit(1);
+}
+if (args.includes('restart')) {
+  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  assert.ok(fs.readFileSync(file, 'utf8').includes('CLICKSTACK_API_KEY="fixture-runtime-key"\\n'));
+}
+if (args.includes(${JSON.stringify(failure)})) { console.error('PRIVATE_ERROR'); process.exit(1); }
+if (args.includes('is-active')) process.exit(3);
+`,
+      );
+      chmodSync(sudo, 0o755);
+      vi.stubEnv("PATH", `${directory}:${process.env.PATH}`);
+      vi.stubEnv("AMP_ORB", "1");
+      vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
+      vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
+      expect(() => resumeCollector("org/repo", thread)).not.toThrow();
+      const operations = readFileSync(record, "utf8");
+      expect(
+        operations
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line)),
+      ).toEqual([
+        ["systemctl", "stop", "factory-amp-otel.service"],
+        ["install", "-m", "0600", "/dev/null", "/run/factory-amp/otel.env"],
+        ["tee", "/run/factory-amp/otel.env"],
+        ...(failure === "tee"
+          ? []
+          : [["systemctl", "restart", "factory-amp-otel.service"]]),
+        ["rm", "-f", "/run/factory-amp/otel.env"],
+      ]);
+      expect(() => statSync(file)).toThrow(/ENOENT/);
+      expect(log.mock.calls).toEqual(
+        failure === "none"
+          ? []
+          : [["OTel orb collector unavailable; resume continues."]],
+      );
+      expect(JSON.stringify(log.mock.calls)).not.toMatch(
+        /fixture-runtime-key|PRIVATE_ERROR/,
+      );
+      writeFileSync(record, "");
+      log.mockClear();
+      vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "");
+      vi.stubEnv("CLICKSTACK_API_KEY", "");
+      resumeCollector("org/repo", thread);
+      expect(readFileSync(record, "utf8")).not.toContain('"stop"');
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+      vi.unstubAllEnvs();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
 
 it.each(["1.104.5", "1.104.1"])(
   "prepares only safe Tailscale SSH snapshots (%s)",
   (version) => {
     const home = mkdtempSync(join(tmpdir(), "factory-amp-setup-"));
     try {
-      mkdirSync(join(home, "artifacts"));
-      writeFileSync(join(home, "artifacts/cli.js"), "import './chunk.js';");
-      writeFileSync(join(home, "artifacts/chunk.js"), "export {};");
-      writeFileSync(join(home, "host.yaml"), "host fixture");
+      writeFileSync(join(home, "config.yaml"), "config fixture");
       writeFileSync(join(home, "docker.yaml"), "docker fixture");
+      const collector = join(home, ".local/share/factory-amp/otel");
+      mkdirSync(collector, { recursive: true });
+      for (const name of ["config", "docker"]) {
+        chmodSync(join(home, `${name}.yaml`), 0o444);
+        writeFileSync(join(collector, `${name}.yaml`), "stale config", {
+          mode: 0o444,
+        });
+      }
       // Mock privileged operations; only the temporary HOME is written.
       const result = spawnSync(
         "bash",
@@ -195,10 +287,9 @@ ${setupScript}
             VERSION: version,
             PATH: process.env.PATH,
             CLICKSTACK_API_KEY: "fixture-not-for-snapshots",
-            FACTORY_AMP_OTEL_CLI: join(home, "artifacts/cli.js"),
             OTEL_COLLECTOR_BINARY:
               "/nix/store/fixture-collector/bin/otelcol-contrib",
-            OTEL_COLLECTOR_CONFIG: join(home, "host.yaml"),
+            OTEL_COLLECTOR_CONFIG: join(home, "config.yaml"),
             OTEL_COLLECTOR_DOCKER_CONFIG: join(home, "docker.yaml"),
           },
           encoding: "utf8",
@@ -210,6 +301,11 @@ ${setupScript}
         return;
       }
       expect(result.status, result.stdout + result.stderr).toBe(0);
+      for (const name of ["config", "docker"]) {
+        const config = join(collector, `${name}.yaml`);
+        expect(readFileSync(config, "utf8")).toBe(`${name} fixture`);
+        expect(statSync(config).mode & 0o777).toBe(0o644);
+      }
       const units = readFileSync(join(home, "units"), "utf8");
       expect(units).toContain("Environment=TS_SSH_DISABLE_FORWARDING=1");
       expect(units).toContain("InaccessiblePaths=-/etc/ssh/ssh_host_rsa_key");
@@ -218,16 +314,12 @@ ${setupScript}
         /fixture-not-for-snapshots|ExecStart=.*sshd|authorized_keys/,
       );
       expect(units).toContain(
-        `ExecStart=/nix/store/fixture-node/bin/node ${home}/.local/share/factory-amp/otel/cli.js collector`,
+        `ExecStart=/nix/store/fixture-collector/bin/otelcol-contrib --config=${home}/.local/share/factory-amp/otel/config.yaml $OTEL_COLLECTOR_EXTRA_ARGS`,
       );
-      expect(
-        readFileSync(
-          join(home, ".local/share/factory-amp/otel/chunk.js"),
-          "utf8",
-        ),
-      ).toBe("export {};");
+      expect(units).toContain("StandardError=journal");
+      expect(units).toContain("TimeoutStopSec=30");
       const operations = readFileSync(join(home, "operations"), "utf8");
-      expect(operations).toContain(
+      expect(operations).not.toContain(
         "--indirect --realise /nix/store/fixture-node",
       );
       expect(operations).toContain(
@@ -305,7 +397,7 @@ it("verifies Tailscale-pinned SSH before native Herdr setup and stops on SSH fai
       DNSName: "amp-fixture.tail.example.",
       Online: true,
       Tags: ["tag:amp-orb"],
-      SSH_HostKeys: [key],
+      sshHostKeys: [key],
     };
     const record = join(home, "operations");
     for (const command of ["tailscale", "ssh", "herdr"]) {

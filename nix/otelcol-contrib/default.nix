@@ -8,7 +8,7 @@
     };
     hostConfigFile = lib.mkOption {
       type = lib.types.path;
-      default = ../../etc/otelcol-contrib/host.yaml;
+      default = ../../etc/otelcol-contrib/config.yaml;
       description = "Native host metrics configuration with runtime-only managed credentials and agent identity.";
     };
     dockerConfigFile = lib.mkOption {

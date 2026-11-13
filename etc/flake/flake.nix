@@ -58,7 +58,7 @@
               "biome.json" = copy tools.biome.configFile;
               "package.json" = seed tools.pnpm.packageJsonFile;
               "apps/repo/package.json" = seed tools.pnpm.repoPackageJsonFile;
-              "apps/repo/cli.js" = seed tools.pnpm.repoCliFile;
+              "apps/repo/cli.ts" = seed tools.pnpm.repoCliFile;
               "pnpm-workspace.yaml" = seed tools.pnpm.workspaceFile;
               "turbo.json" = seed tools.turbo.configFile;
               "tsconfig.json" = seed tools.typescript.configFile;

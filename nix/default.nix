@@ -45,7 +45,6 @@
     ./prettier
     ./protoc
     ./pylint
-    ./qmd
     ./readme
     ./resend-cli
     ./ruff
