@@ -574,18 +574,22 @@
     }
   ],
   "dependencies": {
-    "@langfuse/tracing": "6.0.1",
+    "@langfuse/tracing": "6.1.1",
     "@opentelemetry/api": "1.9.1"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-ai": {
       "optional": true
     },
     "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "typebox": {
       "optional": true
     }
   }
