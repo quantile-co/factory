@@ -271,7 +271,10 @@ async function main() {
     if (process.env.INPUT_CONFIG)
       throw new Error("job-log-prefix requires the built-in Collector config");
     env.FACTORY_CI_CONSOLE_PAGES = consolePagePattern(prefix);
-    args.push("--config", join(actionDirectory, "console.yaml"));
+    args.push(
+      "--set",
+      "service::pipelines::logs::receivers=[otlp,filelog/runner_console]",
+    );
     console.warn(
       "Console capture stops during action post; buffered tail, undiscovered deleted pages and final runner output are not covered",
     );
