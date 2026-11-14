@@ -7,7 +7,14 @@ set +x
 }
 unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY OTEL_DOCKER_STATS
 cd -- "$(dirname -- "$0")/.."
-source .agents/log-output
+umask 077
+# Retain early output; close the writer and drain tee when the hook exits.
+amp_logs="$HOME/.local/share/factory-amp/logs"
+mkdir -p "$amp_logs"
+exec > >(tee -a "$amp_logs/setup.log") 2>&1
+amp_log_pid=$!
+trap 'exec 1>&- 2>&-; wait "$amp_log_pid"' EXIT
+unset amp_logs
 source .agents/nix-env
 # Expand runtime paths inside the pinned shell, not the outer hook.
 # shellcheck disable=SC2016
