@@ -1,8 +1,6 @@
 // biome-ignore-all lint/suspicious/noUndeclaredEnvVars: GitHub runs this action directly, outside Turbo.
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { once } from "node:events";
-import { createReadStream } from "node:fs";
+import { createHash } from "node:crypto";
 import {
   appendFile,
   chmod,
@@ -12,7 +10,7 @@ import {
   readFile,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
@@ -204,28 +202,33 @@ export async function startCollector({
   }
 }
 
+// The runner names pages <timeline UUID>_<record UUID>_<page>.log. The
+// caller must identify the JOB record, not a step record or GITHUB_JOB name.
+// No discovery integration yet: verify runner metadata before supplying this.
+// Do not guess from page age or widen the glob to include other records.
+export function consolePagePattern(prefix: string) {
+  const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+  if (
+    !isAbsolute(prefix) ||
+    !dirname(prefix).endsWith("/_diag/pages") ||
+    /[\0\r\n*?[\]{}\\$]/.test(prefix) ||
+    !new RegExp(`^${uuid}_${uuid}_$`).test(basename(prefix))
+  ) {
+    throw new Error(
+      "Expected an absolute _diag/pages/<timeline UUID>_<job record UUID>_ prefix",
+    );
+  }
+  return `${prefix}*.log`;
+}
+
 async function main() {
   if (process.env.STATE_directory) {
-    try {
-      await stopCollector(process.env.STATE_directory);
-    } finally {
-      const token = randomUUID();
-      console.info("::group::Collector diagnostics");
-      console.info(`::stop-commands::${token}`);
-      try {
-        for await (const chunk of createReadStream(
-          join(process.env.STATE_directory, "collector.log"),
-        )) {
-          if (!process.stdout.write(chunk)) await once(process.stdout, "drain");
-        }
-      } catch (error) {
-        if (!hasErrorCode(error, "ENOENT"))
-          console.warn("Collector diagnostics could not be read.");
-      } finally {
-        console.info(`\n::${token}::`);
-        console.info("::endgroup::");
-      }
-    }
+    // Action posts (even the runner's JOB_COMPLETED hook) precede final job
+    // logging and page flush. Keep bounded cleanup until a runner-owned drain
+    // primitive is qualified; escaping orphan cleanup is not a completeness fix.
+    await stopCollector(process.env.STATE_directory);
+    // Never replay collector.log into the captured stream: exporter errors can
+    // contain payloads, and replay while capturing would feed diagnostics back.
     return;
   }
   const endpoint = process.env.CLICKSTACK_OTLP_ENDPOINT;
@@ -258,15 +261,27 @@ async function main() {
     GITHUB_OUTPUT,
     `log-file=${join(directory, "collector.log")}\n`,
   );
+  const args = [
+    "--config",
+    process.env.INPUT_CONFIG || join(actionDirectory, "config.yaml"),
+  ];
+  const env = { ...process.env };
+  const prefix = process.env["INPUT_JOB-LOG-PREFIX"];
+  if (prefix) {
+    if (process.env.INPUT_CONFIG)
+      throw new Error("job-log-prefix requires the built-in Collector config");
+    env.FACTORY_CI_CONSOLE_PAGES = consolePagePattern(prefix);
+    args.push("--config", join(actionDirectory, "console.yaml"));
+    console.warn(
+      "Console capture stops during action post; buffered tail, undiscovered deleted pages and final runner output are not covered",
+    );
+  }
   const binary = await installCollector(directory);
   await startCollector({
     binary,
-    args: [
-      "--config",
-      process.env.INPUT_CONFIG || join(actionDirectory, "config.yaml"),
-    ],
+    args,
     directory,
-    env: process.env,
+    env,
     healthUrl: "http://127.0.0.1:13133/",
   });
 }

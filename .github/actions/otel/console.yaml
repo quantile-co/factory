@@ -1,0 +1,33 @@
+# Optional overlay for the built-in config, enabled only with job-log-prefix.
+# ExecutionContext.Write masks before PagingLogger writes the job-wide copy.
+# Select ONE job record; never all pages, blocks, Runner_/Worker_ diagnostics,
+# private deployment logs, artifacts, or the Collector's own diagnostics.
+receivers:
+  filelog/runner_console:
+    include: ["${env:FACTORY_CI_CONSOLE_PAGES}"]
+    start_at: beginning
+    poll_interval: 200ms
+    include_file_name: false
+    # PagingLogger writes a UTF-8 BOM and can embed newlines after one timestamp.
+    multiline:
+      line_start_pattern: '^\x{FEFF}?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z '
+    operators:
+      - type: regex_parser
+        regex: '(?s)^\x{FEFF}?(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z) (?P<message>.*)$'
+        on_error: send_quiet
+        timestamp:
+          parse_from: attributes.timestamp
+          layout_type: gotime
+          layout: '2006-01-02T15:04:05.0000000Z'
+      - type: move
+        from: attributes.message
+        to: body
+        if: 'attributes.message != nil'
+# Stock filelog can finish opened, unlinked pages, NOT undiscovered deleted ones.
+# Native size/queue bounds still apply; neither rotation nor delivery is lossless.
+service:
+  pipelines:
+    logs/runner_console:
+      receivers: [filelog/runner_console]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_http]
