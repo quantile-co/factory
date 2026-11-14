@@ -1,4 +1,4 @@
-# Amp orb VM metrics, readable OS log files and explicitly routed application OTLP.
+# Amp orb VM metrics, readable OS logs, retained lifecycle/process logs and OTLP.
 # No root access or extra journal permissions are granted by this configuration.
 receivers:
   host_metrics:
@@ -23,12 +23,30 @@ receivers:
     include: [/var/log/syslog, /var/log/messages, /var/log/kern.log, /var/log/*.log]
     include_file_path: true
     start_at: end
+    storage: file_storage
+  filelog/amp:
+    # Only explicit log destinations, never terminal sessions or arbitrary artifacts.
+    # Development processes may opt in by writing a .log file under workloads/.
+    include:
+      - ${env:OTEL_LOG_DIRECTORY}/setup.log
+      - ${env:OTEL_LOG_DIRECTORY}/resume.log
+      - ${env:OTEL_LOG_DIRECTORY}/herdr.log
+      - ${env:OTEL_LOG_DIRECTORY}/workloads/*.log
+    include_file_path: true
+    start_at: beginning
+    storage: file_storage
+    retry_on_failure:
+      enabled: true
   otlp:
     protocols:
       grpc:
         endpoint: 127.0.0.1:4317
       http:
         endpoint: 127.0.0.1:4318
+
+extensions:
+  file_storage:
+    directory: ${env:OTEL_CURSOR_DIRECTORY}
 
 processors:
   memory_limiter:
@@ -70,6 +88,7 @@ exporters:
       queue_size: 256
 
 service:
+  extensions: [file_storage]
   telemetry:
     logs:
       level: info
@@ -79,7 +98,7 @@ service:
       processors: [memory_limiter, resource, batch]
       exporters: [otlp_http]
     logs:
-      receivers: [filelog, otlp]
+      receivers: [filelog, filelog/amp, otlp]
       processors: [memory_limiter, resource, batch]
       exporters: [otlp_http]
     traces:

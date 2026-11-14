@@ -7,8 +7,9 @@ set +x
 }
 cd -- "$(dirname -- "$0")/.."
 umask 077
-# Never expose ingestion credentials to Nix evaluation or shell snapshots.
+# Never expose ingestion credentials to logging children, Nix evaluation or shell snapshots.
 export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY OTEL_DOCKER_STATS
+source .agents/log-output
 source .agents/nix-env
 shell=$(nix print-dev-env)
 eval "$shell"

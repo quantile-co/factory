@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set +x
 [[ ${AMP_ORB:-} == 1 ]] || {
     echo 'This hook is only for an Amp orb.' >&2
     exit 1
 }
 unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY OTEL_DOCKER_STATS
 cd -- "$(dirname -- "$0")/.."
+source .agents/log-output
 source .agents/nix-env
 # Expand runtime paths inside the pinned shell, not the outer hook.
 # shellcheck disable=SC2016
@@ -13,6 +15,7 @@ nix develop --command bash -euo pipefail -c '
   pnpm install --frozen-lockfile
   pnpm run skills:sync
   pnpm run build
+  export OTEL_COLLECTOR_JOURNAL_CONFIG="$PWD/etc/otelcol-contrib/journald.yaml"
   pnpm amp setup
   install -D -m 0644 packages/amp/dist/plugin.js "${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins/factory-orb-awake.js"
   install -D -m 0644 packages/amp/dist/telemetry.js "${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins/factory-observability.js"

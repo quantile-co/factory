@@ -1,5 +1,12 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, realpathSync } from "node:fs";
+import {
+  appendFileSync,
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  realpathSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -281,6 +288,9 @@ if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ]; then
   # Refresh read-only copies inherited from a prepared Nix snapshot.
   install -m 0644 "$OTEL_COLLECTOR_CONFIG" "$install/config.yaml"
   install -m 0644 "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
+  if [ -n "\${OTEL_COLLECTOR_JOURNAL_CONFIG:-}" ]; then
+    install -m 0644 "$OTEL_COLLECTOR_JOURNAL_CONFIG" "$install/journald.yaml"
+  fi
   # The native executable must survive orb garbage collection.
   if [[ "$collector" == /nix/store/* ]]; then
     store=\${collector#/nix/store/}
@@ -293,6 +303,7 @@ Description=Factory OpenTelemetry Collector
 After=network-online.target
 [Service]
 User=$(id -un)
+UMask=0077
 EnvironmentFile=/run/factory-amp/otel.env
 ExecStart=$collector --config=$install/config.yaml \\$OTEL_COLLECTOR_EXTRA_ARGS
 TimeoutStopSec=30
@@ -304,7 +315,7 @@ fi
 sudo systemctl daemon-reload
 `;
 
-export const resumeScript: string = `set +x
+export const resumeGuardScript: string = `set +x
 [ "\${AMP_ORB:-}" = 1 ] || { echo 'Resume is only for an Amp orb.' >&2; exit 1; }
 : "\${TAILSCALE_CLIENT_ID:?Set the workspace enrollment client ID}"
 : "\${TAILSCALE_AUDIENCE:?Set the workspace enrollment audience}"
@@ -319,6 +330,10 @@ if [ -f "$state/thread" ] && [ "$(<"$state/thread")" != "$FACTORY_AMP_THREAD" ];
   echo 'Runtime identity belongs to another thread; do not reuse an activated snapshot.' >&2; exit 1
 fi
 printf '%s' "$FACTORY_AMP_THREAD" > "$state/thread"
+`;
+
+const resumeNetworkScript = `set +x
+umask 077
 sudo systemctl start factory-amp-tailscaled.service
 socket=/run/factory-amp/tailscaled.sock
 for ((attempt=0; attempt<50; attempt++)); do
@@ -337,6 +352,8 @@ rm -f "$token_file"
 # No separate sshd, authorized_keys, port forwarding or model credentials.
 # Tailscale SSH authorization is owned by the tailnet policy.
 `;
+
+export const resumeScript = resumeGuardScript + resumeNetworkScript;
 
 export function setup(): void {
   interactive(
@@ -374,7 +391,42 @@ export function resumeCollector(
     if (disabled) return;
     const config = managedConfig();
     if (!config) return;
+    const install = join(homedir(), ".local/share/factory-amp/otel");
+    const extraArgs: string[] = [];
+    if (process.env.OTEL_DOCKER_STATS === "1")
+      extraArgs.push(`--config=${join(install, "docker.yaml")}`);
+    // Opt in only after live qualification. Probe the same selected unit and
+    // distro journalctl as the receiver, without sudo or printing journal data.
+    if (process.env.OTEL_JOURNALD === "1") {
+      const journal = spawnSync(
+        "/usr/bin/journalctl",
+        [
+          "--no-pager",
+          "--quiet",
+          "--output=json",
+          "--lines=1",
+          "--unit=factory-amp-tailscaled.service",
+        ],
+        { encoding: "utf8", timeout: 5000, maxBuffer: 1024 * 1024 },
+      );
+      if (
+        journal.status === 0 &&
+        journal.stdout.trim().startsWith("{") &&
+        existsSync(join(install, "journald.yaml"))
+      )
+        extraArgs.push(`--config=${join(install, "journald.yaml")}`);
+      else
+        console.error(
+          "OTel journal access unqualified; continuing with file logs and metrics.",
+        );
+    }
+    const logDirectory = join(homedir(), ".local/share/factory-amp/logs");
+    const cursorDirectory = join(homedir(), ".local/state/factory-amp/otel");
+    mkdirSync(logDirectory, { recursive: true, mode: 0o700 });
+    mkdirSync(cursorDirectory, { recursive: true, mode: 0o700 });
     const values = {
+      OTEL_LOG_DIRECTORY: logDirectory,
+      OTEL_CURSOR_DIRECTORY: cursorDirectory,
       OTEL_AGENT_PLATFORM: "amp-orb",
       OTEL_AGENT_THREAD_ID: thread,
       OTEL_AGENT_INSTANCE_ID: thread,
@@ -383,11 +435,11 @@ export function resumeCollector(
       OTEL_AGENT_RUN_ATTEMPT: "",
       CLICKSTACK_OTLP_ENDPOINT: config.endpoint,
       CLICKSTACK_API_KEY: config.key,
-      OTEL_COLLECTOR_EXTRA_ARGS:
-        process.env.OTEL_DOCKER_STATS === "1"
-          ? `--config=${join(homedir(), ".local/share/factory-amp/otel/docker.yaml")}`
-          : "",
+      OTEL_COLLECTOR_EXTRA_ARGS: extraArgs.join(" "),
     };
+    // Collection now starts before tailscaled creates its runtime directory.
+    // Preserve an existing shared runtime directory's mode.
+    run(["mkdir", "-p", "/run/factory-amp"]);
     run(["install", "-m", "0600", "/dev/null", file]);
     run(
       ["tee", file],
@@ -464,7 +516,14 @@ export async function resume(
   delete env.HERDR_CLIENT_SOCKET_PATH;
   interactive(
     "bash",
-    ["--noprofile", "--norc", "-euo", "pipefail", "-c", resumeScript],
+    ["--noprofile", "--norc", "-euo", "pipefail", "-c", resumeGuardScript],
+    env,
+  );
+  // Never start collection before legacy-orb and persisted-thread checks pass.
+  resumeCollector(orb.repository, thread);
+  interactive(
+    "bash",
+    ["--noprofile", "--norc", "-euo", "pipefail", "-c", resumeNetworkScript],
     env,
   );
   const inventory = () =>
@@ -483,14 +542,21 @@ export async function resume(
   try {
     spaces = inventory();
   } catch {
-    const server = spawn("herdr", ["--session", "orb", "server"], {
-      cwd: root,
-      env,
-      detached: true,
-      stdio: "ignore",
-    });
-    server.on("error", () => {}); // Readiness below reports failure, without retrying startup.
-    server.unref();
+    const logs = join(homedir(), ".local/share/factory-amp/logs");
+    mkdirSync(logs, { recursive: true, mode: 0o700 });
+    const log = openSync(join(logs, "herdr.log"), "a", 0o600);
+    try {
+      const server = spawn("herdr", ["--session", "orb", "server"], {
+        cwd: root,
+        env,
+        detached: true,
+        stdio: ["ignore", log, log],
+      });
+      server.on("error", () => {}); // Readiness below reports failure, without retrying startup.
+      server.unref();
+    } finally {
+      closeSync(log);
+    }
     for (let attempt = 0; attempt < 30; attempt++) {
       await delay(200);
       try {
@@ -537,7 +603,6 @@ export async function resume(
       ],
       { env, stdio: "ignore" },
     );
-  resumeCollector(orb.repository, thread);
   console.log(
     `Ready: ${hostname}. Attach with ~/.local/bin/herdr --session orb; in the repository pane run nix develop --command pi. Existing agents were not replaced or prompted.`,
   );
