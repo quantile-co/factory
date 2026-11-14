@@ -1,0 +1,17 @@
+# Optional OTEL_JOURNALD=1 overlay, after live access/coverage qualification.
+# No extra groups, root Collector or broad system-journal collection.
+# Never ingest the Collector's own diagnostics (payloads/error feedback).
+receivers:
+  journald:
+    journalctl_path: /usr/bin/journalctl
+    units: [factory-amp-tailscaled.service]
+    priority: debug
+    start_at: beginning
+    storage: file_storage
+    retry_on_failure:
+      enabled: true
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog, filelog/amp, journald, otlp]

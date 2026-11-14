@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Source only from the orb hooks. Retain early output before Nix/Collector startup;
+# no shell tracing, environment dumps, terminal interception or secret redaction.
+set +x
+umask 077
+amp_logs="$HOME/.local/share/factory-amp/logs"
+mkdir -p "$amp_logs"
+exec > >(tee -a "$amp_logs/$(basename -- "$0").log") 2>&1
+amp_log_pid=$!
+# Close the writer and drain tee on normal exit or provisioning failure.
+trap 'exec 1>&- 2>&-; wait "$amp_log_pid"' EXIT
+unset amp_logs

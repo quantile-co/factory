@@ -16,6 +16,11 @@
       default = ../../etc/otelcol-contrib/config.yaml;
       description = "Native host metrics configuration with runtime-only managed credentials and agent identity.";
     };
+    journalConfigFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../etc/otelcol-contrib/journald.yaml;
+      description = "Opt-in selected service journals; requires qualified existing unprivileged journal access.";
+    };
     dockerConfigFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/otelcol-contrib/docker.yaml;

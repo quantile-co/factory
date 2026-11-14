@@ -18,6 +18,7 @@ import {
   pinHostKeys,
   resume,
   resumeCollector,
+  resumeGuardScript,
   resumeScript,
   setupScript,
 } from "./index.ts";
@@ -103,6 +104,45 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
   }
 });
 
+it("retains early hook stdout/stderr privately, appends on resume and preserves failure", () => {
+  const home = mkdtempSync(join(tmpdir(), "factory-amp-logs-"));
+  const capture = readFileSync(
+    new URL("../../../.agents/log-output", import.meta.url),
+    "utf8",
+  );
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = spawnSync(
+        "bash",
+        [
+          "-euo",
+          "pipefail",
+          "-c",
+          `${capture}\nprintf 'early stdout\\n'; printf 'early stderr\\n' >&2; exit 17`,
+          "resume",
+        ],
+        {
+          env: { HOME: home, PATH: process.env.PATH },
+          encoding: "utf8",
+          timeout: 5000,
+        },
+      );
+      expect(result.status).toBe(17);
+      expect(result.stdout).toBe("early stdout\nearly stderr\n");
+    }
+    const log = join(home, ".local/share/factory-amp/logs/resume.log");
+    expect(readFileSync(log, "utf8")).toBe(
+      "early stdout\nearly stderr\n".repeat(2),
+    );
+    expect(statSync(log).mode & 0o777).toBe(0o600);
+    expect(
+      spawnSync("test", ["-e", join(home, ".local/state/factory-amp")]).status,
+    ).toBe(1);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 it("installs skills before building the orb runtime and stops on provisioning failure", () => {
   const directory = mkdtempSync(join(tmpdir(), "factory-orb-provision-"));
   const log = join(directory, "calls");
@@ -178,10 +218,11 @@ if (args[0] === 'tee') {
   assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.equal(fs.readFileSync(file, 'utf8'), '');
 }
-if (['install', 'tee', 'rm'].includes(args[0])) {
+if (['mkdir', 'install', 'tee', 'rm'].includes(args[0])) {
   // Inherit Node's actual stdin descriptor: reopening /dev/stdin fails on Linux.
   const result = spawnSync(args[0], args.slice(1).map(arg =>
-    arg === '/run/factory-amp/otel.env' ? file : arg), { stdio: 'inherit' });
+    arg === '/run/factory-amp/otel.env' ? file :
+    arg === '/run/factory-amp' ? ${JSON.stringify(join(directory, "run"))} : arg), { stdio: 'inherit' });
   if (result.status !== 0) process.exit(1);
 }
 if (args.includes('restart')) {
@@ -195,6 +236,10 @@ if (args.includes('is-active')) process.exit(3);
       chmodSync(sudo, 0o755);
       vi.stubEnv("PATH", `${directory}:${process.env.PATH}`);
       vi.stubEnv("AMP_ORB", "1");
+      vi.stubEnv("HOME", directory);
+      // No selected journal/config in this fixture: optional journal capture
+      // must not prevent the base Collector's credential refresh/restart.
+      vi.stubEnv("OTEL_JOURNALD", failure === "none" ? "1" : "0");
       vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
       vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
       expect(() => resumeCollector("org/repo", thread)).not.toThrow();
@@ -206,6 +251,7 @@ if (args.includes('is-active')) process.exit(3);
           .map((line) => JSON.parse(line)),
       ).toEqual([
         ["systemctl", "stop", "factory-amp-otel.service"],
+        ["mkdir", "-p", "/run/factory-amp"],
         ["install", "-m", "0600", "/dev/null", "/run/factory-amp/otel.env"],
         ["tee", "/run/factory-amp/otel.env"],
         ...(failure === "tee"
@@ -216,7 +262,11 @@ if (args.includes('is-active')) process.exit(3);
       expect(() => statSync(file)).toThrow(/ENOENT/);
       expect(log.mock.calls).toEqual(
         failure === "none"
-          ? []
+          ? [
+              [
+                "OTel journal access unqualified; continuing with file logs and metrics.",
+              ],
+            ]
           : [["OTel orb collector unavailable; resume continues."]],
       );
       expect(JSON.stringify(log.mock.calls)).not.toMatch(
@@ -244,6 +294,7 @@ it.each(["1.104.5", "1.104.1"])(
     try {
       writeFileSync(join(home, "config.yaml"), "config fixture");
       writeFileSync(join(home, "docker.yaml"), "docker fixture");
+      writeFileSync(join(home, "journald.yaml"), "journald fixture");
       const collector = join(home, ".local/share/factory-amp/otel");
       mkdirSync(collector, { recursive: true });
       for (const name of ["config", "docker"]) {
@@ -291,6 +342,7 @@ ${setupScript}
               "/nix/store/fixture-collector/bin/otelcol-contrib",
             OTEL_COLLECTOR_CONFIG: join(home, "config.yaml"),
             OTEL_COLLECTOR_DOCKER_CONFIG: join(home, "docker.yaml"),
+            OTEL_COLLECTOR_JOURNAL_CONFIG: join(home, "journald.yaml"),
           },
           encoding: "utf8",
         },
@@ -301,7 +353,7 @@ ${setupScript}
         return;
       }
       expect(result.status, result.stdout + result.stderr).toBe(0);
-      for (const name of ["config", "docker"]) {
+      for (const name of ["config", "docker", "journald"]) {
         const config = join(collector, `${name}.yaml`);
         expect(readFileSync(config, "utf8")).toBe(`${name} fixture`);
         expect(statSync(config).mode & 0o777).toBe(0o644);
@@ -317,6 +369,7 @@ ${setupScript}
         `ExecStart=/nix/store/fixture-collector/bin/otelcol-contrib --config=${home}/.local/share/factory-amp/otel/config.yaml $OTEL_COLLECTOR_EXTRA_ARGS`,
       );
       expect(units).toContain("StandardError=journal");
+      expect(units).toContain("UMask=0077");
       expect(units).toContain("TimeoutStopSec=30");
       const operations = readFileSync(join(home, "operations"), "utf8");
       expect(operations).not.toContain(
@@ -436,43 +489,60 @@ if (${JSON.stringify(command)} === "ssh" && process.env.FIXTURE_SSH_FAIL) proces
   }
 });
 
-it("refuses legacy resume before changing runtime identity or services", () => {
-  const home = mkdtempSync(join(tmpdir(), "factory-amp-legacy-"));
-  try {
-    const result = spawnSync(
-      "bash",
-      [
-        "-euo",
-        "pipefail",
-        "-c",
-        `
+it.each(["legacy", "wrong-thread"])(
+  "refuses %s resume before service startup",
+  (failure) => {
+    const home = mkdtempSync(join(tmpdir(), "factory-amp-guard-"));
+    try {
+      const state = join(home, ".local/state/factory-amp");
+      if (failure === "wrong-thread") {
+        mkdirSync(state, { recursive: true });
+        writeFileSync(join(state, "thread"), "another-thread");
+      }
+      const result = spawnSync(
+        "bash",
+        [
+          "-euo",
+          "pipefail",
+          "-c",
+          `
 sudo() {
-  if [ "$1" = test ]; then return 1; fi
+  if [ "$1" = test ]; then [ "$FAILURE" != legacy ]; return; fi
+  if [ "$1" = systemctl ]; then touch "$HOME/service-started"; fi
   [ "$1" = -n ]
 }
-${resumeScript}
+${resumeGuardScript}
 `,
-      ],
-      {
-        env: {
-          HOME: home,
-          AMP_ORB: "1",
-          TAILSCALE_CLIENT_ID: "fixture",
-          TAILSCALE_AUDIENCE: "fixture",
-          FACTORY_AMP_THREAD: thread,
-          FACTORY_AMP_HOSTNAME: "amp-test",
-          PATH: process.env.PATH,
+        ],
+        {
+          env: {
+            HOME: home,
+            AMP_ORB: "1",
+            TAILSCALE_CLIENT_ID: "fixture",
+            TAILSCALE_AUDIENCE: "fixture",
+            FACTORY_AMP_THREAD: thread,
+            FACTORY_AMP_HOSTNAME: "amp-test",
+            FAILURE: failure,
+            PATH: process.env.PATH,
+          },
+          encoding: "utf8",
         },
-        encoding: "utf8",
-      },
-    );
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("Legacy orb");
-    expect(
-      spawnSync("test", ["-e", join(home, ".local/state/factory-amp/thread")])
-        .status,
-    ).toBe(1);
-  } finally {
-    rmSync(home, { recursive: true, force: true });
-  }
-});
+      );
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        failure === "legacy" ? "Legacy orb" : "another thread",
+      );
+      expect(
+        spawnSync("test", ["-e", join(home, "service-started")]).status,
+      ).toBe(1);
+      if (failure === "wrong-thread")
+        expect(readFileSync(join(state, "thread"), "utf8")).toBe(
+          "another-thread",
+        );
+      else
+        expect(spawnSync("test", ["-e", join(state, "thread")]).status).toBe(1);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  },
+);
