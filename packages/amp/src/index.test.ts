@@ -231,6 +231,7 @@ if (['mkdir', 'install', 'tee', 'rm'].includes(args[0])) {
 if (args.includes('restart')) {
   assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.ok(fs.readFileSync(file, 'utf8').includes('CLICKSTACK_API_KEY="fixture-runtime-key"\\n'));
+  assert.ok(fs.readFileSync(file, 'utf8').includes('OTEL_COLLECTOR_EXTRA_ARGS="--config=' + ${JSON.stringify(join(directory, ".local/share/factory-amp/otel/journald.yaml"))} + '"\\n'));
 }
 if (args.includes(${JSON.stringify(failure)})) { console.error('PRIVATE_ERROR'); process.exit(1); }
 if (args.includes('is-active')) process.exit(3);
@@ -240,9 +241,6 @@ if (args.includes('is-active')) process.exit(3);
       vi.stubEnv("PATH", `${directory}:${process.env.PATH}`);
       vi.stubEnv("AMP_ORB", "1");
       vi.stubEnv("HOME", directory);
-      // No selected journal/config in this fixture: optional journal capture
-      // must not prevent the base Collector's credential refresh/restart.
-      vi.stubEnv("OTEL_JOURNALD", failure === "none" ? "1" : "0");
       vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
       vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
       expect(() => resumeCollector("org/repo", thread)).not.toThrow();
@@ -265,11 +263,7 @@ if (args.includes('is-active')) process.exit(3);
       expect(() => statSync(file)).toThrow(/ENOENT/);
       expect(log.mock.calls).toEqual(
         failure === "none"
-          ? [
-              [
-                "OTel journal access unqualified; continuing with file logs and metrics.",
-              ],
-            ]
+          ? []
           : [["OTel orb collector unavailable; resume continues."]],
       );
       expect(JSON.stringify(log.mock.calls)).not.toMatch(
@@ -372,6 +366,7 @@ ${setupScript}
         `ExecStart=/nix/store/fixture-collector/bin/otelcol-contrib --config=${home}/.local/share/factory-amp/otel/config.yaml $OTEL_COLLECTOR_EXTRA_ARGS`,
       );
       expect(units).toContain("StandardError=journal");
+      expect(units).toContain("SupplementaryGroups=systemd-journal");
       expect(units).toContain("UMask=0077");
       expect(units).toContain("TimeoutStopSec=30");
       const operations = readFileSync(join(home, "operations"), "utf8");

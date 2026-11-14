@@ -164,6 +164,7 @@
                   export OTEL_COLLECTOR_BINARY=${lib.getExe factory.otelcol-contrib.package}
                   export OTEL_COLLECTOR_CONFIG=${factory.otelcol-contrib.hostConfigFile}
                   export OTEL_COLLECTOR_DOCKER_CONFIG=${factory.otelcol-contrib.dockerConfigFile}
+                  export OTEL_COLLECTOR_JOURNAL_CONFIG=${factory.otelcol-contrib.journalConfigFile}
                 ''
               ];
               packages = [

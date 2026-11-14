@@ -19,7 +19,7 @@
     journalConfigFile = lib.mkOption {
       type = lib.types.path;
       default = ../../etc/otelcol-contrib/journald.yaml;
-      description = "Opt-in selected service journals; requires qualified existing unprivileged journal access.";
+      description = "Selected Amp service journals; the non-root Collector service requires systemd-journal group access.";
     };
     dockerConfigFile = lib.mkOption {
       type = lib.types.path;
