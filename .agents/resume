@@ -9,7 +9,13 @@ cd -- "$(dirname -- "$0")/.."
 umask 077
 # Never expose ingestion credentials to logging children, Nix evaluation or shell snapshots.
 export -n CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY OTEL_DOCKER_STATS
-source .agents/log-output
+# Retain early output; close the writer and drain tee when the hook exits.
+amp_logs="$HOME/.local/share/factory-amp/logs"
+mkdir -p "$amp_logs"
+exec > >(tee -a "$amp_logs/resume.log") 2>&1
+amp_log_pid=$!
+trap 'exec 1>&- 2>&-; wait "$amp_log_pid"' EXIT
+unset amp_logs
 source .agents/nix-env
 shell=$(nix print-dev-env)
 eval "$shell"
