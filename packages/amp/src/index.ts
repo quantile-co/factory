@@ -281,16 +281,14 @@ done
 if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ]; then
   collector=$OTEL_COLLECTOR_BINARY
   install="$HOME/.local/share/factory-amp/otel"
-  for path in "$collector" "$install" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}"; do
+  for path in "$collector" "$install" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}" "\${OTEL_COLLECTOR_JOURNAL_CONFIG:-}"; do
     [[ "$path" =~ ^/[a-zA-Z0-9/._+@-]+$ ]] || { echo 'Select plain absolute OTel artifact paths.' >&2; exit 1; }
   done
   mkdir -p "$install"
   # Refresh read-only copies inherited from a prepared Nix snapshot.
   install -m 0644 "$OTEL_COLLECTOR_CONFIG" "$install/config.yaml"
   install -m 0644 "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
-  if [ -n "\${OTEL_COLLECTOR_JOURNAL_CONFIG:-}" ]; then
-    install -m 0644 "$OTEL_COLLECTOR_JOURNAL_CONFIG" "$install/journald.yaml"
-  fi
+  install -m 0644 "$OTEL_COLLECTOR_JOURNAL_CONFIG" "$install/journald.yaml"
   # The native executable must survive orb garbage collection.
   if [[ "$collector" == /nix/store/* ]]; then
     store=\${collector#/nix/store/}
@@ -303,6 +301,7 @@ Description=Factory OpenTelemetry Collector
 After=network-online.target
 [Service]
 User=$(id -un)
+SupplementaryGroups=systemd-journal
 UMask=0077
 EnvironmentFile=/run/factory-amp/otel.env
 ExecStart=$collector --config=$install/config.yaml \\$OTEL_COLLECTOR_EXTRA_ARGS
@@ -392,34 +391,9 @@ export function resumeCollector(
     const config = managedConfig();
     if (!config) return;
     const install = join(homedir(), ".local/share/factory-amp/otel");
-    const extraArgs: string[] = [];
+    const extraArgs = [`--config=${join(install, "journald.yaml")}`];
     if (process.env.OTEL_DOCKER_STATS === "1")
       extraArgs.push(`--config=${join(install, "docker.yaml")}`);
-    // Opt in only after live qualification. Probe the same selected unit and
-    // distro journalctl as the receiver, without sudo or printing journal data.
-    if (process.env.OTEL_JOURNALD === "1") {
-      const journal = spawnSync(
-        "/usr/bin/journalctl",
-        [
-          "--no-pager",
-          "--quiet",
-          "--output=json",
-          "--lines=1",
-          "--unit=factory-amp-tailscaled.service",
-        ],
-        { encoding: "utf8", timeout: 5000, maxBuffer: 1024 * 1024 },
-      );
-      if (
-        journal.status === 0 &&
-        journal.stdout.trim().startsWith("{") &&
-        existsSync(join(install, "journald.yaml"))
-      )
-        extraArgs.push(`--config=${join(install, "journald.yaml")}`);
-      else
-        console.error(
-          "OTel journal access unqualified; continuing with file logs and metrics.",
-        );
-    }
     const logDirectory = join(homedir(), ".local/share/factory-amp/logs");
     const cursorDirectory = join(homedir(), ".local/state/factory-amp/otel");
     mkdirSync(logDirectory, { recursive: true, mode: 0o700 });

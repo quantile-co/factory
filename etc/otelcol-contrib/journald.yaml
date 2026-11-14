@@ -1,5 +1,5 @@
-# Optional OTEL_JOURNALD=1 overlay, after live access/coverage qualification.
-# No extra groups, root Collector or broad system-journal collection.
+# Selected Amp service journals; the non-root Collector service receives
+# systemd-journal group access. Do not broaden the unit collection filter.
 # Never ingest the Collector's own diagnostics (payloads/error feedback).
 receivers:
   journald:
