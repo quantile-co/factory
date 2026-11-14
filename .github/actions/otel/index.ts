@@ -1,6 +1,6 @@
 // biome-ignore-all lint/suspicious/noUndeclaredEnvVars: GitHub runs this action directly, outside Turbo.
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   appendFile,
   chmod,
@@ -285,11 +285,17 @@ export async function discoverConsolePrefix(
         const prefixes = new Set<string>();
         for (const fd of await readdir(join(processDirectory, "fd"))) {
           const fdPath = join(processDirectory, "fd", fd);
-          const target = await readlink(fdPath);
-          const match =
-            dirname(target) === pages && pattern.exec(basename(target));
-          if (match && (await stat(fdPath)).isFile())
-            prefixes.add(join(pages, match[1]));
+          try {
+            const target = await readlink(fdPath);
+            const match =
+              dirname(target) === pages && pattern.exec(basename(target));
+            if (match && (await stat(fdPath)).isFile())
+              prefixes.add(join(pages, match[1]));
+          } catch (error) {
+            // Unrelated descriptors can close during enumeration. Nothing else
+            // (especially denied access) is evidence of a safe selection.
+            if (!hasErrorCode(error, "ENOENT")) throw error;
+          }
         }
         if (prefixes.size !== 1) throw new Error();
         const prefix = [...prefixes][0];
@@ -309,14 +315,76 @@ export async function discoverConsolePrefix(
   );
 }
 
+// Attempt to push earlier bytes through Runner's userspace buffers with padding;
+// flushing our stdout/fsync cannot do that. Confirm only in the selected masked job
+// stream. This is NOT a Collector read/export acknowledgment or a lossless claim.
+export async function drainConsole(prefix: string): Promise<boolean> {
+  consolePagePattern(prefix);
+  const marker = `factory-otel-drain-${randomUUID()}`;
+  console.info(
+    `::group::Collector console drain\n${marker}\n${".".repeat(16 * 1024)}\n::endgroup::`,
+  );
+  const pagePattern = new RegExp(`^${basename(prefix)}([1-9][0-9]*)\\.log$`);
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    const pages = (await readdir(dirname(prefix), { withFileTypes: true }))
+      .flatMap((entry) => {
+        const match = entry.isFile() && pagePattern.exec(entry.name);
+        return match ? [{ name: entry.name, number: Number(match[1]) }] : [];
+      })
+      .sort((a, b) => b.number - a.number)
+      .slice(0, 2);
+    // Bound reads to 64 KiB from each of two pages (padding may cross a rollover).
+    // Deleted/undiscovered pages are not recoverable here; no retention watcher.
+    for (const page of pages) {
+      try {
+        const file = await open(join(dirname(prefix), page.name), "r");
+        let visible: boolean;
+        try {
+          const size = (await file.stat()).size;
+          const tail = Buffer.alloc(Math.min(size, 64 * 1024));
+          const { bytesRead } = await file.read(
+            tail,
+            0,
+            tail.length,
+            Math.max(0, size - tail.length),
+          );
+          visible = tail.subarray(0, bytesRead).includes(marker);
+        } finally {
+          await file.close();
+        }
+        if (visible) {
+          // Opportunity for filelog's 200ms poll + 500ms partial-line flush and
+          // the 1s batch timeout, followed by normal bounded exporter shutdown.
+          await delay(2000);
+          return true;
+        }
+      } catch (error) {
+        if (!hasErrorCode(error, "ENOENT")) throw error;
+      }
+    }
+    await delay(200);
+  }
+  return false;
+}
+
 async function main() {
   if (process.env.STATE_directory) {
-    // Action posts (even the runner's JOB_COMPLETED hook) precede final job
-    // logging and page flush. Keep bounded cleanup until a runner-owned drain
-    // primitive is qualified; escaping orphan cleanup is not a completeness fix.
-    await stopCollector(process.env.STATE_directory);
-    // Never replay collector.log into the captured stream: exporter errors can
-    // contain payloads, and replay while capturing would feed diagnostics back.
+    try {
+      if (
+        process.env.STATE_consolePrefix &&
+        !(await drainConsole(process.env.STATE_consolePrefix))
+      )
+        console.warn(
+          "Console tail marker was not observed; tail capture remains unconfirmed",
+        );
+    } catch {
+      console.warn("Console tail drain could not be confirmed");
+    } finally {
+      // Later Runner housekeeping is intentionally outside the capture boundary.
+      await stopCollector(process.env.STATE_directory);
+    }
+    // Never replay collector.log: exporter errors can contain captured payloads.
     return;
   }
   const endpoint = process.env.CLICKSTACK_OTLP_ENDPOINT;
@@ -355,20 +423,21 @@ async function main() {
   ];
   const env = { ...process.env };
   const prefix = process.env["INPUT_JOB-LOG-PREFIX"];
+  let consolePrefix: string | undefined;
   if (prefix) {
     if (process.env.INPUT_CONFIG)
       throw new Error("job-log-prefix requires the built-in Collector config");
-    env.FACTORY_CI_CONSOLE_PAGES = consolePagePattern(
+    consolePrefix =
       prefix === "auto"
         ? await discoverConsolePrefix(process.env.ACTIONS_RUNTIME_TOKEN)
-        : prefix,
-    );
+        : prefix;
+    env.FACTORY_CI_CONSOLE_PAGES = consolePagePattern(consolePrefix);
     args.push(
       "--set",
       "service::pipelines::logs::receivers=[otlp,filelog/runner_console]",
     );
     console.warn(
-      "Console capture stops during action post; buffered tail, undiscovered deleted pages and final runner output are not covered",
+      "Console capture stops during action post; bounded tail drain is best-effort, undiscovered deleted pages and later Runner housekeeping are not covered",
     );
   }
   const binary = await installCollector(directory);
@@ -379,6 +448,10 @@ async function main() {
     env,
     healthUrl: "http://127.0.0.1:13133/",
   });
+  // Only a validated nonsecret path, and only after startup succeeded. A failed
+  // startup retains directory cleanup but must not emit post drain padding.
+  if (consolePrefix)
+    await appendFile(GITHUB_STATE, `consolePrefix=${consolePrefix}\n`);
 }
 
 if (

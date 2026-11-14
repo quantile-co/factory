@@ -15,6 +15,7 @@ receivers:
     include: ["${env:FACTORY_CI_CONSOLE_PAGES:-/dev/null}"]
     start_at: beginning
     poll_interval: 200ms
+    force_flush_period: 500ms
     include_file_name: false
     # PagingLogger writes a UTF-8 BOM and can embed newlines after one timestamp.
     multiline:

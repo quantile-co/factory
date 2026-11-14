@@ -9,10 +9,10 @@ inputs:
       Opt-in, unqualified console capture with the built-in config only. Absolute
       runner _diag/pages/<timeline UUID>_<job record UUID>_ prefix, or literal auto
       to discover it from the injected runtime token and native Worker ancestry.
-      Unset disables capture. NOT GITHUB_JOB or a step record. Stops during action
-      post: buffered tail and final runner logging
-      are not covered. Pages deleted before discovery can be lost. Requires live
-      qualification.
+      Unset disables capture. NOT GITHUB_JOB or a step record. Post emits bounded
+      padding, checks its visibility in the selected stream and allows drain time
+      before stopping. Tail delivery remains best-effort; later Runner housekeeping
+      and pages deleted before discovery are not covered. Requires live qualification.
     required: false
 outputs:
   log-file:

@@ -5,7 +5,8 @@ import childProcess, {
 } from "node:child_process";
 import { createHash } from "node:crypto";
 import { once } from "node:events";
-import {
+import { writeFileSync } from "node:fs";
+import fsPromises, {
   mkdir,
   mkdtemp,
   readFile,
@@ -21,6 +22,7 @@ import { test } from "node:test";
 import {
   consolePagePattern,
   discoverConsolePrefix,
+  drainConsole,
   processIdentity,
   runtimeJobId,
   startCollector,
@@ -70,7 +72,7 @@ test("runtime scope identifies the job, not the plan, and rejects malformed/ambi
   }
 });
 
-test("auto discovery follows Worker ancestry and selects one open job prefix, not step or stale pages", async () => {
+test("auto discovery follows Worker ancestry and selects one open job prefix, not step or stale pages", async (context) => {
   const directory = await mkdtemp(join(tmpdir(), "otel-discovery-test-"));
   const timeline = "cccccccc-cccc-cccc-cccc-cccccccccccc";
   const worker = process.ppid + 1;
@@ -96,6 +98,26 @@ test("auto discovery follows Worker ancestry and selects one open job prefix, no
     await symlink(`${prefix}2.log`, join(workerProc, "fd", "9"));
     await symlink(stepPage, join(workerProc, "fd", "3"));
     assert.equal(await discoverConsolePrefix(token, directory), prefix);
+    await symlink("/closed-socket", join(workerProc, "fd", "99"));
+    const readlink = fsPromises.readlink;
+    let code = "ENOENT";
+    context.mock.method(fsPromises, "readlink", (path: string) => {
+      if (path === join(workerProc, "fd", "99"))
+        return Promise.reject(
+          Object.assign(new Error("private-error"), { code }),
+        );
+      return readlink(path);
+    });
+    syncBuiltinESMExports();
+    assert.equal(await discoverConsolePrefix(token, directory), prefix);
+    code = "EACCES";
+    await assert.rejects(
+      discoverConsolePrefix(token, directory),
+      /requires one job page prefix/,
+    );
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await rm(join(workerProc, "fd", "99"));
     const conflicting = join(pages, `${plan}_${job}_1.log`);
     await writeFile(conflicting, "");
     assert.equal(await discoverConsolePrefix(token, directory), prefix); // Unopened file is not ownership evidence.
@@ -117,6 +139,35 @@ test("auto discovery follows Worker ancestry and selects one open job prefix, no
       /requires one job page prefix/,
     );
   } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("post padding confirms only the selected stream and never replays its body", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "otel-drain-test-"));
+  const pages = join(directory, "_diag", "pages");
+  const prefix = join(pages, `${plan}_${job}_`);
+  await mkdir(pages, { recursive: true });
+  const output: string[] = [];
+  let destination = `${prefix}1.log`;
+  context.mock.method(console, "info", (message: string) => {
+    output.push(message);
+    // Synthetic filesystem visibility only, NOT Runner buffering/export proof.
+    writeFileSync(destination, `synthetic-private-body\n${message}\n`);
+  });
+  try {
+    assert.equal(await drainConsole(prefix), true);
+    assert(output[0].startsWith("::group::Collector console drain\n"));
+    assert(Buffer.byteLength(output[0]) < 17 * 1024);
+    assert(!output[0].includes("synthetic-private-body"));
+    // Seeing the new marker in a step/other-job page must not confirm progress.
+    destination = join(pages, `${plan}_${plan}_1.log`);
+    assert.equal(await drainConsole(prefix), false);
+    assert.equal(output.length, 2);
+  } finally {
+    context.mock.restoreAll();
     await rm(directory, { recursive: true, force: true });
   }
 });
