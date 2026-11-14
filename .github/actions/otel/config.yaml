@@ -8,6 +8,29 @@ receivers:
       process: {}
       filesystem: {}
       network: {}
+  # Opt-in only: the action adds this receiver to the logs pipeline when supplied
+  # a validated job-log-prefix. Never collect every job/step page or diagnostics.
+  # Opened, unlinked pages can drain; undiscovered deleted pages can still be lost.
+  filelog/runner_console:
+    include: ["${env:FACTORY_CI_CONSOLE_PAGES:-/dev/null}"]
+    start_at: beginning
+    poll_interval: 200ms
+    include_file_name: false
+    # PagingLogger writes a UTF-8 BOM and can embed newlines after one timestamp.
+    multiline:
+      line_start_pattern: '^\x{FEFF}?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z '
+    operators:
+      - type: regex_parser
+        regex: '(?s)^\x{FEFF}?(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z) (?P<message>.*)$'
+        on_error: send_quiet
+        timestamp:
+          parse_from: attributes.timestamp
+          layout_type: gotime
+          layout: '2006-01-02T15:04:05.0000000Z'
+      - type: move
+        from: attributes.message
+        to: body
+        if: 'attributes.message != nil'
   otlp:
     protocols:
       grpc:

@@ -12,11 +12,56 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+  consolePagePattern,
   processIdentity,
   startCollector,
   stopCollector,
   verifyArchive,
 } from "./index.ts";
+
+test("console selection requires a single explicit runner timeline/record prefix", () => {
+  const timeline = "11111111-1111-1111-1111-111111111111";
+  const job = "22222222-2222-2222-2222-222222222222";
+  const prefix = `/runner/_diag/pages/${timeline}_${job}_`;
+  assert.equal(consolePagePattern(prefix), `${prefix}*.log`);
+  for (const invalid of [
+    "/runner/_diag/pages/*",
+    `/runner/_diag/pages/${timeline}_build_`,
+    `/runner/_diag/Worker_${job}_`,
+    `/tmp/saved-plan/${timeline}_${job}_`,
+    `/runner*/_diag/pages/${timeline}_${job}_`,
+    prefix.slice(1),
+  ]) {
+    assert.throws(() => consolePagePattern(invalid), /Expected an absolute/);
+  }
+  // Syntax cannot distinguish a step UUID from a job UUID; the trusted caller
+  // must establish that identity. This fixture does NOT qualify live selection.
+});
+
+test("post cleanup never replays private Collector diagnostics", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "otel-action-test-"));
+  try {
+    await writeFile(
+      join(directory, "collector.log"),
+      "private-exporter-payload",
+    );
+    const { stdout, stderr } = await new Promise<{
+      stdout: string;
+      stderr: string;
+    }>((resolve, reject) => {
+      childProcess.execFile(
+        process.execPath,
+        [new URL("./index.ts", import.meta.url).pathname],
+        { env: { ...process.env, STATE_directory: directory } },
+        (error, stdout, stderr) =>
+          error ? reject(error) : resolve({ stdout, stderr }),
+      );
+    });
+    assert.equal(stdout + stderr, "");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("release checksum rejects changed bytes", () => {
   const bytes = Buffer.from("fixture archive");
@@ -101,6 +146,7 @@ test("failed state persistence terminates the untracked child", async (context) 
     assert.equal(child.killed, true, "Untracked child must be terminated");
   } finally {
     if (child && child.exitCode === null && child.signalCode === null) {
+      child.ref(); // startCollector unrefs it; keep the test alive for cleanup.
       const exited = once(child, "exit");
       child.kill("SIGKILL");
       await exited;

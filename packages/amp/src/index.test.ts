@@ -104,44 +104,47 @@ it("lifecycle scripts parse but refuse execution outside an orb before service c
   }
 });
 
-it("retains early hook stdout/stderr privately, appends on resume and preserves failure", () => {
-  const home = mkdtempSync(join(tmpdir(), "factory-amp-logs-"));
-  const capture = readFileSync(
-    new URL("../../../.agents/log-output", import.meta.url),
-    "utf8",
-  );
-  try {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const result = spawnSync(
-        "bash",
-        [
-          "-euo",
-          "pipefail",
-          "-c",
-          `${capture}\nprintf 'early stdout\\n'; printf 'early stderr\\n' >&2; exit 17`,
-          "resume",
-        ],
-        {
-          env: { HOME: home, PATH: process.env.PATH },
+it.each(["setup", "resume"])(
+  "retains early %s output privately, appends and preserves failure",
+  (hookName) => {
+    const home = mkdtempSync(join(tmpdir(), "factory-amp-logs-"));
+    const capture = readFileSync(
+      new URL(`../../../.agents/${hookName}`, import.meta.url),
+      "utf8",
+    ).split("source .agents/nix-env")[0];
+    const script = join(home, hookName);
+    writeFileSync(
+      script,
+      `${capture}\nprintf 'early stdout\\n'; printf 'early stderr\\n' >&2; exit 17`,
+    );
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const result = spawnSync("bash", [script], {
+          env: { HOME: home, PATH: process.env.PATH, AMP_ORB: "1" },
           encoding: "utf8",
           timeout: 5000,
-        },
+        });
+        expect(result.status).toBe(17);
+        expect(result.stdout).toBe("early stdout\nearly stderr\n");
+      }
+      const log = join(
+        home,
+        ".local/share/factory-amp/logs",
+        `${hookName}.log`,
       );
-      expect(result.status).toBe(17);
-      expect(result.stdout).toBe("early stdout\nearly stderr\n");
+      expect(readFileSync(log, "utf8")).toBe(
+        "early stdout\nearly stderr\n".repeat(2),
+      );
+      expect(statSync(log).mode & 0o777).toBe(0o600);
+      expect(
+        spawnSync("test", ["-e", join(home, ".local/state/factory-amp")])
+          .status,
+      ).toBe(1);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
     }
-    const log = join(home, ".local/share/factory-amp/logs/resume.log");
-    expect(readFileSync(log, "utf8")).toBe(
-      "early stdout\nearly stderr\n".repeat(2),
-    );
-    expect(statSync(log).mode & 0o777).toBe(0o600);
-    expect(
-      spawnSync("test", ["-e", join(home, ".local/state/factory-amp")]).status,
-    ).toBe(1);
-  } finally {
-    rmSync(home, { recursive: true, force: true });
-  }
-});
+  },
+);
 
 it("installs skills before building the orb runtime and stops on provisioning failure", () => {
   const directory = mkdtempSync(join(tmpdir(), "factory-orb-provision-"));

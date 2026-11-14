@@ -4,9 +4,18 @@ inputs:
   config:
     description: Optional native Collector YAML path. Must expose health_check on 127.0.0.1:13133.
     required: false
+  job-log-prefix:
+    description: >-
+      Opt-in, unqualified console capture with the built-in config only. Absolute
+      runner _diag/pages/<timeline UUID>_<job record UUID>_ prefix supplied by a
+      trusted runner integration, NOT GITHUB_JOB or a step record. No automatic
+      discovery. Stops during action post: buffered tail and final runner logging
+      are not covered. Pages deleted before discovery can be lost. Requires live
+      qualification.
+    required: false
 outputs:
   log-file:
-    description: Collector diagnostics under RUNNER_TEMP.
+    description: Private Collector diagnostics under RUNNER_TEMP; never replayed or ingested.
 runs:
   using: node24
   main: index.ts
