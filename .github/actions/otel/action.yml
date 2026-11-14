@@ -7,9 +7,10 @@ inputs:
   job-log-prefix:
     description: >-
       Opt-in, unqualified console capture with the built-in config only. Absolute
-      runner _diag/pages/<timeline UUID>_<job record UUID>_ prefix supplied by a
-      trusted runner integration, NOT GITHUB_JOB or a step record. No automatic
-      discovery. Stops during action post: buffered tail and final runner logging
+      runner _diag/pages/<timeline UUID>_<job record UUID>_ prefix, or literal auto
+      to discover it from the injected runtime token and native Worker ancestry.
+      Unset disables capture. NOT GITHUB_JOB or a step record. Stops during action
+      post: buffered tail and final runner logging
       are not covered. Pages deleted before discovery can be lost. Requires live
       qualification.
     required: false

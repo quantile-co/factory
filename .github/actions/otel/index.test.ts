@@ -5,7 +5,14 @@ import childProcess, {
 } from "node:child_process";
 import { createHash } from "node:crypto";
 import { once } from "node:events";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { syncBuiltinESMExports } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -13,7 +20,9 @@ import { join } from "node:path";
 import { test } from "node:test";
 import {
   consolePagePattern,
+  discoverConsolePrefix,
   processIdentity,
+  runtimeJobId,
   startCollector,
   stopCollector,
   verifyArchive,
@@ -36,6 +45,80 @@ test("console selection requires a single explicit runner timeline/record prefix
   }
   // Syntax cannot distinguish a step UUID from a job UUID; the trusted caller
   // must establish that identity. This fixture does NOT qualify live selection.
+});
+
+const plan = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+const job = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+function runtimeToken(scp: unknown) {
+  return `e30.${Buffer.from(JSON.stringify({ scp })).toString("base64url")}.c2ln`;
+}
+
+test("runtime scope identifies the job, not the plan, and rejects malformed/ambiguous claims safely", () => {
+  const scope = `Actions.Results:${plan}:${job}`;
+  assert.equal(runtimeJobId(runtimeToken(`Other.Scope ${scope}`)), job);
+  for (const token of [
+    undefined,
+    "e30.e2JhZA.c2ln",
+    runtimeToken(42),
+    runtimeToken(`Actions.Results:${plan}:not-a-uuid`),
+    runtimeToken(`${scope} ${scope}`),
+    runtimeToken("Other.Scope"),
+  ]) {
+    assert.throws(() => runtimeJobId(token), {
+      message: "Invalid Actions.Results runtime job identity",
+    });
+  }
+});
+
+test("auto discovery follows Worker ancestry and selects one open job prefix, not step or stale pages", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "otel-discovery-test-"));
+  const timeline = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+  const worker = process.ppid + 1;
+  const parent = join(directory, String(process.ppid));
+  const workerProc = join(directory, String(worker));
+  const root = join(directory, "runner");
+  const pages = join(root, "_diag", "pages");
+  const prefix = join(pages, `${timeline}_${job}_`);
+  const token = runtimeToken(`Actions.Results:${plan}:${job}`);
+  try {
+    await mkdir(parent);
+    await mkdir(join(workerProc, "fd"), { recursive: true });
+    await mkdir(pages, { recursive: true });
+    await symlink("/usr/bin/node", join(parent, "exe"));
+    await writeFile(join(parent, "stat"), `${process.ppid} (node) S ${worker}`);
+    await symlink(join(root, "bin", "Runner.Worker"), join(workerProc, "exe"));
+    // Empty files suffice: selection must not inspect any log bodies.
+    await writeFile(`${prefix}1.log`, "");
+    await writeFile(`${prefix}2.log`, "");
+    const stepPage = join(pages, `${timeline}_${plan}_1.log`);
+    await writeFile(stepPage, "");
+    await symlink(`${prefix}1.log`, join(workerProc, "fd", "8"));
+    await symlink(`${prefix}2.log`, join(workerProc, "fd", "9"));
+    await symlink(stepPage, join(workerProc, "fd", "3"));
+    assert.equal(await discoverConsolePrefix(token, directory), prefix);
+    const conflicting = join(pages, `${plan}_${job}_1.log`);
+    await writeFile(conflicting, "");
+    assert.equal(await discoverConsolePrefix(token, directory), prefix); // Unopened file is not ownership evidence.
+    await symlink(conflicting, join(workerProc, "fd", "10"));
+    await assert.rejects(
+      discoverConsolePrefix(token, directory),
+      /requires one job page prefix/,
+    );
+    await rm(join(workerProc, "fd", "10"));
+    await rm(join(workerProc, "fd", "8"));
+    await rm(join(workerProc, "fd", "9"));
+    await assert.rejects(
+      discoverConsolePrefix(token, directory),
+      /requires one job page prefix/,
+    );
+    await rm(join(workerProc, "exe"));
+    await assert.rejects(
+      discoverConsolePrefix(token, directory),
+      /requires one job page prefix/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("post cleanup never replays private Collector diagnostics", async () => {

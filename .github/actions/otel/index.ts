@@ -7,7 +7,10 @@ import {
   mkdir,
   mkdtemp,
   open,
+  readdir,
   readFile,
+  readlink,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
@@ -21,6 +24,7 @@ export const release = {
   arm64: "f2fac079d5b761a729e49ba5db319cab92affc558406dc42e3c1c08e0827e14f",
 };
 const actionDirectory = dirname(fileURLToPath(import.meta.url));
+const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
 function hasErrorCode(error: unknown, code: string): boolean {
   return error instanceof Error && "code" in error && error.code === code;
@@ -204,10 +208,8 @@ export async function startCollector({
 
 // The runner names pages <timeline UUID>_<record UUID>_<page>.log. The
 // caller must identify the JOB record, not a step record or GITHUB_JOB name.
-// No discovery integration yet: verify runner metadata before supplying this.
 // Do not guess from page age or widen the glob to include other records.
 export function consolePagePattern(prefix: string) {
-  const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
   if (
     !isAbsolute(prefix) ||
     !dirname(prefix).endsWith("/_diag/pages") ||
@@ -219,6 +221,92 @@ export function consolePagePattern(prefix: string) {
     );
   }
   return `${prefix}*.log`;
+}
+
+// Official actions/toolkit artifact util.ts uses this scope for backend IDs.
+// Runner JobServerQueue -> ResultsServer -> ResultsHttpClient maps JobId directly
+// to WorkflowJobRunBackendId. The other scope UUID is a PLAN, not a timeline.
+// Decode only runner-injected metadata, not an authentication/authorization check.
+export function runtimeJobId(token: string | undefined): string {
+  try {
+    const parts = token?.split(".");
+    if (
+      parts?.length !== 3 ||
+      parts.some(
+        (part) => !/^[A-Za-z0-9_-]+$/.test(part) || part.length % 4 === 1,
+      )
+    )
+      throw new Error();
+    const payload = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(
+        Buffer.from(parts[1], "base64url"),
+      ),
+    );
+    if (typeof payload?.scp !== "string") throw new Error();
+    const scopes = payload.scp
+      .split(/\s+/)
+      .filter((scope: string) => scope.split(":")[0] === "Actions.Results");
+    if (scopes.length !== 1) throw new Error();
+    const match = new RegExp(`^Actions\\.Results:${uuid}:(${uuid})$`, "i").exec(
+      scopes[0],
+    );
+    if (!match || match[1] === "00000000-0000-0000-0000-000000000000")
+      throw new Error();
+    return match[1].toLowerCase();
+  } catch {
+    // Never propagate decoder errors, token text, or the decoded payload.
+    throw new Error("Invalid Actions.Results runtime job identity");
+  }
+}
+
+// procDirectory is a filesystem fixture seam, not an action input. Inspect only
+// ancestry and executable/open-file links; never environments or log bodies.
+export async function discoverConsolePrefix(
+  token: string | undefined,
+  procDirectory = "/proc",
+) {
+  const jobId = runtimeJobId(token);
+  try {
+    if (process.platform !== "linux") throw new Error();
+    let pid = process.ppid;
+    const visited = new Set<number>();
+    while (pid > 1 && !visited.has(pid)) {
+      visited.add(pid);
+      const processDirectory = join(procDirectory, String(pid));
+      const executable = await readlink(join(processDirectory, "exe"));
+      if (
+        basename(executable) === "Runner.Worker" &&
+        basename(dirname(executable)) === "bin"
+      ) {
+        if ((await stat(processDirectory)).uid !== process.getuid?.())
+          throw new Error();
+        const pages = join(dirname(dirname(executable)), "_diag", "pages");
+        const pattern = new RegExp(`^(${uuid}_${jobId}_)([1-9][0-9]*)\\.log$`);
+        const prefixes = new Set<string>();
+        for (const fd of await readdir(join(processDirectory, "fd"))) {
+          const fdPath = join(processDirectory, "fd", fd);
+          const target = await readlink(fdPath);
+          const match =
+            dirname(target) === pages && pattern.exec(basename(target));
+          if (match && (await stat(fdPath)).isFile())
+            prefixes.add(join(pages, match[1]));
+        }
+        if (prefixes.size !== 1) throw new Error();
+        const prefix = [...prefixes][0];
+        consolePagePattern(prefix); // Keep the manual path/glob boundary too.
+        return prefix;
+      }
+      const fields = await readFile(join(processDirectory, "stat"), "utf8");
+      const parent = fields.slice(fields.lastIndexOf(")") + 2).split(" ")[1];
+      if (!/^\d+$/.test(parent)) throw new Error();
+      pid = Number(parent);
+    }
+  } catch {
+    // Fail closed, including inaccessible procfs/pages and disappearing parents.
+  }
+  throw new Error(
+    "Automatic console discovery requires one job page prefix under the native Runner.Worker ancestor",
+  );
 }
 
 async function main() {
@@ -270,7 +358,11 @@ async function main() {
   if (prefix) {
     if (process.env.INPUT_CONFIG)
       throw new Error("job-log-prefix requires the built-in Collector config");
-    env.FACTORY_CI_CONSOLE_PAGES = consolePagePattern(prefix);
+    env.FACTORY_CI_CONSOLE_PAGES = consolePagePattern(
+      prefix === "auto"
+        ? await discoverConsolePrefix(process.env.ACTIONS_RUNTIME_TOKEN)
+        : prefix,
+    );
     args.push(
       "--set",
       "service::pipelines::logs::receivers=[otlp,filelog/runner_console]",
