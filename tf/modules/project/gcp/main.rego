@@ -43,7 +43,8 @@ valid_readers if {
 	reader.bucket == "${google_storage_bucket.state.name}"
 	reader.role == "roles/storage.objectViewer"
 	reader.member == "user:${each.value}"
-	reader.condition[0].expression == "resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.state.name}/objects/plans/\")"
+	reader.condition[0].expression == "resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.state.name}/objects/plans/\") || resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.state.name}/objects/builds/\")"
+	reader.lifecycle[0].create_before_destroy == true
 }
 
 valid_federation if {
@@ -58,6 +59,6 @@ deny contains "State must retain private versioned storage, deletion guards and 
 
 deny contains "Storage audit logs must cover admin reads, data reads and writes without exemptions" if not valid_audit_logging
 
-deny contains "Plan readers must have read-only access limited to the plans prefix" if not valid_readers
+deny contains "Reviewers must have read-only access limited to plans and builds prefixes" if not valid_readers
 
 deny contains "Project administration must retain main/repository/actor-scoped federation" if not valid_federation

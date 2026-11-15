@@ -221,7 +221,7 @@ is no intermediary identity module. Each platform module owns its permissions:
 - GitHub owners are looked up for `owner_ids`; the lookup itself grants no
   repository or organization membership. Members receive repository write
   access (`push`), not administration.
-- GCP owners receive object-read access only under `plans/`, not state access.
+- GCP owners receive object-read access only under `plans/` and `builds/`, not state access.
   `gh_repo_id` and `gh_owner_ids` retain main/repository/actor-scoped WIF.
   There is no direct human project Owner grant.
 - Members receive no added GCP or WIF grants.

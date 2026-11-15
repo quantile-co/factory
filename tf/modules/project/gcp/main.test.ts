@@ -75,7 +75,7 @@ run "owners_with_members" {
       google_project_iam_member.pipeline_owner["fixture-operator"].role == "roles/owner" &&
       google_project_iam_member.pipeline_owner["fixture-operator"].member == "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/fixture/attribute.main_branch_repository_actor_id/123456789_987654321"
     )
-    error_message = "Members must not change owner-only plan readers or main/repository/actor WIF grants."
+    error_message = "Members must not change owner-only plan/build readers or main/repository/actor WIF grants."
   }
 }
 run "overlapping_roles" {
@@ -136,7 +136,7 @@ run "overlapping_roles" {
   }
 }, 120_000);
 
-it("rejects incomplete or exempted storage audit logging", () => {
+it("rejects unsafe storage audit logging and review access", () => {
   const moduleDir = dirname(fileURLToPath(import.meta.url));
   const work = mkdtempSync(join(tmpdir(), "gcp-audit-policy-"));
   try {
@@ -172,6 +172,19 @@ it("rejects incomplete or exempted storage audit logging", () => {
       );
       expect(invalid.status, invalid.output).toBe(1);
       expect(invalid.output).toContain("Storage audit logs must cover");
+    }
+    for (const invalidSource of [
+      source.replace("objects/builds/", "objects/"),
+      source.replace("objects/builds/", "objects/builds"),
+      source.replace("for_each = var.owners", "for_each = var.members"),
+      source.replace(
+        "create_before_destroy = true",
+        "create_before_destroy = false",
+      ),
+    ]) {
+      const invalid = check(invalidSource);
+      expect(invalid.status, invalid.output).toBe(1);
+      expect(invalid.output).toContain("Reviewers must have read-only access");
     }
   } finally {
     rmSync(work, { recursive: true, force: true });

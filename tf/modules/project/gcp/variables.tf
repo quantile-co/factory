@@ -30,7 +30,7 @@ variable "members" {
 }
 
 variable "owners" {
-  description = "Project owner emails allowed to read saved plans, not Terraform state; no direct project Owner grant."
+  description = "Project owner emails allowed to read saved plans and build receipts, not Terraform state; no direct project Owner grant."
   type        = set(string)
   nullable    = false
 }

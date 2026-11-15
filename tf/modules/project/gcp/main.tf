@@ -91,7 +91,7 @@ resource "google_storage_bucket" "state" {
   }
 }
 
-# Human plan review must work after bootstrap Owner access is removed.
+# Human plan and build review must work after bootstrap Owner access is removed.
 # The object-prefix condition excludes state and bucket-wide object listing.
 resource "google_storage_bucket_iam_member" "plan_reader" {
   for_each = var.owners
@@ -102,7 +102,11 @@ resource "google_storage_bucket_iam_member" "plan_reader" {
 
   condition {
     title      = "read-saved-plans"
-    expression = "resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.state.name}/objects/plans/\")"
+    expression = "resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.state.name}/objects/plans/\") || resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.state.name}/objects/builds/\")"
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 

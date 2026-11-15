@@ -221,7 +221,7 @@ run_and_verify apply.yaml -f tf_layer=infrastructure -f "gh_plan_ref=$GH_PLAN_RE
 After successful CI handoff, verify WIF and Q0-admin recovery access, and the
 Terraform-managed plan-reader bindings derived from `project_owners[].gcp_email`.
 These grant object
-read access only under `plans/`, not state access or Owner. Verify the operator's
+read access only under `plans/` and `builds/`, not state access or Owner. Verify the operator's
 Google account is included before removing bootstrap access. If read access is
 missing, stop for a separately approved Terraform change; do not retain or
 restore Owner merely to inspect plans.
