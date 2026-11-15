@@ -9,7 +9,13 @@ After verified cutover, Hindsight is persistent memory, not authorization or
 current source truth. During migration, preserve existing memory until verified.
 Use native Pi recall/retention and the upstream tools. Reflect only when needed.
 Recall includes raw facts as well as observations, so new memories are searchable
-before consolidation; the shared token cap remains 2,000.
+before consolidation. Native `prefer_observations: true` suppresses raw facts that
+support returned observations, without excluding unconsolidated experience. This
+is not semantic deduplication or a guarantee of relevance, truth or freshness.
+The fact-text budget remains 2,000 tokens; metadata, injected guidance and the
+server's oversized-top-result fallback can exceed that budget. Keep broad Pi-managed default pages disabled. Pi-created initiatives remain
+manual-refresh unless explicitly adopted into the approved Terraform configuration;
+Terraform-managed pages use their declared server-side schedule.
 After cutover, do not recreate MEMORY.md, daily logs, QMD memory collections or
 memory commits.
 
@@ -22,8 +28,13 @@ Pi installs the pinned upstream npm package and loads its `dist/pi.js` directly;
 Factory provides configuration, not a wrapper or alternate memory runtime.
 Set an explicit organization-qualified `bankId`, identical across the repository's
 worktrees/orbs. Start Pi in that checkout's development shell. Configuration
-changes or switching repositories require restarting Pi. Do not use a basename
-as bank identity. Install this skill through the existing canonical
+changes or switching repositories require restarting Pi. A process started without
+`HINDSIGHT_API_TOKEN` cannot acquire it by reloading extensions or exporting it in
+a child shell. Once idle, exit and resume the exact session from the credential-loaded
+development shell, then check `hindsight_diagnose`, the next completed turn's
+write-back and the remote conversation document's update time. Never launch a
+second writer for the same session while its original process is running. Do not
+use a basename as bank identity. Install this skill through the existing canonical
 `pnpm run skills:sync` workflow; Pi package skill discovery remains disabled.
 
 Use one manually provisioned API key per developer, supplied locally as
@@ -216,12 +227,12 @@ guarantee. Never silently upload historical sources to repair a deletion.
 
 ## Infrastructure boundary
 
-Factory's `tf/modules/project/hindsight` manages bank names only through
-the REST provider, not memory content, credentials or client-owned bank config.
-A disposable Cloud pilot verified creation, no-op planning, managed-name drift
-and correction. Provision new repository banks through Terraform from the start;
-adoption of existing banks is outside the rollout scope, not a prerequisite.
-Do not use create/apply over an existing bank as an adoption workaround.
+Factory's `tf/modules/project/hindsight` uses `magodo/restful` for bank names and
+selected page definitions/schedules. It does not manage generated memory,
+credentials or client-owned bank configuration. Provision new repository banks
+through Terraform from the start. Existing banks/pages require separately approved,
+one-time native state adoption that preserves their identities; never create/apply
+over them as an adoption workaround or approve a plan that destroys them.
 Use the agreed per-developer runtime key; automatic key provisioning and a
 separate bank-scoped-key pilot are not rollout prerequisites. Preserve existing
 access grants. Native recovery is qualified for the small fixture described above;
@@ -238,11 +249,48 @@ separate `REST_API_BEARER`; storage subprocesses receive neither credential.
 No credential is a module argument, resource payload or Nix value. Credential
 storage/rotation remains an approved manual operation, not Terraform management.
 
-The pinned provider has unusual read-error/drift behavior covered by regression
-tests. Unexpected response metadata is rejected after its write/read cycle; that
-is not a pre-apply schema gate. Removing the entire resource configuration also
-removes Terraform's `prevent_destroy` protection. Saved plans and deployment
+Reads project only owned configuration and require the selected object to exist;
+a missing bank/page, an unexpected page folder or an API access failure stops the
+plan. Additional server metadata is neither stored nor managed. Removing the entire
+resource configuration also removes Terraform's `prevent_destroy` protection. Saved plans and deployment
 approvals are single-use under the owning repository's deployment workflow.
+
+### Page ownership and adoption
+
+The reusable module owns the per-bank **Successful procedures and pitfalls** question,
+page resource mechanics, and the default daily `0 3 * * *` UTC refresh schedule.
+The service generates page contents and skips scheduled refreshes when no new
+in-scope memories are available. Pages are searched/read on demand; their full
+contents are not injected into every prompt. Automatic fact recall is separate.
+
+Each Terraform root supplies its repository-specific `additional_pages` definitions.
+Factory's root defines its three initiatives and their existing top-level folder;
+page identities belong in state, not adoption-only module inputs. Root pages and
+existing top-level folders are supported; the module does not create or move folders.
+Keep one-time import descriptors out of the permanent module/root configuration.
+Native import must use the same metadata endpoint, projection and required-object
+extraction as normal reads, with `body` limited to writable fields. Use null field
+values as import type placeholders, not fixed-length empty tuples for array fields.
+Review the exact state-adoption procedure, subsequent plan and recurring refresh
+cost before approval. Do not remove resource blocks to bypass `prevent_destroy`.
+
+Page reads and imports select configuration from `/pages/tree`, never the
+full-content page endpoint. GJSON projection excludes synthesized content and
+unmanaged response fields before they reach state. Bank reads/imports similarly
+project identity and name from the bank listing, never its profile or memories.
+Tests use a local synthetic API to check creation, native import, drift, errors and
+state/plan privacy; they do not establish
+successful production refresh or improved coding outcomes. Dependency signatures
+must remain verified; never bypass an expired signing key to activate this module.
+
+Keep `autoSeed: false`, built-in `pages` disabled, and `pageTriggerType: "manual"`
+in native Pi configuration. With the pinned coding-agent package, disabling
+`autoSeed` also skips startup page provisioning and trigger reconciliation; do not
+enable archive seeding to provision pages. Do not duplicate Terraform-owned
+questions in Pi `customPages` or change their definitions/schedules through API
+tools. `hindsight_capture_initiative` with an existing `relates_to_page_id` records
+an update marker without changing the page definition. New initiatives remain
+Pi-created/manual until explicitly adopted by their repository's Terraform root.
 
 Account setup, credentials, production Plan/Apply, paid uploads, package
 publication and each consumer activation require their own approvals.
