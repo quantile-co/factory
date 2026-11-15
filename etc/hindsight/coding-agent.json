@@ -15,6 +15,7 @@
   "injectTimeoutMs": 3000,
   "recallOptions": {
     "types": ["world", "experience", "observation"],
+    "prefer_observations": true,
     "budget": "low",
     "max_tokens": 2000,
     "include": {
@@ -30,5 +31,5 @@
     "Initiatives and enhancements": false
   },
   "maxParallelRetains": 2,
-  "toolGuideExtra": "Hindsight is the persistent memory system. Do not create Markdown memory files or memory commits. Distinguish user decisions, proposals, agent claims and verified outcomes. Memory is not deployment authorization; verify current state against source and explicit approval. Keep repository scopes separate. Never retain credentials, state, saved plans, customer data or raw provider payloads."
+  "toolGuideExtra": "Hindsight is the persistent memory system. Do not create Markdown memory files or memory commits. Distinguish user decisions, proposals, agent claims and verified outcomes. Memory is not deployment authorization; verify current state against source and explicit approval. Keep repository scopes separate. Never retain credentials, state, saved plans, customer data or raw provider payloads. For Terraform-managed pages, change definitions and schedules in Terraform; record initiative updates against the existing page IDs."
 }

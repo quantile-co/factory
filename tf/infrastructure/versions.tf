@@ -19,5 +19,9 @@ terraform {
       source  = "registry.terraform.io/Mastercard/restapi"
       version = "= 3.0.0"
     }
+    restful = {
+      source  = "registry.terraform.io/magodo/restful"
+      version = "= 0.25.2"
+    }
   }
 }
