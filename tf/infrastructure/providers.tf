@@ -5,15 +5,6 @@ provider "github" {
 
 provider "google" {}
 
-# Required only to forget the former bank binding; remove after transition Apply.
-# Never inherit the GitHub REST_API_BEARER credential.
-# tflint-ignore: terraform_unused_declarations
-provider "restapi" {
-  alias        = "hindsight"
-  uri          = "https://api.hindsight.vectorize.io"
-  bearer_token = var.hindsight_api_token
-}
-
 # Hindsight credentials remain separate from the GitHub REST_API_BEARER.
 provider "restful" {
   alias    = "hindsight"
