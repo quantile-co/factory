@@ -79,6 +79,9 @@ import {
 module "gcp" {
   source = "../modules/project/gcp"
 
+  # The central otel deployment owns enrollment; this pipeline gets no reverse grant.
+  metrics_enrollment_member = "principalSet://iam.googleapis.com/projects/86084514682/locations/global/workloadIdentityPools/github/attribute.main_branch_repository_actor_id/1458437080_218666448"
+
   project_prefix    = "factory"
   folder_id         = "145094075590"
   owners            = [for person in local.project_owners : person.gcp_email]
