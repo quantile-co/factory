@@ -110,6 +110,16 @@ resource "google_storage_bucket_iam_member" "plan_reader" {
   }
 }
 
+# The central deployment owns membership; downstreams grant access only here.
+# Leaving this unset keeps independent projects usable before a central scope exists.
+resource "google_project_iam_member" "metrics_enrollment" {
+  count = var.metrics_enrollment_member == null ? 0 : 1
+
+  project = google_project.state.project_id
+  role    = "roles/monitoring.metricsScopesAdmin"
+  member  = var.metrics_enrollment_member
+}
+
 # Routine administration is limited to main-branch repository/actor WIF principals.
 # Do not grant persistent project Owner access to the bootstrap human.
 resource "google_project_iam_member" "pipeline_owner" {

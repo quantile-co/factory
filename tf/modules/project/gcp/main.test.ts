@@ -77,6 +77,10 @@ run "owners_with_members" {
     )
     error_message = "Members must not change owner-only plan/build readers or main/repository/actor WIF grants."
   }
+  assert {
+    condition = length(google_project_iam_member.metrics_enrollment) == 0
+    error_message = "Enrollment must be disabled by default, with no central-project dependency."
+  }
 }
 run "overlapping_roles" {
   command = plan
@@ -93,6 +97,79 @@ run "overlapping_roles" {
   }
   expect_failures = [var.members]
 }
+`,
+    );
+    writeFileSync(
+      join(work, "tests/metrics.tftest.hcl"),
+      `
+mock_provider "google" {}
+mock_provider "random" {
+  mock_resource "random_id" { defaults = { hex = "abcd" } }
+}
+variables {
+  project_prefix = "fixture"
+  folder_id = "123456789"
+  owners = ["operator@example.com"]
+  billing_account = "AAAAAA-BBBBBB-CCCCCC"
+  wif_pool = "projects/123456789/locations/global/workloadIdentityPools/fixture"
+  gh_repo_id = "123456789"
+  gh_owner_ids = { fixture-operator = "987654321" }
+}
+run "disabled" {
+  command = plan
+  module { source = ${JSON.stringify(moduleDir)} }
+  variables { metrics_enrollment_member = null }
+  assert {
+    condition = length(google_project_iam_member.metrics_enrollment) == 0
+    error_message = "Explicit null must require no central project or enrollment identity."
+  }
+}
+${[
+  "serviceAccount:enrollment@central-example.iam.gserviceaccount.com",
+  "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/fixture/attribute.main_branch_repository_actor_id/987654321_123456789",
+]
+  .map(
+    (member, index) => `
+run "enabled_${index}" {
+  command = plan
+  module { source = ${JSON.stringify(moduleDir)} }
+  variables { metrics_enrollment_member = ${JSON.stringify(member)} }
+  assert {
+    condition = (
+      length(google_project_iam_member.metrics_enrollment) == 1 &&
+      google_project_iam_member.metrics_enrollment[0].project == google_project.state.project_id &&
+      google_project_iam_member.metrics_enrollment[0].role == "roles/monitoring.metricsScopesAdmin" &&
+      google_project_iam_member.metrics_enrollment[0].member == ${JSON.stringify(member)} &&
+      length(google_project_iam_member.pipeline_owner) == 1 &&
+      google_project.state.deletion_policy == "PREVENT"
+    )
+    error_message = "Only the explicit central workload may receive scope-linking permission on this project."
+  }
+}
+`,
+  )
+  .join("\n")}
+${[
+  "",
+  "allUsers",
+  "allAuthenticatedUsers",
+  "user:operator@example.com",
+  "group:operators@example.com",
+  "serviceAccount:*@central-example.iam.gserviceaccount.com",
+  "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/fixture/*",
+  "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/fixture/attribute.repository/organization/repo",
+]
+  .map(
+    (member, index) => `
+run "invalid_${index}" {
+  command = plan
+  module { source = ${JSON.stringify(moduleDir)} }
+  variables { metrics_enrollment_member = ${JSON.stringify(member)} }
+  expect_failures = [var.metrics_enrollment_member]
+}
+`,
+  )
+  .join("\n")}
 `,
     );
     mkdirSync(join(work, "providers"));
