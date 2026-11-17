@@ -231,15 +231,15 @@ async function main() {
     // contain payloads, and replay while capturing would feed diagnostics back.
     return;
   }
-  const endpoint = process.env.CLICKSTACK_OTLP_ENDPOINT;
-  const key = process.env.CLICKSTACK_API_KEY;
+  const endpoint = process.env.QUANTILE_OTLP_ENDPOINT;
+  const key = process.env.QUANTILE_OTLP_INGEST_TOKEN;
   if (!endpoint && !key) {
     console.info("Collector disabled: ingestion configuration not supplied");
     return;
   }
   if (!endpoint || !key)
     throw new Error(
-      "Both CLICKSTACK_OTLP_ENDPOINT and CLICKSTACK_API_KEY are required",
+      "Both QUANTILE_OTLP_ENDPOINT and QUANTILE_OTLP_INGEST_TOKEN are required",
     );
   const url = new URL(endpoint);
   if (

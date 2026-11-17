@@ -69,9 +69,9 @@ processors:
     timeout: 1s
 exporters:
   otlp_http:
-    endpoint: ${env:CLICKSTACK_OTLP_ENDPOINT}
+    endpoint: ${env:QUANTILE_OTLP_ENDPOINT}
     headers:
-      Authorization: Bearer ${env:CLICKSTACK_API_KEY}
+      Authorization: Bearer ${env:QUANTILE_OTLP_INGEST_TOKEN}
     timeout: 10s
     retry_on_failure:
       enabled: true
