@@ -70,21 +70,6 @@ module "gh" {
   factory_automatic_label = true
 }
 
-# Nonsecret routing context; the token is fetched from GCSM through WIF.
-resource "github_actions_environment_variable" "collector" {
-  for_each = {
-    QUANTILE_OTLP_ENDPOINT      = "https://otelcol-431734053154.us-central1.run.app"
-    QUANTILE_OTLP_INGEST_SECRET = "otel-680d/QUANTILE_OTLP_INGEST_TOKEN/1"
-  }
-
-  repository    = module.gh.repo_name
-  environment   = "prod"
-  variable_name = each.key
-  value         = each.value
-
-  depends_on = [module.gh]
-}
-
 # Adopt the existing pilot label; do not create a duplicate or manage other labels.
 import {
   to = module.gh.github_issue_label.self["factory-automatic"]
