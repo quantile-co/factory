@@ -74,14 +74,10 @@ it("renders independent consumer configuration and replacement Pi settings", () 
     hook: string;
     derivations: string[];
   };
-  // Realise derivations, not output paths whose build recipes were never requested.
-  execFileSync(
-    "nix-store",
-    ["--option", "substituters", "", "--realise", ...paths.derivations],
-    {
-      timeout: 120_000,
-    },
-  );
+  // Realise derivations with normal trusted caches; cold CI may lack build dependencies.
+  execFileSync("nix-store", ["--realise", ...paths.derivations], {
+    timeout: 120_000,
+  });
   const config = JSON.parse(readFileSync(paths.config, "utf8"));
   const settings = JSON.parse(readFileSync(paths.settings, "utf8"));
   expect(config.bankId).toBe("example--project");
