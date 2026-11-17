@@ -23,6 +23,7 @@ nix develop --command bash -euo pipefail -c '
   pnpm run skills:sync
   pnpm run build
   pnpm amp setup
-  install -D -m 0644 packages/amp/dist/plugin.js "${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins/factory-orb-awake.js"
-  install -D -m 0644 packages/amp/dist/telemetry.js "${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins/factory-observability.js"
+  plugins="${XDG_CONFIG_HOME:-$HOME/.config}/amp/plugins"
+  install -D -m 0644 packages/amp/dist/plugin.js "$plugins/quantile-co-factory-amp.js"
+  rm -f "$plugins/factory-orb-awake.js" "$plugins/factory-observability.js"
 '

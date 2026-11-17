@@ -1,6 +1,6 @@
 {
   "name": "@quantile-co/factory-amp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "description": "Amp orb runtime and native Herdr connections.",
   "type": "module",
@@ -20,14 +20,12 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       },
-      "./plugin": "./dist/plugin.js",
-      "./telemetry": "./dist/telemetry.js"
+      "./plugin": "./dist/plugin.js"
     }
   },
   "exports": {
     ".": "./src/index.ts",
-    "./plugin": "./src/plugin.ts",
-    "./telemetry": "./src/telemetry.ts"
+    "./plugin": "./src/plugin.ts"
   },
   "dependencies": {
     "@quantile-co/factory-otel": "workspace:*"
@@ -36,7 +34,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build && vite build --mode telemetry",
+    "build": "vite build && vite build --mode plugin",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --maxWorkers=4"
   }

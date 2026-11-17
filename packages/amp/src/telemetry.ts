@@ -6,8 +6,8 @@ import {
   metadataSpan,
 } from "@quantile-co/factory-otel/otlp";
 
-// Standalone native plugin, bundled with Node built-ins only. No transcript API,
-// telemetry SDK, keepAlive, shell commands or dependency on the awake plugin.
+// Telemetry capability, bundled with Node built-ins only. No transcript API,
+// telemetry SDK, keepAlive, shell commands or dependency on keep-awake.
 type Message = {
   role: string;
   id: string | number;

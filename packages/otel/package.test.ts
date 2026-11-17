@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
-it("packs SDK subpaths without a legacy CLI and loads both standalone Amp plugins without a source tree", () => {
+it("packs SDK subpaths without a legacy CLI and loads the unified Amp plugin without a source tree", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-otel-package-"));
   const env = { ...process.env };
   delete env.QUANTILE_OTLP_ENDPOINT;
@@ -86,20 +86,17 @@ it("packs SDK subpaths without a legacy CLI and loads both standalone Amp plugin
     const standalone = join(temporary, "plugins");
     mkdirSync(standalone);
     writeFileSync(join(standalone, "package.json"), '{"type":"module"}');
-    for (const name of ["plugin", "telemetry"])
-      copyFileSync(
-        new URL(`../amp/dist/${name}.js`, import.meta.url),
-        join(standalone, `${name}.js`),
-      );
+    copyFileSync(
+      new URL("../amp/dist/plugin.js", import.meta.url),
+      join(standalone, "quantile-co-factory-amp.js"),
+    );
     execFileSync(
       process.execPath,
       [
         "--input-type=module",
         "-e",
         `
-      for (const name of ['plugin', 'telemetry']) {
-        if (typeof (await import('./' + name + '.js')).default !== 'function') process.exit(1);
-      }
+      if (typeof (await import('./quantile-co-factory-amp.js')).default !== 'function') process.exit(1);
     `,
       ],
       { cwd: standalone, env, stdio: "pipe" },
