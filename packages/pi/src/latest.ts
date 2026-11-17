@@ -119,8 +119,25 @@ export function registerLatest(api: ExtensionAPI) {
   api.on("session_start", (_event, ctx) => {
     void updateStatus(ctx);
   });
-  api.on("model_select", (_event, ctx) => {
+  api.on("model_select", ({ model, source }, ctx) => {
     void updateStatus(ctx);
+    if (
+      !ctx.hasUI ||
+      source === "restore" ||
+      model.provider !== provider ||
+      model.api !== "pi-virtual"
+    )
+      return;
+    const family = families.find((entry) => aliasId(entry) === model.id);
+    if (!family) return;
+    // Pi writes its own chat status after model_select returns.
+    setImmediate(() => {
+      if (ctx.model?.provider !== provider || ctx.model.id !== model.id) return;
+      ctx.ui.notify(
+        `Selected for your next message: ${family} (latest) • ${api.getThinkingLevel()}. The footer arrow shows which model answered last.`,
+        "info",
+      );
+    });
   });
   api.on("before_agent_start", (_event, ctx) => {
     void updateStatus(ctx);
