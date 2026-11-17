@@ -1,4 +1,6 @@
 {
+  "defaultModel": "gpt-6-sol-latest",
+  "defaultProvider": "openai-codex",
   "defaultTools": [
     "+codemode",
     "+tool_search"
