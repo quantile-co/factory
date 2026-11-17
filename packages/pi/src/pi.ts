@@ -500,6 +500,9 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
       // in the launch lock also works before the first user message, without fabricating one.
       let selection: Selection | undefined;
       try {
+        // The receipt must attest the actual startup model, not a resolved alias.
+        if (ctx.model?.api === "pi-virtual")
+          throw new Error("Expected a physical child");
         selection = await deps.selectChild(
           { model: "inherit", thinking: "inherit" },
           ctx,

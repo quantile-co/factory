@@ -21,6 +21,24 @@ function latest<T extends { id: string }>(models: T[], family: Family) {
   return best;
 }
 
+const aliasId = (family: Family) => `gpt-6-${family.toLowerCase()}-latest`;
+
+export function resolveLatestParent<
+  T extends { provider: string; api: string; id: string },
+>(parent: T | undefined, models: T[]) {
+  if (parent?.api !== "pi-virtual" || parent.provider !== provider)
+    return parent;
+  const family = families.find((entry) => aliasId(entry) === parent.id);
+  return family
+    ? (latest(
+        models.filter(
+          (entry) => entry.provider === provider && entry.api !== "pi-virtual",
+        ),
+        family,
+      ) ?? parent)
+    : parent;
+}
+
 const available = (ctx: ExtensionContext) =>
   ctx.modelRegistry
     .getAvailable()
@@ -32,7 +50,7 @@ export function registerLatest(api: ExtensionAPI) {
   for (const family of families) {
     api.registerVirtualModel({
       provider,
-      id: `gpt-6-${family.toLowerCase()}-latest`,
+      id: aliasId(family),
       name: `GPT-6 ${family} (latest)`,
       thinkingLevels: ["low", "medium", "high", "xhigh", "max"],
       route(request, ctx) {

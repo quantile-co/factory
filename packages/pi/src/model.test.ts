@@ -103,6 +103,17 @@ afterEach(() => {
   setLangfuseTracerProvider(null);
 });
 
+it("launches from a Factory latest alias using the newest physical family member", async () => {
+  const { ctx, available } = context();
+  ctx.model = { ...model("gpt-6-sol-latest"), api: "pi-virtual" };
+  available.push(ctx.model, model("gpt-6.10-sol"), model("gpt-6.2-sol"));
+  expect(await selectChild({ task }, ctx)).toMatchObject({
+    model: "gpt-6.10-sol",
+    api: "openai-codex-responses",
+    thinking: "high",
+  });
+});
+
 it.each(["fork", "fresh"] as const)(
   "deliberately inherits current API state for %s without classification",
   async (contextMode) => {

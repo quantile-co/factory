@@ -10,6 +10,7 @@ import {
   type ModelThinkingLevel,
   type Usage,
 } from "@earendil-works/pi-ai";
+import { resolveLatestParent } from "./latest.ts";
 
 interface Options {
   model?: string;
@@ -96,7 +97,7 @@ export async function selectChild(
   signal?.throwIfAborted();
   const registry = ctx.modelRegistry;
   const available = registry.getAvailable().filter(physical);
-  const parent = ctx.model;
+  const parent = resolveLatestParent(ctx.model, available);
   const explicitModel =
     options.model !== undefined && !["inherit", "auto"].includes(options.model);
   const explicitThinking =
