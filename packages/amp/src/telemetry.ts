@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { managedConfig } from "@quantile-co/factory-otel/config";
+import { collectorEndpoint } from "@quantile-co/factory-otel/config";
 import {
   exportSpans,
   type MetadataSpan,
@@ -41,15 +41,14 @@ const identity = (event: Event, id: string | number | undefined) =>
 
 export default function telemetry(amp: TelemetryPlugin): void {
   if (process.env.AMP_ORB !== "1") return;
-  let config: ReturnType<typeof managedConfig>;
   try {
-    config = managedConfig(process.env);
+    if (!collectorEndpoint()) return;
   } catch {
     amp.logger.log("OTel telemetry disabled: invalid runtime configuration.");
     return;
   }
-  if (!config) return;
-  const destination = config;
+  // Only the local Collector handles outbound identity and token renewal.
+  const destination = { endpoint: "http://127.0.0.1:4318" };
   const instance = randomBytes(16).toString("hex");
   const turns = new Map<string, string>();
   const tools = new Map<string, string>();

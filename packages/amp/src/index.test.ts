@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
 import {
+  collectorScript,
   connect,
   identity,
   orbPeers,
@@ -230,7 +231,7 @@ if (['mkdir', 'install', 'tee', 'rm'].includes(args[0])) {
 }
 if (args.includes('restart')) {
   assert.equal(fs.statSync(file).mode & 0o777, 0o600);
-  assert.ok(fs.readFileSync(file, 'utf8').includes('CLICKSTACK_API_KEY="fixture-runtime-key"\\n'));
+  assert.ok(!fs.readFileSync(file, 'utf8').includes('QUANTILE_OTLP_INGEST_TOKEN'));
   assert.ok(fs.readFileSync(file, 'utf8').includes('OTEL_COLLECTOR_EXTRA_ARGS="--config=' + ${JSON.stringify(join(directory, ".local/share/factory-amp/otel/journald.yaml"))} + '"\\n'));
 }
 if (args.includes(${JSON.stringify(failure)})) { console.error('PRIVATE_ERROR'); process.exit(1); }
@@ -241,8 +242,8 @@ if (args.includes('is-active')) process.exit(3);
       vi.stubEnv("PATH", `${directory}:${process.env.PATH}`);
       vi.stubEnv("AMP_ORB", "1");
       vi.stubEnv("HOME", directory);
-      vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
-      vi.stubEnv("CLICKSTACK_API_KEY", "fixture-runtime-key");
+      vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "https://ingest.example.invalid");
+      vi.stubEnv("QUANTILE_OTLP_INGEST_TOKEN", "fixture-runtime-key");
       expect(() => resumeCollector("org/repo", thread)).not.toThrow();
       const operations = readFileSync(record, "utf8");
       expect(
@@ -271,8 +272,8 @@ if (args.includes('is-active')) process.exit(3);
       );
       writeFileSync(record, "");
       log.mockClear();
-      vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "");
-      vi.stubEnv("CLICKSTACK_API_KEY", "");
+      vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "");
+      vi.stubEnv("QUANTILE_OTLP_INGEST_TOKEN", "");
       resumeCollector("org/repo", thread);
       expect(readFileSync(record, "utf8")).not.toContain('"stop"');
       expect(log).not.toHaveBeenCalled();
@@ -283,6 +284,64 @@ if (args.includes('is-active')) process.exit(3);
     }
   },
 );
+
+it("renews the private token atomically and retains it on mint failure without leaking diagnostics", () => {
+  const directory = mkdtempSync(join(tmpdir(), "factory-amp-identity-"));
+  const file = join(directory, "token");
+  const counter = join(directory, "attempts");
+  try {
+    const lint = spawnSync("shellcheck", ["--shell=bash", "-"], {
+      input: collectorScript,
+      encoding: "utf8",
+    });
+    expect(lint.status, lint.stdout + lint.stderr).toBe(0);
+    const scripts = {
+      amp: `const n = Number(fs.existsSync(counter) ? fs.readFileSync(counter, 'utf8') : 0) + 1;
+fs.writeFileSync(counter, String(n));
+if (process.argv.slice(2).join(' ') !== 'orb id-token --audience https://ingest.example.invalid --ttl-seconds 600') process.exit(2);
+console.log(n < 3 ? 'fixture-token-' + n : 'partial-failed-token');
+if (n === 3) { console.error('PRIVATE_PROVIDER_ERROR'); process.exit(1); }`,
+      // Advance the two renewals without a five-minute wall-clock wait.
+      sleep: `process.exit(Number(fs.readFileSync(counter, 'utf8')) >= 3 ? 1 : 0);`,
+      collector: `(async () => {
+for (let n = 0; n < 100; n++) {
+  if (Number(fs.readFileSync(counter, 'utf8')) === 3 && !fs.existsSync(file + '.next')) {
+    require('node:assert/strict').equal(fs.readFileSync(file, 'utf8'), 'fixture-token-2\\n');
+    process.exit(0);
+  }
+  await new Promise(resolve => setTimeout(resolve, 10));
+}
+process.exit(1);
+})();`,
+    };
+    for (const [name, script] of Object.entries(scripts)) {
+      const path = join(directory, name);
+      writeFileSync(
+        path,
+        `#!${process.execPath}\nconst fs = require('node:fs');\nconst file = ${JSON.stringify(file)};\nconst counter = ${JSON.stringify(counter)};\n${script}\n`,
+      );
+      chmodSync(path, 0o755);
+    }
+    const result = spawnSync("bash", ["-c", collectorScript], {
+      encoding: "utf8",
+      timeout: 5000,
+      env: {
+        PATH: `${directory}:${process.env.PATH}`,
+        FACTORY_AMP_BINARY: join(directory, "amp"),
+        QUANTILE_OTLP_ENDPOINT: "https://ingest.example.invalid",
+        OTEL_TOKEN_FILE: file,
+        OTEL_COLLECTOR_BINARY: join(directory, "collector"),
+        OTEL_COLLECTOR_CONFIG: join(directory, "config.yaml"),
+      },
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("OTel identity renewal unavailable.\n");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 it.each(["1.104.5", "1.104.1"])(
   "prepares only safe Tailscale SSH snapshots (%s)",
@@ -334,7 +393,7 @@ ${setupScript}
             AMP_ORB: "1",
             VERSION: version,
             PATH: process.env.PATH,
-            CLICKSTACK_API_KEY: "fixture-not-for-snapshots",
+            QUANTILE_OTLP_INGEST_TOKEN: "fixture-not-for-snapshots",
             OTEL_COLLECTOR_BINARY:
               "/nix/store/fixture-collector/bin/otelcol-contrib",
             OTEL_COLLECTOR_CONFIG: join(home, "config.yaml"),
@@ -363,7 +422,15 @@ ${setupScript}
         /fixture-not-for-snapshots|ExecStart=.*sshd|authorized_keys/,
       );
       expect(units).toContain(
-        `ExecStart=/nix/store/fixture-collector/bin/otelcol-contrib --config=${home}/.local/share/factory-amp/otel/config.yaml $OTEL_COLLECTOR_EXTRA_ARGS`,
+        `ExecStart=/pinned/bin/bash ${home}/.local/share/factory-amp/otel/run-collector`,
+      );
+      expect(units).toContain("RuntimeDirectory=factory-amp-otel");
+      expect(units).toContain("RuntimeDirectoryMode=0700");
+      expect(units).toContain(
+        "Environment=OTEL_TOKEN_FILE=/run/factory-amp-otel/token",
+      );
+      expect(readFileSync(join(collector, "run-collector"), "utf8")).toBe(
+        collectorScript,
       );
       expect(units).toContain("StandardError=journal");
       expect(units).toContain("SupplementaryGroups=systemd-journal");

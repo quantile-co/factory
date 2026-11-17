@@ -29,8 +29,8 @@ vi.mock("@opentelemetry/exporter-trace-otlp-http", () => ({
 const policy: TracingOptions = { serviceName: "fixture-app" };
 let registration: MockInstance<typeof trace.setGlobalTracerProvider>;
 beforeEach(() => {
-  vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
-  vi.stubEnv("CLICKSTACK_API_KEY", "fixture-key");
+  vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "https://ingest.example.invalid");
+  vi.stubEnv("QUANTILE_OTLP_INGEST_TOKEN", "fixture-key");
   registration = vi.spyOn(trace, "setGlobalTracerProvider");
   transport.spans.length = 0;
 });

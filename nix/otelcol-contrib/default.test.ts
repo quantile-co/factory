@@ -26,8 +26,8 @@ it("validates native Amp Collector base and optional overlays", () => {
         {
           env: {
             ...process.env,
-            CLICKSTACK_OTLP_ENDPOINT: "https://ingest.example.invalid",
-            CLICKSTACK_API_KEY: "fixture-only",
+            QUANTILE_OTLP_ENDPOINT: "https://ingest.example.invalid",
+            OTEL_TOKEN_FILE: join(state, "token"),
             OTEL_LOG_DIRECTORY: state,
             OTEL_CURSOR_DIRECTORY: state,
             OTEL_AGENT_PLATFORM: "amp-orb",

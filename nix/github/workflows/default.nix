@@ -67,6 +67,13 @@ let
           ]
           source
       );
+  gcpAuthentication = indent 6 ''
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+      with:
+        project_id: ''${{ vars.GCP_PROJECT_ID }}
+        workload_identity_provider: ''${{ vars.GCP_WIF_PROVIDER }}
+  '';
   collectorJob =
     phase: source:
     if !(builtins.elem phase cfg.otelJobs) then
@@ -75,22 +82,33 @@ let
       assert lib.assertMsg (
         cfg.otelActionRef != null
       ) "Set otelActionRef to a published Factory commit before enabling OTel jobs.";
-      assert lib.assertMsg (lib.hasInfix "    steps:\n" source) "Workflow steps changed";
+      assert lib.assertMsg (lib.hasInfix "      - name: Mount the Nix " source)
+        "Workflow cache setup changed";
       builtins.replaceStrings
-        [ "    steps:\n" ]
+        [ "    steps:\n" "      - name: Mount the Nix " ]
         [
+          "    permissions:\n      contents: read\n      id-token: write\n    steps:\n"
           (
-            "    steps:\n"
+            gcpAuthentication
+            + "\n"
             + indent 6 ''
+              - name: Read Collector ingestion token
+                id: otel-token
+                uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+                with:
+                  secrets: token:''${{ vars.QUANTILE_OTLP_INGEST_SECRET }}
+                  export_to_environment: false
+
               - name: Start OpenTelemetry Collector
                 uses: quantile-co/factory/.github/actions/otel@${cfg.otelActionRef}
                 env:
-                  CLICKSTACK_OTLP_ENDPOINT: ''${{ vars.CLICKSTACK_OTLP_ENDPOINT }}
-                  CLICKSTACK_API_KEY: ''${{ secrets.CLICKSTACK_API_KEY }}
+                  QUANTILE_OTLP_ENDPOINT: ''${{ vars.QUANTILE_OTLP_ENDPOINT }}
+                  QUANTILE_OTLP_INGEST_TOKEN: ''${{ steps.otel-token.outputs.token }}
             ''
+            + "\n      - name: Mount the Nix "
           )
         ]
-        source;
+        (builtins.replaceStrings [ (gcpAuthentication + "\n") ] [ "" ] source);
   hindsightJob =
     phase: source:
     if
@@ -165,7 +183,7 @@ in
     otelActionRef = lib.mkOption {
       type = lib.types.nullOr (lib.types.strMatching "[0-9a-f]{40}");
       default = null;
-      description = "Published Factory commit containing .github/actions/otel. Required when otelJobs is nonempty; starts the native Collector before checkout.";
+      description = "Published Factory commit containing .github/actions/otel. Required when otelJobs is nonempty; starts the native Collector after checkout and WIF authentication.";
     };
     otelJobs = lib.mkOption {
       type = lib.types.listOf (
@@ -177,7 +195,7 @@ in
         ]
       );
       default = [ ];
-      description = "Explicit ClickHouse Observability jobs, only protected workflow_dispatch main jobs, never Check/PRs. Requires a published otelActionRef; there is no task-wrapper fallback.";
+      description = "Central Collector jobs, only protected workflow_dispatch main jobs, never Check/PRs. Requires otelActionRef, QUANTILE_OTLP_ENDPOINT and a versioned GCSM QUANTILE_OTLP_INGEST_SECRET reference.";
     };
     nixCache = lib.mkOption {
       type = lib.types.enum [

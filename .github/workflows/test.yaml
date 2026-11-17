@@ -17,17 +17,34 @@ jobs:
     runs-on: namespace-profile-quantile-4x8
     environment: prod
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Start OpenTelemetry Collector
-        uses: quantile-co/factory/.github/actions/otel@38aedb9583cdd78d121f949ff94f603982f39eee
-        env:
-          CLICKSTACK_OTLP_ENDPOINT: ${{ vars.CLICKSTACK_OTLP_ENDPOINT }}
-          CLICKSTACK_API_KEY: ${{ secrets.CLICKSTACK_API_KEY }}
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0 # Tests run the full-history checks first.
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+
+      - name: Read Collector ingestion token
+        id: otel-token
+        uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+        with:
+          secrets: token:${{ vars.QUANTILE_OTLP_INGEST_SECRET }}
+          export_to_environment: false
+
+      - name: Start OpenTelemetry Collector
+        uses: quantile-co/factory/.github/actions/otel@96b659232f4b92620433d21a6eb06f9209e5a487
+        env:
+          QUANTILE_OTLP_ENDPOINT: ${{ vars.QUANTILE_OTLP_ENDPOINT }}
+          QUANTILE_OTLP_INGEST_TOKEN: ${{ steps.otel-token.outputs.token }}
 
       - name: Mount the Nix and Turbo caches
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1

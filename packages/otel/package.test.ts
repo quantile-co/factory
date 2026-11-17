@@ -15,8 +15,8 @@ import { expect, it } from "vitest";
 it("packs SDK subpaths without a legacy CLI and loads both standalone Amp plugins without a source tree", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-otel-package-"));
   const env = { ...process.env };
-  delete env.CLICKSTACK_OTLP_ENDPOINT;
-  delete env.CLICKSTACK_API_KEY;
+  delete env.QUANTILE_OTLP_ENDPOINT;
+  delete env.QUANTILE_OTLP_INGEST_TOKEN;
   try {
     const archive = join(temporary, "factory-otel.tgz");
     execFileSync("pnpm", ["pack", "--out", archive], {

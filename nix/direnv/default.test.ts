@@ -54,7 +54,7 @@ printf '%s' "$NIX_CONFIG"
           `
 nix() {
   # Both store discovery and evaluation must exclude runtime credentials.
-  bash -c '[[ ! -v CLICKSTACK_API_KEY && ! -v CLICKSTACK_OTLP_ENDPOINT && ! -v OTEL_DOCKER_STATS ]]' || return 99
+  bash -c '[[ ! -v QUANTILE_OTLP_INGEST_TOKEN && ! -v QUANTILE_OTLP_ENDPOINT && ! -v OTEL_DOCKER_STATS ]]' || return 99
   if [[ "$*" == "store info --json" ]]; then
     printf '%s' "$STORE_INFO"
     return "$STORE_STATUS"
@@ -65,8 +65,8 @@ nix() {
 }
 pnpm() {
   [[ "$1 $2" == "amp resume" ]] || return 97
-  # Resume restores runtime values only after Nix evaluation.
-  bash -c '[[ "$CLICKSTACK_API_KEY" == fixture && "$OTEL_DOCKER_STATS" == 1 ]]' || return 96
+  # Resume restores nonsecret settings, never a permanent ingestion token.
+  bash -c '[[ ! -v QUANTILE_OTLP_INGEST_TOKEN && "$QUANTILE_OTLP_ENDPOINT" == https://example.invalid && "$OTEL_DOCKER_STATS" == 1 ]]' || return 96
 }
 export -f nix pnpm
 bash "$1"
@@ -83,8 +83,8 @@ bash "$1"
             STORE_INFO: test.info,
             STORE_STATUS: String(test.status),
             CONFIG_FILE: configFile,
-            CLICKSTACK_API_KEY: "fixture",
-            CLICKSTACK_OTLP_ENDPOINT: "https://example.invalid",
+            QUANTILE_OTLP_INGEST_TOKEN: "fixture",
+            QUANTILE_OTLP_ENDPOINT: "https://example.invalid",
             OTEL_DOCKER_STATS: "1",
           },
         },

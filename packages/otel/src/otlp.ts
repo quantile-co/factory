@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import type { ManagedConfig } from "./config.ts";
 
 export type Attributes = Record<string, string | number | boolean>;
 export type MetadataSpan = {
@@ -61,7 +60,7 @@ export function metadataSpan(
 // Callers own the positive metadata policy. This transport has no discovery,
 // diagnostics, persistent queue or ambient OTEL_* exporter configuration.
 export async function exportSpans(
-  config: ManagedConfig,
+  config: { endpoint: string; key?: string },
   resource: Attributes,
   scope: string,
   spans: MetadataSpan[],
@@ -89,7 +88,7 @@ export async function exportSpans(
           signal: AbortSignal.timeout(1_500),
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${config.key}`,
+            ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}),
           },
           body,
         });

@@ -1,32 +1,37 @@
 import { expect, it } from "vitest";
-import { managedConfig } from "./config.ts";
+import { collectorEndpoint, managedConfig } from "./config.ts";
 
 it("rejects partial or unsafe managed configuration without echoing values", () => {
   const credentials = {
-    CLICKSTACK_OTLP_ENDPOINT: "https://ingest.example.invalid/",
-    CLICKSTACK_API_KEY: "fixture-key",
+    QUANTILE_OTLP_ENDPOINT: "https://ingest.example.invalid/",
+    QUANTILE_OTLP_INGEST_TOKEN: "fixture-key",
   };
   expect(managedConfig({})).toBeUndefined();
+  expect(
+    collectorEndpoint({
+      QUANTILE_OTLP_ENDPOINT: credentials.QUANTILE_OTLP_ENDPOINT,
+    }),
+  ).toBe("https://ingest.example.invalid");
   expect(managedConfig(credentials)?.endpoint).toBe(
     "https://ingest.example.invalid",
   );
   for (const env of [
-    { CLICKSTACK_API_KEY: "sensitive" },
-    { CLICKSTACK_OTLP_ENDPOINT: "https://sensitive.invalid" },
-    { ...credentials, CLICKSTACK_OTLP_ENDPOINT: "http://sensitive.invalid" },
+    { QUANTILE_OTLP_INGEST_TOKEN: "sensitive" },
+    { QUANTILE_OTLP_ENDPOINT: "https://sensitive.invalid" },
+    { ...credentials, QUANTILE_OTLP_ENDPOINT: "http://sensitive.invalid" },
     {
       ...credentials,
-      CLICKSTACK_OTLP_ENDPOINT: "https://user:sensitive@host.invalid",
+      QUANTILE_OTLP_ENDPOINT: "https://user:sensitive@host.invalid",
     },
     {
       ...credentials,
-      CLICKSTACK_OTLP_ENDPOINT: "https://host.invalid/v1/traces",
+      QUANTILE_OTLP_ENDPOINT: "https://host.invalid/v1/traces",
     },
     {
       ...credentials,
-      CLICKSTACK_OTLP_ENDPOINT: "https://host.invalid/?sensitive",
+      QUANTILE_OTLP_ENDPOINT: "https://host.invalid/?sensitive",
     },
-    { ...credentials, CLICKSTACK_API_KEY: "Bearer sensitive" },
+    { ...credentials, QUANTILE_OTLP_INGEST_TOKEN: "Bearer sensitive" },
   ]) {
     try {
       managedConfig(env);

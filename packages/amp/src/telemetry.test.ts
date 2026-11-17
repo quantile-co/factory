@@ -15,21 +15,21 @@ function plugin() {
 function enable() {
   vi.useFakeTimers();
   vi.stubEnv("AMP_ORB", "1");
-  vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "https://ingest.example.invalid");
-  vi.stubEnv("CLICKSTACK_API_KEY", "fixture-secret");
+  vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "https://ingest.example.invalid");
+  vi.stubEnv("QUANTILE_OTLP_INGEST_TOKEN", "");
 }
-it("is inert outside orbs or without credentials and rejects partial configuration safely", () => {
+it("is inert outside orbs or without an endpoint and rejects unsafe configuration", () => {
   enable();
   vi.stubEnv("AMP_ORB", "0");
   expect(plugin().handlers.size).toBe(0);
   vi.stubEnv("AMP_ORB", "1");
-  vi.stubEnv("CLICKSTACK_API_KEY", "");
+  vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "http://ingest.example.invalid");
   const partial = plugin();
   expect(partial.handlers.size).toBe(0);
   expect(JSON.stringify(partial.logger.log.mock.calls)).not.toContain(
     "ingest.example",
   );
-  vi.stubEnv("CLICKSTACK_OTLP_ENDPOINT", "");
+  vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "");
   expect(plugin().logger.log).not.toHaveBeenCalled();
 });
 it("emits only metadata, timings and deduplicated actual message usage without changing native results", async () => {
@@ -82,13 +82,12 @@ it("emits only metadata, timings and deduplicated actual message usage without c
     key: "gen_ai.usage.input_tokens",
     value: { intValue: "15" },
   });
-  expect(send.mock.calls[0][0]).toBe(
-    "https://ingest.example.invalid/v1/traces",
-  );
+  expect(send.mock.calls[0][0]).toBe("http://127.0.0.1:4318/v1/traces");
   expect(send.mock.calls[0][1]).toMatchObject({
     redirect: "error",
-    headers: { Authorization: "Bearer fixture-secret" },
+    headers: { "Content-Type": "application/json" },
   });
+  expect(send.mock.calls[0][1].headers).not.toHaveProperty("Authorization");
 });
 it("recognizes OTLP partial success without retrying accepted spans or exposing server diagnostics", async () => {
   enable();

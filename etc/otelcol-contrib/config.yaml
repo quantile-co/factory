@@ -45,6 +45,8 @@ receivers:
         endpoint: 127.0.0.1:4318
 
 extensions:
+  bearertokenauth:
+    filename: ${env:OTEL_TOKEN_FILE}
   file_storage:
     directory: ${env:OTEL_CURSOR_DIRECTORY}
 
@@ -77,9 +79,9 @@ processors:
 
 exporters:
   otlp_http:
-    endpoint: ${env:CLICKSTACK_OTLP_ENDPOINT}
-    headers:
-      Authorization: Bearer ${env:CLICKSTACK_API_KEY}
+    endpoint: ${env:QUANTILE_OTLP_ENDPOINT}/amp
+    auth:
+      authenticator: bearertokenauth
     timeout: 10s
     retry_on_failure:
       enabled: true
@@ -88,7 +90,7 @@ exporters:
       queue_size: 256
 
 service:
-  extensions: [file_storage]
+  extensions: [file_storage, bearertokenauth]
   telemetry:
     logs:
       level: info

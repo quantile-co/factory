@@ -10,7 +10,7 @@ import {
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { managedConfig } from "@quantile-co/factory-otel/config";
+import { collectorEndpoint } from "@quantile-co/factory-otel/config";
 
 export type Orb = {
   thread: string;
@@ -219,10 +219,32 @@ export function connect(orb: Orb, user = "user"): void {
   ]);
 }
 
+// The existing service owns this loop and its children (KillMode=control-group).
+// On renewal failure keep the last token: central expiry enforcement fails closed.
+export const collectorScript = `set +x
+set -euo pipefail
+umask 077
+: "\${FACTORY_AMP_BINARY:?}" "\${QUANTILE_OTLP_ENDPOINT:?}" "\${OTEL_TOKEN_FILE:?}"
+: "\${OTEL_COLLECTOR_BINARY:?}" "\${OTEL_COLLECTOR_CONFIG:?}"
+refresh() {
+  if timeout --kill-after=5 30 "$FACTORY_AMP_BINARY" orb id-token --audience "$QUANTILE_OTLP_ENDPOINT" --ttl-seconds 600 > "$OTEL_TOKEN_FILE.next" 2>/dev/null && [ -s "$OTEL_TOKEN_FILE.next" ]; then
+    mv -f "$OTEL_TOKEN_FILE.next" "$OTEL_TOKEN_FILE"
+  else
+    rm -f "$OTEL_TOKEN_FILE.next"
+    echo 'OTel identity renewal unavailable.' >&2
+    return 1
+  fi
+}
+refresh
+(while sleep 300; do refresh || true; done) &
+read -r -a extra <<< "\${OTEL_COLLECTOR_EXTRA_ARGS:-}"
+exec "$OTEL_COLLECTOR_BINARY" --config="$OTEL_COLLECTOR_CONFIG" "\${extra[@]}"
+`;
+
 // Caller installs pinned tools explicitly (e.g. its Nix shell/profile). Setup
 // writes only dormant service definitions; it never authenticates or starts them.
 export const setupScript: string = `set +x
-unset CLICKSTACK_OTLP_ENDPOINT CLICKSTACK_API_KEY OTEL_DOCKER_STATS
+unset QUANTILE_OTLP_ENDPOINT QUANTILE_OTLP_INGEST_TOKEN OTEL_DOCKER_STATS
 [ "\${AMP_ORB:-}" = 1 ] || { echo 'Setup is only for an Amp orb.' >&2; exit 1; }
 [ ! -e "$HOME/.local/state/factory-amp" ] || { echo 'Refusing to snapshot an already activated Factory orb.' >&2; exit 1; }
 # Debian omits administrative tools from the unprivileged user's PATH.
@@ -280,8 +302,11 @@ done
 # The native Collector needs only its pinned binary and nonsecret configuration.
 if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ]; then
   collector=$OTEL_COLLECTOR_BINARY
+  amp=$(command -v amp)
+  bash=$(command -v bash)
+  coreutils=$(command -v timeout)
   install="$HOME/.local/share/factory-amp/otel"
-  for path in "$collector" "$install" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}" "\${OTEL_COLLECTOR_JOURNAL_CONFIG:-}"; do
+  for path in "$collector" "$amp" "$bash" "$coreutils" "$install" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}" "\${OTEL_COLLECTOR_JOURNAL_CONFIG:-}"; do
     [[ "$path" =~ ^/[a-zA-Z0-9/._+@-]+$ ]] || { echo 'Select plain absolute OTel artifact paths.' >&2; exit 1; }
   done
   mkdir -p "$install"
@@ -289,12 +314,16 @@ if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ]; then
   install -m 0644 "$OTEL_COLLECTOR_CONFIG" "$install/config.yaml"
   install -m 0644 "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
   install -m 0644 "$OTEL_COLLECTOR_JOURNAL_CONFIG" "$install/journald.yaml"
-  # The native executable must survive orb garbage collection.
-  if [[ "$collector" == /nix/store/* ]]; then
-    store=\${collector#/nix/store/}
-    store="/nix/store/\${store%%/*}"
-    nix-store --add-root "$HOME/.local/share/factory-amp/otel-otelcol-contrib" --indirect --realise "$store" >/dev/null
-  fi
+  cat > "$install/run-collector" <<'FACTORY_OTEL'
+${collectorScript}FACTORY_OTEL
+  # Runtime tools must survive orb garbage collection.
+  for tool in "$collector" "$amp" "$bash" "$coreutils"; do
+    if [[ "$tool" == /nix/store/* ]]; then
+      store=\${tool#/nix/store/}
+      store="/nix/store/\${store%%/*}"
+      nix-store --add-root "$HOME/.local/share/factory-amp/otel-\${tool##*/}" --indirect --realise "$store" >/dev/null
+    fi
+  done
   sudo tee /etc/systemd/system/factory-amp-otel.service >/dev/null <<EOF
 [Unit]
 Description=Factory OpenTelemetry Collector
@@ -304,7 +333,15 @@ User=$(id -un)
 SupplementaryGroups=systemd-journal
 UMask=0077
 EnvironmentFile=/run/factory-amp/otel.env
-ExecStart=$collector --config=$install/config.yaml \\$OTEL_COLLECTOR_EXTRA_ARGS
+Environment="PATH=$PATH"
+Environment=AMP_ORB=1
+Environment=FACTORY_AMP_BINARY=$amp
+Environment=OTEL_COLLECTOR_BINARY=$collector
+Environment=OTEL_COLLECTOR_CONFIG=$install/config.yaml
+Environment=OTEL_TOKEN_FILE=/run/factory-amp-otel/token
+RuntimeDirectory=factory-amp-otel
+RuntimeDirectoryMode=0700
+ExecStart=$bash $install/run-collector
 TimeoutStopSec=30
 KillMode=control-group
 StandardOutput=journal
@@ -376,8 +413,7 @@ export function resumeCollector(
       timeout: 35_000,
       stdio: [input === undefined ? "ignore" : "pipe", "ignore", "ignore"],
     });
-  const disabled =
-    !process.env.CLICKSTACK_OTLP_ENDPOINT && !process.env.CLICKSTACK_API_KEY;
+  const disabled = !process.env.QUANTILE_OTLP_ENDPOINT;
   if (disabled) {
     try {
       run(["systemctl", "is-active", "--quiet", "factory-amp-otel.service"]);
@@ -388,8 +424,8 @@ export function resumeCollector(
   try {
     run(["systemctl", "stop", "factory-amp-otel.service"]);
     if (disabled) return;
-    const config = managedConfig();
-    if (!config) return;
+    const endpoint = collectorEndpoint();
+    if (!endpoint) return;
     const install = join(homedir(), ".local/share/factory-amp/otel");
     const extraArgs = [`--config=${join(install, "journald.yaml")}`];
     if (process.env.OTEL_DOCKER_STATS === "1")
@@ -407,8 +443,7 @@ export function resumeCollector(
       OTEL_AGENT_REPOSITORY: repository ?? "",
       OTEL_AGENT_RUN_ID: "",
       OTEL_AGENT_RUN_ATTEMPT: "",
-      CLICKSTACK_OTLP_ENDPOINT: config.endpoint,
-      CLICKSTACK_API_KEY: config.key,
+      QUANTILE_OTLP_ENDPOINT: endpoint,
       OTEL_COLLECTOR_EXTRA_ARGS: extraArgs.join(" "),
     };
     // Collection now starts before tailscaled creates its runtime directory.

@@ -179,7 +179,7 @@ it("requires a published action ref instead of falling back to a task wrapper", 
   );
 });
 
-it("starts the pinned native action first and confines ingestion credentials to it", () => {
+it("authenticates through WIF and confines the GCSM ingestion token to the pinned Collector", () => {
   const temporary = mkdtempSync(
     join(tmpdir(), "factory-otel-action-workflow-"),
   );
@@ -194,20 +194,43 @@ it("starts the pinned native action first and confines ingestion credentials to 
       for (const job of Object.values(workflow(path).jobs) as Array<{
         if: string;
         environment: string;
-        steps: Array<{ uses?: string; env?: Record<string, string> }>;
+        permissions: Record<string, string>;
+        steps: Array<{
+          id?: string;
+          uses?: string;
+          with?: Record<string, unknown>;
+          env?: Record<string, string>;
+        }>;
       }>) {
         expect(job.if).toContain("github.ref == 'refs/heads/main'");
         expect(job.if).toContain("github.event_name == 'workflow_dispatch'");
         expect(job.environment).toBe("prod");
-        expect(job.steps[0].uses).toBe(
+        expect(job.permissions).toEqual({
+          contents: "read",
+          "id-token": "write",
+        });
+        expect(job.steps[0].uses).toMatch(/^actions\/checkout@/);
+        expect(job.steps[1].uses).toMatch(/^google-github-actions\/auth@/);
+        expect(
+          job.steps.filter((step) =>
+            step.uses?.startsWith("google-github-actions/auth@"),
+          ),
+        ).toHaveLength(1);
+        expect(job.steps[2].id).toBe("otel-token");
+        expect(job.steps[2].with).toEqual({
+          secrets: `token:\${{ vars.QUANTILE_OTLP_INGEST_SECRET }}`,
+          export_to_environment: false,
+        });
+        expect(job.steps[3].uses).toBe(
           `quantile-co/factory/.github/actions/otel@${ref}`,
         );
-        expect(job.steps[0].env?.CLICKSTACK_API_KEY).toBe(
-          `\${{ secrets.CLICKSTACK_API_KEY }}`,
+        expect(job.steps[3].env?.QUANTILE_OTLP_INGEST_TOKEN).toBe(
+          `\${{ steps.otel-token.outputs.token }}`,
         );
         expect(
-          job.steps.slice(1).every((step) => !step.env?.CLICKSTACK_API_KEY),
-        ).toBe(true);
+          job.steps.filter((step) => step.env?.QUANTILE_OTLP_INGEST_TOKEN),
+        ).toHaveLength(1);
+        expect(files[name]).not.toContain("secrets.QUANTILE_OTLP_INGEST_TOKEN");
       }
     }
   } finally {
