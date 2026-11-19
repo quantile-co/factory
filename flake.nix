@@ -78,7 +78,7 @@
               layers = [ "infrastructure" ];
               build.layers = [ "application" ];
               otelJobs = [ "test" ];
-              otelActionRef = "f2de4c22cd6e8a85ff14759e73017e7de712f904";
+              otelActionRef = "ac68f2d8ea763f3957bf524af86d26e412b65b6f";
               hindsight = true;
             };
 
