@@ -54,7 +54,7 @@ printf '%s' "$NIX_CONFIG"
           `
 nix() {
   # Both store discovery and evaluation must exclude runtime credentials.
-  bash -c '[[ ! -v QUANTILE_OTLP_INGEST_TOKEN && ! -v QUANTILE_OTLP_ENDPOINT && ! -v OTEL_DOCKER_STATS ]]' || return 99
+  bash -c '[[ ! -v QUANTILE_OTLP_ENDPOINT && ! -v QUANTILE_OTELCOL_DOCKER_STATS ]]' || return 99
   if [[ "$*" == "store info --json" ]]; then
     printf '%s' "$STORE_INFO"
     return "$STORE_STATUS"
@@ -66,7 +66,7 @@ nix() {
 pnpm() {
   [[ "$1 $2" == "amp resume" ]] || return 97
   # Resume restores nonsecret settings, never a permanent ingestion token.
-  bash -c '[[ ! -v QUANTILE_OTLP_INGEST_TOKEN && "$QUANTILE_OTLP_ENDPOINT" == https://example.invalid && "$OTEL_DOCKER_STATS" == 1 ]]' || return 96
+  bash -c '[[ "$QUANTILE_OTLP_ENDPOINT" == https://example.invalid && "$QUANTILE_OTELCOL_DOCKER_STATS" == 1 ]]' || return 96
 }
 export -f nix pnpm
 bash "$1"
@@ -83,9 +83,8 @@ bash "$1"
             STORE_INFO: test.info,
             STORE_STATUS: String(test.status),
             CONFIG_FILE: configFile,
-            QUANTILE_OTLP_INGEST_TOKEN: "fixture",
             QUANTILE_OTLP_ENDPOINT: "https://example.invalid",
-            OTEL_DOCKER_STATS: "1",
+            QUANTILE_OTELCOL_DOCKER_STATS: "1",
           },
         },
       );

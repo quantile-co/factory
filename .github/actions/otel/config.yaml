@@ -42,29 +42,20 @@ processors:
     check_interval: 1s
     limit_mib: 128
     spike_limit_mib: 32
-  resource:
-    attributes:
-      - key: service.name
-        value: "${env:GITHUB_REPOSITORY}/host"
-        action: insert
-      - key: service.instance.id
-        value: ${env:GITHUB_RUN_ID}.${env:GITHUB_RUN_ATTEMPT}.${env:GITHUB_JOB}
-        action: insert
-      - key: factory.platform
-        value: namespace
-        action: upsert
-      - key: vcs.repository.name
-        value: ${env:GITHUB_REPOSITORY}
-        action: upsert
-      - key: cicd.pipeline.run.id
-        value: ${env:GITHUB_RUN_ID}
-        action: upsert
-      - key: cicd.pipeline.run.attempt
-        value: ${env:GITHUB_RUN_ATTEMPT}
-        action: upsert
-      - key: cicd.pipeline.task.name
-        value: ${env:GITHUB_JOB}
-        action: upsert
+  transform/metadata:
+    error_mode: ignore
+    log_statements: &metadata
+      - context: resource
+        statements:
+          - set(resource.cache["entry"], {})
+          - set(resource.cache["entry"][String(UnixMilli(Now()))], ParseJSON(Decode("${env:QUANTILE_OTELCOL_METADATA:-e30=}", "base64")))
+          - set(resource.cache["prior"], resource.attributes["quantile.metadata"])
+          - set(resource.cache["prefix"], "[") where resource.cache["prior"] == nil or (IsList(ParseJSON(resource.cache["prior"])) and Len(ParseJSON(resource.cache["prior"])) == 0)
+          - set(resource.cache["prefix"], resource.cache["prior"]) where IsList(ParseJSON(resource.cache["prior"])) and Len(ParseJSON(resource.cache["prior"])) > 0
+          - 'replace_pattern(resource.cache["prefix"], "\\]\\s*$$", ",") where resource.cache["prefix"] != nil'
+          - set(resource.attributes["quantile.metadata"], Concat([resource.cache["prefix"], String(resource.cache["entry"]), "]"], "")) where resource.cache["prefix"] != nil
+    metric_statements: *metadata
+    trace_statements: *metadata
   batch:
     timeout: 1s
 exporters:
@@ -91,13 +82,13 @@ service:
   pipelines:
     metrics:
       receivers: [host_metrics, otlp]
-      processors: [memory_limiter, resource, batch]
+      processors: [memory_limiter, transform/metadata, batch]
       exporters: [otlp_http]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, resource, batch]
+      processors: [memory_limiter, transform/metadata, batch]
       exporters: [otlp_http]
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, resource, batch]
+      processors: [memory_limiter, transform/metadata, batch]
       exporters: [otlp_http]

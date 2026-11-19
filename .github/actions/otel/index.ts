@@ -277,6 +277,46 @@ async function supervise(directory: string, binary: string, args: string[]) {
     const env = {
       ...process.env,
       FACTORY_OTEL_IDENTITY_FILE: join(directory, "identity"),
+      // Only native, non-credential job observations reach the telemetry pipeline.
+      QUANTILE_OTELCOL_METADATA: Buffer.from(
+        JSON.stringify(
+          Object.fromEntries(
+            [
+              "GITHUB_ACTION",
+              "GITHUB_ACTION_REPOSITORY",
+              "GITHUB_ACTOR",
+              "GITHUB_ACTOR_ID",
+              "GITHUB_BASE_REF",
+              "GITHUB_EVENT_NAME",
+              "GITHUB_HEAD_REF",
+              "GITHUB_JOB",
+              "GITHUB_REF",
+              "GITHUB_REF_NAME",
+              "GITHUB_REF_PROTECTED",
+              "GITHUB_REF_TYPE",
+              "GITHUB_REPOSITORY",
+              "GITHUB_REPOSITORY_ID",
+              "GITHUB_REPOSITORY_OWNER",
+              "GITHUB_REPOSITORY_OWNER_ID",
+              "GITHUB_RUN_ATTEMPT",
+              "GITHUB_RUN_ID",
+              "GITHUB_RUN_NUMBER",
+              "GITHUB_SERVER_URL",
+              "GITHUB_SHA",
+              "GITHUB_TRIGGERING_ACTOR",
+              "GITHUB_WORKFLOW",
+              "GITHUB_WORKFLOW_REF",
+              "GITHUB_WORKFLOW_SHA",
+              "RUNNER_ARCH",
+              "RUNNER_ENVIRONMENT",
+              "RUNNER_NAME",
+              "RUNNER_OS",
+            ]
+              .filter((key) => process.env[key] !== undefined)
+              .map((key) => [key, process.env[key]]),
+          ),
+        ),
+      ).toString("base64"),
     };
     delete (env as NodeJS.ProcessEnv).ACTIONS_ID_TOKEN_REQUEST_URL;
     delete (env as NodeJS.ProcessEnv).ACTIONS_ID_TOKEN_REQUEST_TOKEN;

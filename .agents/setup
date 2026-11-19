@@ -5,7 +5,7 @@ set +x
     echo 'This hook is only for an Amp orb.' >&2
     exit 1
 }
-unset QUANTILE_OTLP_ENDPOINT QUANTILE_OTLP_INGEST_TOKEN OTEL_DOCKER_STATS
+unset QUANTILE_OTLP_ENDPOINT QUANTILE_OTELCOL_DOCKER_STATS
 cd -- "$(dirname -- "$0")/.."
 umask 077
 # Retain early output; close the writer and drain tee when the hook exits.

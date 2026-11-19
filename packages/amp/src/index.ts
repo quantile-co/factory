@@ -224,27 +224,27 @@ export function connect(orb: Orb, user = "user"): void {
 export const collectorScript = `set +x
 set -euo pipefail
 umask 077
-: "\${FACTORY_AMP_BINARY:?}" "\${QUANTILE_OTLP_ENDPOINT:?}" "\${OTEL_TOKEN_FILE:?}"
-: "\${OTEL_COLLECTOR_BINARY:?}" "\${OTEL_COLLECTOR_CONFIG:?}"
+: "\${FACTORY_AMP_BINARY:?}" "\${QUANTILE_OTLP_ENDPOINT:?}" "\${QUANTILE_OTELCOL_TOKEN_FILE:?}"
+: "\${QUANTILE_OTELCOL_BINARY:?}" "\${QUANTILE_OTELCOL_CONFIG:?}"
 refresh() {
-  if timeout --kill-after=5 30 "$FACTORY_AMP_BINARY" orb id-token --audience "$QUANTILE_OTLP_ENDPOINT" --ttl-seconds 600 > "$OTEL_TOKEN_FILE.next" 2>/dev/null && [ -s "$OTEL_TOKEN_FILE.next" ]; then
-    mv -f "$OTEL_TOKEN_FILE.next" "$OTEL_TOKEN_FILE"
+  if timeout --kill-after=5 30 "$FACTORY_AMP_BINARY" orb id-token --audience "$QUANTILE_OTLP_ENDPOINT" --ttl-seconds 600 > "$QUANTILE_OTELCOL_TOKEN_FILE.next" 2>/dev/null && [ -s "$QUANTILE_OTELCOL_TOKEN_FILE.next" ]; then
+    mv -f "$QUANTILE_OTELCOL_TOKEN_FILE.next" "$QUANTILE_OTELCOL_TOKEN_FILE"
   else
-    rm -f "$OTEL_TOKEN_FILE.next"
+    rm -f "$QUANTILE_OTELCOL_TOKEN_FILE.next"
     echo 'OTel identity renewal unavailable.' >&2
     return 1
   fi
 }
 refresh
 (while sleep 300; do refresh || true; done) &
-read -r -a extra <<< "\${OTEL_COLLECTOR_EXTRA_ARGS:-}"
-exec "$OTEL_COLLECTOR_BINARY" --config="$OTEL_COLLECTOR_CONFIG" "\${extra[@]}"
+read -r -a extra <<< "\${QUANTILE_OTELCOL_EXTRA_ARGS:-}"
+exec "$QUANTILE_OTELCOL_BINARY" --config="$QUANTILE_OTELCOL_CONFIG" "\${extra[@]}"
 `;
 
 // Caller installs pinned tools explicitly (e.g. its Nix shell/profile). Setup
 // writes only dormant service definitions; it never authenticates or starts them.
 export const setupScript: string = `set +x
-unset QUANTILE_OTLP_ENDPOINT QUANTILE_OTLP_INGEST_TOKEN OTEL_DOCKER_STATS
+unset QUANTILE_OTLP_ENDPOINT QUANTILE_OTELCOL_DOCKER_STATS
 [ "\${AMP_ORB:-}" = 1 ] || { echo 'Setup is only for an Amp orb.' >&2; exit 1; }
 [ ! -e "$HOME/.local/state/factory-amp" ] || { echo 'Refusing to snapshot an already activated Factory orb.' >&2; exit 1; }
 # Debian omits administrative tools from the unprivileged user's PATH.
@@ -300,20 +300,20 @@ for tool in herdr pi; do
   fi
 done
 # The native Collector needs only its pinned binary and nonsecret configuration.
-if [ -n "\${OTEL_COLLECTOR_BINARY:-}" ]; then
-  collector=$OTEL_COLLECTOR_BINARY
+if [ -n "\${QUANTILE_OTELCOL_BINARY:-}" ]; then
+  collector=$QUANTILE_OTELCOL_BINARY
   amp=$(command -v amp)
   bash=$(command -v bash)
   coreutils=$(command -v timeout)
   install="$HOME/.local/share/factory-amp/otel"
-  for path in "$collector" "$amp" "$bash" "$coreutils" "$install" "\${OTEL_COLLECTOR_CONFIG:-}" "\${OTEL_COLLECTOR_DOCKER_CONFIG:-}" "\${OTEL_COLLECTOR_JOURNAL_CONFIG:-}"; do
+  for path in "$collector" "$amp" "$bash" "$coreutils" "$install" "\${QUANTILE_OTELCOL_CONFIG:-}" "\${QUANTILE_OTELCOL_DOCKER_CONFIG:-}" "\${QUANTILE_OTELCOL_JOURNAL_CONFIG:-}"; do
     [[ "$path" =~ ^/[a-zA-Z0-9/._+@-]+$ ]] || { echo 'Select plain absolute OTel artifact paths.' >&2; exit 1; }
   done
   mkdir -p "$install"
   # Refresh read-only copies inherited from a prepared Nix snapshot.
-  install -m 0644 "$OTEL_COLLECTOR_CONFIG" "$install/config.yaml"
-  install -m 0644 "$OTEL_COLLECTOR_DOCKER_CONFIG" "$install/docker.yaml"
-  install -m 0644 "$OTEL_COLLECTOR_JOURNAL_CONFIG" "$install/journald.yaml"
+  install -m 0644 "$QUANTILE_OTELCOL_CONFIG" "$install/config.yaml"
+  install -m 0644 "$QUANTILE_OTELCOL_DOCKER_CONFIG" "$install/docker.yaml"
+  install -m 0644 "$QUANTILE_OTELCOL_JOURNAL_CONFIG" "$install/journald.yaml"
   cat > "$install/run-collector" <<'FACTORY_OTEL'
 ${collectorScript}FACTORY_OTEL
   # Runtime tools must survive orb garbage collection.
@@ -334,11 +334,10 @@ SupplementaryGroups=systemd-journal
 UMask=0077
 EnvironmentFile=/run/factory-amp/otel.env
 Environment="PATH=$PATH"
-Environment=AMP_ORB=1
 Environment=FACTORY_AMP_BINARY=$amp
-Environment=OTEL_COLLECTOR_BINARY=$collector
-Environment=OTEL_COLLECTOR_CONFIG=$install/config.yaml
-Environment=OTEL_TOKEN_FILE=/run/factory-amp-otel/token
+Environment=QUANTILE_OTELCOL_BINARY=$collector
+Environment=QUANTILE_OTELCOL_CONFIG=$install/config.yaml
+Environment=QUANTILE_OTELCOL_TOKEN_FILE=/run/factory-amp-otel/token
 RuntimeDirectory=factory-amp-otel
 RuntimeDirectoryMode=0700
 ExecStart=$bash $install/run-collector
@@ -401,10 +400,7 @@ export function setup(): void {
 
 // /run is volatile runtime storage, never the setup snapshot or checkout. Remove
 // the environment file after systemd loads it; resume refreshes credentials.
-export function resumeCollector(
-  repository: string | undefined,
-  thread: string,
-): void {
+export function resumeCollector(): void {
   if (process.env.AMP_ORB !== "1") return;
   const file = "/run/factory-amp/otel.env";
   const run = (args: string[], input?: string) =>
@@ -428,23 +424,18 @@ export function resumeCollector(
     if (!endpoint) return;
     const install = join(homedir(), ".local/share/factory-amp/otel");
     const extraArgs = [`--config=${join(install, "journald.yaml")}`];
-    if (process.env.OTEL_DOCKER_STATS === "1")
+    if (process.env.QUANTILE_OTELCOL_DOCKER_STATS === "1")
       extraArgs.push(`--config=${join(install, "docker.yaml")}`);
     const logDirectory = join(homedir(), ".local/share/factory-amp/logs");
     const cursorDirectory = join(homedir(), ".local/state/factory-amp/otel");
     mkdirSync(logDirectory, { recursive: true, mode: 0o700 });
     mkdirSync(cursorDirectory, { recursive: true, mode: 0o700 });
     const values = {
-      OTEL_LOG_DIRECTORY: logDirectory,
-      OTEL_CURSOR_DIRECTORY: cursorDirectory,
-      OTEL_AGENT_PLATFORM: "amp-orb",
-      OTEL_AGENT_THREAD_ID: thread,
-      OTEL_AGENT_INSTANCE_ID: thread,
-      OTEL_AGENT_REPOSITORY: repository ?? "",
-      OTEL_AGENT_RUN_ID: "",
-      OTEL_AGENT_RUN_ATTEMPT: "",
+      AMP_ORB: process.env.AMP_ORB,
+      QUANTILE_OTELCOL_LOG_DIRECTORY: logDirectory,
+      QUANTILE_OTELCOL_CURSOR_DIRECTORY: cursorDirectory,
       QUANTILE_OTLP_ENDPOINT: endpoint,
-      OTEL_COLLECTOR_EXTRA_ARGS: extraArgs.join(" "),
+      QUANTILE_OTELCOL_EXTRA_ARGS: extraArgs.join(" "),
     };
     // Collection now starts before tailscaled creates its runtime directory.
     // Preserve an existing shared runtime directory's mode.
@@ -529,7 +520,7 @@ export async function resume(
     env,
   );
   // Never start collection before legacy-orb and persisted-thread checks pass.
-  resumeCollector(orb.repository, thread);
+  resumeCollector();
   interactive(
     "bash",
     ["--noprofile", "--norc", "-euo", "pipefail", "-c", resumeNetworkScript],

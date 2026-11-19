@@ -8,8 +8,7 @@ set +x
 cd -- "$(dirname -- "$0")/.."
 umask 077
 # Amp uses short-lived workload identity, never a shared ingestion token.
-unset QUANTILE_OTLP_INGEST_TOKEN
-export -n QUANTILE_OTLP_ENDPOINT OTEL_DOCKER_STATS
+export -n QUANTILE_OTLP_ENDPOINT QUANTILE_OTELCOL_DOCKER_STATS
 # Retain early output; close the writer and drain tee when the hook exits.
 amp_logs="$HOME/.local/share/factory-amp/logs"
 mkdir -p "$amp_logs"
@@ -21,5 +20,5 @@ source .agents/nix-env
 shell=$(nix print-dev-env)
 eval "$shell"
 unset shell
-export QUANTILE_OTLP_ENDPOINT OTEL_DOCKER_STATS
+export QUANTILE_OTLP_ENDPOINT QUANTILE_OTELCOL_DOCKER_STATS
 pnpm amp resume --repo quantile-co/factory --directory "$PWD"

@@ -28,10 +28,10 @@ receivers:
     # Only explicit log destinations, never terminal sessions or arbitrary artifacts.
     # Development processes may opt in by writing a .log file under workloads/.
     include:
-      - ${env:OTEL_LOG_DIRECTORY}/setup.log
-      - ${env:OTEL_LOG_DIRECTORY}/resume.log
-      - ${env:OTEL_LOG_DIRECTORY}/herdr.log
-      - ${env:OTEL_LOG_DIRECTORY}/workloads/*.log
+      - ${env:QUANTILE_OTELCOL_LOG_DIRECTORY}/setup.log
+      - ${env:QUANTILE_OTELCOL_LOG_DIRECTORY}/resume.log
+      - ${env:QUANTILE_OTELCOL_LOG_DIRECTORY}/herdr.log
+      - ${env:QUANTILE_OTELCOL_LOG_DIRECTORY}/workloads/*.log
     include_file_path: true
     start_at: beginning
     storage: file_storage
@@ -46,32 +46,29 @@ receivers:
 
 extensions:
   bearertokenauth:
-    filename: ${env:OTEL_TOKEN_FILE}
+    filename: ${env:QUANTILE_OTELCOL_TOKEN_FILE}
   file_storage:
-    directory: ${env:OTEL_CURSOR_DIRECTORY}
+    directory: ${env:QUANTILE_OTELCOL_CURSOR_DIRECTORY}
 
 processors:
   memory_limiter:
     check_interval: 1s
     limit_mib: 128
     spike_limit_mib: 32
-  resource:
-    attributes:
-      - key: service.name
-        value: "${env:OTEL_AGENT_REPOSITORY}/host"
-        action: insert
-      - key: service.instance.id
-        value: "${env:OTEL_AGENT_INSTANCE_ID}"
-        action: insert
-      - key: factory.platform
-        value: "${env:OTEL_AGENT_PLATFORM}"
-        action: upsert
-      - key: vcs.repository.name
-        value: "${env:OTEL_AGENT_REPOSITORY}"
-        action: upsert
-      - key: amp.thread.id
-        value: "${env:OTEL_AGENT_THREAD_ID}"
-        action: upsert
+  transform/metadata:
+    error_mode: ignore
+    log_statements: &metadata
+      - context: resource
+        statements:
+          - set(resource.cache["entry"], {})
+          - 'set(resource.cache["entry"][String(UnixMilli(Now()))], {"AMP_ORB": "${env:AMP_ORB:-}"})'
+          - set(resource.cache["prior"], resource.attributes["quantile.metadata"])
+          - set(resource.cache["prefix"], "[") where resource.cache["prior"] == nil or (IsList(ParseJSON(resource.cache["prior"])) and Len(ParseJSON(resource.cache["prior"])) == 0)
+          - set(resource.cache["prefix"], resource.cache["prior"]) where IsList(ParseJSON(resource.cache["prior"])) and Len(ParseJSON(resource.cache["prior"])) > 0
+          - 'replace_pattern(resource.cache["prefix"], "\\]\\s*$$", ",") where resource.cache["prefix"] != nil'
+          - set(resource.attributes["quantile.metadata"], Concat([resource.cache["prefix"], String(resource.cache["entry"]), "]"], "")) where resource.cache["prefix"] != nil
+    metric_statements: *metadata
+    trace_statements: *metadata
   batch:
     timeout: 5s
     send_batch_size: 256
@@ -97,13 +94,13 @@ service:
   pipelines:
     metrics:
       receivers: [host_metrics, otlp]
-      processors: [memory_limiter, resource, batch]
+      processors: [memory_limiter, transform/metadata, batch]
       exporters: [otlp_http]
     logs:
       receivers: [filelog, filelog/amp, otlp]
-      processors: [memory_limiter, resource, batch]
+      processors: [memory_limiter, transform/metadata, batch]
       exporters: [otlp_http]
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, resource, batch]
+      processors: [memory_limiter, transform/metadata, batch]
       exporters: [otlp_http]

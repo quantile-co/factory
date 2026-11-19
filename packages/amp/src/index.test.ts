@@ -232,7 +232,7 @@ if (['mkdir', 'install', 'tee', 'rm'].includes(args[0])) {
 if (args.includes('restart')) {
   assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.ok(!fs.readFileSync(file, 'utf8').includes('QUANTILE_OTLP_INGEST_TOKEN'));
-  assert.ok(fs.readFileSync(file, 'utf8').includes('OTEL_COLLECTOR_EXTRA_ARGS="--config=' + ${JSON.stringify(join(directory, ".local/share/factory-amp/otel/journald.yaml"))} + '"\\n'));
+  assert.ok(fs.readFileSync(file, 'utf8').includes('QUANTILE_OTELCOL_EXTRA_ARGS="--config=' + ${JSON.stringify(join(directory, ".local/share/factory-amp/otel/journald.yaml"))} + '"\\n'));
 }
 if (args.includes(${JSON.stringify(failure)})) { console.error('PRIVATE_ERROR'); process.exit(1); }
 if (args.includes('is-active')) process.exit(3);
@@ -244,7 +244,7 @@ if (args.includes('is-active')) process.exit(3);
       vi.stubEnv("HOME", directory);
       vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "https://ingest.example.invalid");
       vi.stubEnv("QUANTILE_OTLP_INGEST_TOKEN", "fixture-runtime-key");
-      expect(() => resumeCollector("org/repo", thread)).not.toThrow();
+      expect(() => resumeCollector()).not.toThrow();
       const operations = readFileSync(record, "utf8");
       expect(
         operations
@@ -274,7 +274,7 @@ if (args.includes('is-active')) process.exit(3);
       log.mockClear();
       vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "");
       vi.stubEnv("QUANTILE_OTLP_INGEST_TOKEN", "");
-      resumeCollector("org/repo", thread);
+      resumeCollector();
       expect(readFileSync(record, "utf8")).not.toContain('"stop"');
       expect(log).not.toHaveBeenCalled();
     } finally {
@@ -329,9 +329,9 @@ process.exit(1);
         PATH: `${directory}:${process.env.PATH}`,
         FACTORY_AMP_BINARY: join(directory, "amp"),
         QUANTILE_OTLP_ENDPOINT: "https://ingest.example.invalid",
-        OTEL_TOKEN_FILE: file,
-        OTEL_COLLECTOR_BINARY: join(directory, "collector"),
-        OTEL_COLLECTOR_CONFIG: join(directory, "config.yaml"),
+        QUANTILE_OTELCOL_TOKEN_FILE: file,
+        QUANTILE_OTELCOL_BINARY: join(directory, "collector"),
+        QUANTILE_OTELCOL_CONFIG: join(directory, "config.yaml"),
       },
     });
     expect(result.status, result.stderr).toBe(0);
@@ -394,11 +394,11 @@ ${setupScript}
             VERSION: version,
             PATH: process.env.PATH,
             QUANTILE_OTLP_INGEST_TOKEN: "fixture-not-for-snapshots",
-            OTEL_COLLECTOR_BINARY:
+            QUANTILE_OTELCOL_BINARY:
               "/nix/store/fixture-collector/bin/otelcol-contrib",
-            OTEL_COLLECTOR_CONFIG: join(home, "config.yaml"),
-            OTEL_COLLECTOR_DOCKER_CONFIG: join(home, "docker.yaml"),
-            OTEL_COLLECTOR_JOURNAL_CONFIG: join(home, "journald.yaml"),
+            QUANTILE_OTELCOL_CONFIG: join(home, "config.yaml"),
+            QUANTILE_OTELCOL_DOCKER_CONFIG: join(home, "docker.yaml"),
+            QUANTILE_OTELCOL_JOURNAL_CONFIG: join(home, "journald.yaml"),
           },
           encoding: "utf8",
         },
@@ -427,7 +427,7 @@ ${setupScript}
       expect(units).toContain("RuntimeDirectory=factory-amp-otel");
       expect(units).toContain("RuntimeDirectoryMode=0700");
       expect(units).toContain(
-        "Environment=OTEL_TOKEN_FILE=/run/factory-amp-otel/token",
+        "Environment=QUANTILE_OTELCOL_TOKEN_FILE=/run/factory-amp-otel/token",
       );
       expect(readFileSync(join(collector, "run-collector"), "utf8")).toBe(
         collectorScript,
