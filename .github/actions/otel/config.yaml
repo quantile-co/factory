@@ -45,7 +45,7 @@ processors:
   resource:
     attributes:
       - key: service.name
-        value: factory-ci
+        value: "${env:GITHUB_REPOSITORY}/host"
         action: insert
       - key: service.instance.id
         value: ${env:GITHUB_RUN_ID}.${env:GITHUB_RUN_ATTEMPT}.${env:GITHUB_JOB}

@@ -58,7 +58,7 @@ processors:
   resource:
     attributes:
       - key: service.name
-        value: factory-host
+        value: "${env:OTEL_AGENT_REPOSITORY}/host"
         action: insert
       - key: service.instance.id
         value: "${env:OTEL_AGENT_INSTANCE_ID}"
