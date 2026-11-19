@@ -179,7 +179,7 @@ it("requires a published action ref instead of falling back to a task wrapper", 
   );
 });
 
-it("authenticates through WIF and confines the GCSM ingestion token to the pinned Collector", () => {
+it("configures the pinned Collector with an endpoint and job OIDC only", () => {
   const temporary = mkdtempSync(
     join(tmpdir(), "factory-otel-action-workflow-"),
   );
@@ -210,27 +210,15 @@ it("authenticates through WIF and confines the GCSM ingestion token to the pinne
           "id-token": "write",
         });
         expect(job.steps[0].uses).toMatch(/^actions\/checkout@/);
-        expect(job.steps[1].uses).toMatch(/^google-github-actions\/auth@/);
-        expect(
-          job.steps.filter((step) =>
-            step.uses?.startsWith("google-github-actions/auth@"),
-          ),
-        ).toHaveLength(1);
-        expect(job.steps[2].id).toBe("otel-token");
-        expect(job.steps[2].with).toEqual({
-          secrets: `token:\${{ vars.QUANTILE_OTLP_INGEST_SECRET }}`,
-          export_to_environment: false,
+        const collectors = job.steps.filter(
+          (step) =>
+            step.uses === `quantile-co/factory/.github/actions/otel@${ref}`,
+        );
+        expect(collectors).toHaveLength(1);
+        expect(collectors[0].env).toEqual({
+          QUANTILE_OTLP_ENDPOINT: `\${{ vars.QUANTILE_OTLP_ENDPOINT }}`,
         });
-        expect(job.steps[3].uses).toBe(
-          `quantile-co/factory/.github/actions/otel@${ref}`,
-        );
-        expect(job.steps[3].env?.QUANTILE_OTLP_INGEST_TOKEN).toBe(
-          `\${{ steps.otel-token.outputs.token }}`,
-        );
-        expect(
-          job.steps.filter((step) => step.env?.QUANTILE_OTLP_INGEST_TOKEN),
-        ).toHaveLength(1);
-        expect(files[name]).not.toContain("secrets.QUANTILE_OTLP_INGEST_TOKEN");
+        expect(files[name]).not.toContain("Read Collector ingestion token");
       }
     }
   } finally {

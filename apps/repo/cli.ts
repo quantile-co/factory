@@ -85,7 +85,7 @@ switch (action) {
     ]);
     break;
   case "test":
-    run("node", ["--test", ".github/actions/otel/index.test.ts"]);
+    run("node", ["--test", ".github/actions/otel/*.test.ts"]);
     run("pnpm", [
       "exec",
       "vitest",

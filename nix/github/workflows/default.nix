@@ -67,13 +67,6 @@ let
           ]
           source
       );
-  gcpAuthentication = indent 6 ''
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-      with:
-        project_id: ''${{ vars.GCP_PROJECT_ID }}
-        workload_identity_provider: ''${{ vars.GCP_WIF_PROVIDER }}
-  '';
   collectorJob =
     phase: source:
     if !(builtins.elem phase cfg.otelJobs) then
@@ -89,26 +82,16 @@ let
         [
           "    permissions:\n      contents: read\n      id-token: write\n    steps:\n"
           (
-            gcpAuthentication
-            + "\n"
-            + indent 6 ''
-              - name: Read Collector ingestion token
-                id: otel-token
-                uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
-                with:
-                  secrets: token:''${{ vars.QUANTILE_OTLP_INGEST_SECRET }}
-                  export_to_environment: false
-
+            indent 6 ''
               - name: Start OpenTelemetry Collector
                 uses: quantile-co/factory/.github/actions/otel@${cfg.otelActionRef}
                 env:
                   QUANTILE_OTLP_ENDPOINT: ''${{ vars.QUANTILE_OTLP_ENDPOINT }}
-                  QUANTILE_OTLP_INGEST_TOKEN: ''${{ steps.otel-token.outputs.token }}
             ''
             + "\n      - name: Mount the Nix "
           )
         ]
-        (builtins.replaceStrings [ (gcpAuthentication + "\n") ] [ "" ] source);
+        source;
   hindsightJob =
     phase: source:
     if
@@ -195,7 +178,7 @@ in
         ]
       );
       default = [ ];
-      description = "Central Collector jobs, only protected workflow_dispatch main jobs, never Check/PRs. Requires otelActionRef, QUANTILE_OTLP_ENDPOINT and a versioned GCSM QUANTILE_OTLP_INGEST_SECRET reference.";
+      description = "Central Collector jobs, only protected workflow_dispatch main jobs, never Check/PRs. Requires otelActionRef, QUANTILE_OTLP_ENDPOINT and GitHub job OIDC.";
     };
     nixCache = lib.mkOption {
       type = lib.types.enum [

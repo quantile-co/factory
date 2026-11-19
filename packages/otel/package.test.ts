@@ -16,7 +16,6 @@ it("packs SDK subpaths without a legacy CLI and loads the unified Amp plugin wit
   const temporary = mkdtempSync(join(tmpdir(), "factory-otel-package-"));
   const env = { ...process.env };
   delete env.QUANTILE_OTLP_ENDPOINT;
-  delete env.QUANTILE_OTLP_INGEST_TOKEN;
   try {
     const archive = join(temporary, "factory-otel.tgz");
     execFileSync("pnpm", ["pack", "--out", archive], {
@@ -61,8 +60,8 @@ it("packs SDK subpaths without a legacy CLI and loads the unified Amp plugin wit
         "--input-type=module",
         "-e",
         `
-      for (const path of ['config', 'otlp', 'tracing']) await import('@quantile-co/factory-otel/' + path);
-      for (const path of ['collector', 'cli']) {
+      for (const path of ['config', 'otlp']) await import('@quantile-co/factory-otel/' + path);
+      for (const path of ['collector', 'cli', 'tracing']) {
         try {
           await import('@quantile-co/factory-otel/' + path);
           throw new Error('Retired subpath remains exported');
@@ -70,8 +69,8 @@ it("packs SDK subpaths without a legacy CLI and loads the unified Amp plugin wit
           if (error.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw error;
         }
       }
-      const { initializeTracing } = await import('@quantile-co/factory-otel/tracing');
-      if (await initializeTracing() !== undefined) process.exit(1);
+      const { collectorEndpoint } = await import('@quantile-co/factory-otel/config');
+      if (collectorEndpoint({}) !== undefined) process.exit(1);
     `,
       ],
       { cwd: consumer, env, stdio: "pipe" },

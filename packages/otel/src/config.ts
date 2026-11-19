@@ -19,16 +19,3 @@ export function collectorEndpoint(env: NodeJS.ProcessEnv = process.env) {
     );
   }
 }
-
-export function managedConfig(env: NodeJS.ProcessEnv = process.env) {
-  const endpoint = collectorEndpoint(env);
-  const key = env.QUANTILE_OTLP_INGEST_TOKEN;
-  if (!endpoint && !key) return undefined;
-  if (!endpoint || !key || !/^[\x21-\x7e]{1,4096}$/.test(key))
-    throw new Error(
-      "Invalid OTel configuration; supply an HTTPS Collector base endpoint and raw ingestion token together.",
-    );
-  return { endpoint, key };
-}
-
-export type ManagedConfig = NonNullable<ReturnType<typeof managedConfig>>;
