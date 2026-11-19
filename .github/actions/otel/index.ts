@@ -114,7 +114,7 @@ export async function stopCollector(directory: string, graceMs = 15_000) {
   async function signal(value: NodeJS.Signals) {
     if (!(await sameProcess())) return;
     try {
-      process.kill(pid, value);
+      process.kill(-pid, value); // Detached process group includes the supervisor and Collector.
     } catch (error) {
       if (!hasErrorCode(error, "ESRCH")) throw error;
     }
@@ -232,20 +232,16 @@ async function main() {
     return;
   }
   const endpoint = process.env.QUANTILE_OTLP_ENDPOINT;
-  const key = process.env.QUANTILE_OTLP_INGEST_TOKEN;
-  if (!endpoint && !key) {
-    console.info("Collector disabled: ingestion configuration not supplied");
+  if (!endpoint) {
+    console.info("Collector disabled: endpoint not supplied");
     return;
   }
-  if (!endpoint || !key)
-    throw new Error(
-      "Both QUANTILE_OTLP_ENDPOINT and QUANTILE_OTLP_INGEST_TOKEN are required",
-    );
   const url = new URL(endpoint);
   if (
     url.protocol !== "https:" ||
     url.username ||
     url.password ||
+    url.pathname !== "/" ||
     url.search ||
     url.hash
   ) {
@@ -265,7 +261,10 @@ async function main() {
     "--config",
     process.env.INPUT_CONFIG || join(actionDirectory, "config.yaml"),
   ];
-  const env = { ...process.env };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    QUANTILE_OTLP_ENDPOINT: url.origin,
+  };
   const prefix = process.env["INPUT_JOB-LOG-PREFIX"];
   if (prefix) {
     if (process.env.INPUT_CONFIG)
@@ -281,8 +280,8 @@ async function main() {
   }
   const binary = await installCollector(directory);
   await startCollector({
-    binary,
-    args,
+    binary: process.execPath,
+    args: [join(actionDirectory, "sender.ts"), directory, binary, ...args],
     directory,
     env,
     healthUrl: "http://127.0.0.1:13133/",

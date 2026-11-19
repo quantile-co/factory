@@ -69,9 +69,9 @@ processors:
     timeout: 1s
 exporters:
   otlp_http:
-    endpoint: ${env:QUANTILE_OTLP_ENDPOINT}
-    headers:
-      Authorization: Bearer ${env:QUANTILE_OTLP_INGEST_TOKEN}
+    endpoint: ${env:QUANTILE_OTLP_ENDPOINT}/github
+    auth:
+      authenticator: bearertokenauth
     timeout: 10s
     retry_on_failure:
       enabled: true
@@ -79,10 +79,12 @@ exporters:
       enabled: true
       queue_size: 256
 extensions:
+  bearertokenauth:
+    filename: ${env:FACTORY_OTEL_IDENTITY_FILE}
   health_check:
     endpoint: 127.0.0.1:13133
 service:
-  extensions: [health_check]
+  extensions: [health_check, bearertokenauth]
   telemetry:
     logs:
       level: info
