@@ -44,7 +44,9 @@ export async function renew(
 }
 
 async function supervise(directory: string, binary: string, args: string[]) {
-  const audience = process.env.QUANTILE_OTLP_ENDPOINT!;
+  // biome-ignore lint/suspicious/noUndeclaredEnvVars: action runtime, not a Turbo task.
+  const audience = process.env.QUANTILE_OTLP_ENDPOINT;
+  if (!audience) throw new Error("Missing Collector audience");
   const controller = new AbortController();
   let child: ReturnType<typeof spawn> | undefined;
   const stop = () => {
