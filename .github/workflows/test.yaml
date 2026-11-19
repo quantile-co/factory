@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0 # Tests run the full-history checks first.
 
       - name: Start OpenTelemetry Collector
-        uses: quantile-co/factory/.github/actions/otel@ac68f2d8ea763f3957bf524af86d26e412b65b6f
+        uses: quantile-co/factory/.github/actions/otel@6be9414260216afaf5315d5ec03c2f151eef14b4
         env:
           QUANTILE_OTLP_ENDPOINT: ${{ vars.QUANTILE_OTLP_ENDPOINT }}
 
