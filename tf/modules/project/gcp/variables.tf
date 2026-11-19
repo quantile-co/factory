@@ -90,7 +90,7 @@ variable "tf_state_location" {
 }
 
 variable "wif_pool" {
-  description = "Existing GitHub WIF pool with the main_branch_repository_actor_id mapping."
+  description = "Existing GitHub WIF pool with the deploy_repository_actor_id mapping."
   type        = string
   nullable    = false
 

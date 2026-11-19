@@ -127,5 +127,9 @@ resource "google_project_iam_member" "pipeline_owner" {
 
   project = google_project.state.project_id
   role    = "roles/owner"
-  member  = "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.main_branch_repository_actor_id/${var.gh_repo_id}_${each.value}"
+  member  = "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.deploy_repository_actor_id/${var.gh_repo_id}_${each.value}"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }

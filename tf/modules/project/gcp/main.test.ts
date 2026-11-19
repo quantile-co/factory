@@ -73,7 +73,7 @@ run "owners_with_members" {
       google_storage_bucket_iam_member.plan_reader["operator@example.com"].role == "roles/storage.objectViewer" &&
       toset(keys(google_project_iam_member.pipeline_owner)) == toset(["fixture-operator"]) &&
       google_project_iam_member.pipeline_owner["fixture-operator"].role == "roles/owner" &&
-      google_project_iam_member.pipeline_owner["fixture-operator"].member == "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/fixture/attribute.main_branch_repository_actor_id/123456789_987654321"
+      google_project_iam_member.pipeline_owner["fixture-operator"].member == "principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/fixture/attribute.deploy_repository_actor_id/123456789_987654321"
     )
     error_message = "Members must not change owner-only plan/build readers or main/repository/actor WIF grants."
   }
