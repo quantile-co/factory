@@ -13,15 +13,12 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
-it("opts Factory into central enrollment without changing its deployment identity", () => {
+it("uses the project module with the repository deployment identity", () => {
   const source = readFileSync(new URL("./main.tf", import.meta.url), "utf8");
   const gcp = source.match(/module "gcp" \{([\s\S]*?)^\}/m)?.[1];
   expect(gcp).toBeDefined();
   expect(gcp?.match(/source\s*=\s*"([^"]+)"/)?.[1]).toBe(
     "../modules/project/gcp",
-  );
-  expect(gcp?.match(/metrics_enrollment_member\s*=\s*"([^"]+)"/)?.[1]).toBe(
-    "principalSet://iam.googleapis.com/projects/86084514682/locations/global/workloadIdentityPools/github/attribute.main_branch_repository_actor_id/1458437080_218666448",
   );
   expect(gcp).toMatch(/gh_repo_id\s*=\s*module\.gh\.repo_id/);
   expect(gcp).toMatch(/gh_owner_ids\s*=\s*module\.gh\.owner_ids/);

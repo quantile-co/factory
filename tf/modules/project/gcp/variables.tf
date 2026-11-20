@@ -29,20 +29,6 @@ variable "members" {
   }
 }
 
-variable "metrics_enrollment_member" {
-  description = "Optional central workload IAM member allowed to link this project to a metrics scope. Null disables the grant without requiring a central project. This module never creates membership or grants access to the central project; unlink any existing central membership before disabling this grant."
-  type        = string
-  default     = null
-
-  validation {
-    condition = var.metrics_enrollment_member == null ? true : (
-      can(regex("^serviceAccount:[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\\.iam\\.gserviceaccount\\.com$", var.metrics_enrollment_member)) ||
-      can(regex("^principalSet://iam\\.googleapis\\.com/projects/[1-9][0-9]*/locations/global/workloadIdentityPools/[a-z][a-z0-9-]{2,31}/attribute\\.main_branch_repository_actor_id/[1-9][0-9]*_[1-9][0-9]*$", var.metrics_enrollment_member))
-    )
-    error_message = "Use null, an explicit serviceAccount IAM member, or a main-branch repository/actor-scoped WIF principalSet; public, wildcard, human and pool-wide grants are forbidden."
-  }
-}
-
 variable "owners" {
   description = "Project owner emails allowed to read saved plans and build receipts, not Terraform state; no direct project Owner grant."
   type        = set(string)
