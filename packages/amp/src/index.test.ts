@@ -231,6 +231,7 @@ if (['mkdir', 'install', 'tee', 'rm'].includes(args[0])) {
 }
 if (args.includes('restart')) {
   assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  assert.ok(fs.readFileSync(file, 'utf8').includes('OTEL_RESOURCE_ATTRIBUTES="service.namespace=example,service.name=repo"'));
   assert.ok(!fs.readFileSync(file, 'utf8').includes('QUANTILE_OTLP_INGEST_TOKEN'));
   assert.ok(fs.readFileSync(file, 'utf8').includes('QUANTILE_OTELCOL_EXTRA_ARGS="--config=' + ${JSON.stringify(join(directory, ".local/share/factory-amp/otel/journald.yaml"))} + '"\\n'));
 }
@@ -242,6 +243,10 @@ if (args.includes('is-active')) process.exit(3);
       vi.stubEnv("PATH", `${directory}:${process.env.PATH}`);
       vi.stubEnv("AMP_ORB", "1");
       vi.stubEnv("HOME", directory);
+      vi.stubEnv(
+        "OTEL_RESOURCE_ATTRIBUTES",
+        "service.namespace=example,service.name=repo",
+      );
       vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "https://ingest.example.invalid");
       vi.stubEnv("QUANTILE_OTLP_INGEST_TOKEN", "fixture-runtime-key");
       expect(() => resumeCollector()).not.toThrow();

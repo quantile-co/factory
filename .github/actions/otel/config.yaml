@@ -38,6 +38,9 @@ receivers:
       http:
         endpoint: 127.0.0.1:4318
 processors:
+  resourcedetection/workload:
+    detectors: [env]
+    override: false
   memory_limiter:
     check_interval: 1s
     limit_mib: 128
@@ -82,13 +85,13 @@ service:
   pipelines:
     metrics:
       receivers: [host_metrics, otlp]
-      processors: [memory_limiter, transform/metadata, batch]
+      processors: [memory_limiter, resourcedetection/workload, transform/metadata, batch]
       exporters: [otlp_http]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, transform/metadata, batch]
+      processors: [memory_limiter, resourcedetection/workload, transform/metadata, batch]
       exporters: [otlp_http]
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, transform/metadata, batch]
+      processors: [memory_limiter, resourcedetection/workload, transform/metadata, batch]
       exporters: [otlp_http]

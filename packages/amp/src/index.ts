@@ -432,6 +432,9 @@ export function resumeCollector(): void {
     mkdirSync(cursorDirectory, { recursive: true, mode: 0o700 });
     const values = {
       AMP_ORB: process.env.AMP_ORB,
+      ...(process.env.OTEL_RESOURCE_ATTRIBUTES
+        ? { OTEL_RESOURCE_ATTRIBUTES: process.env.OTEL_RESOURCE_ATTRIBUTES }
+        : {}),
       QUANTILE_OTELCOL_LOG_DIRECTORY: logDirectory,
       QUANTILE_OTELCOL_CURSOR_DIRECTORY: cursorDirectory,
       QUANTILE_OTLP_ENDPOINT: endpoint,
