@@ -10,6 +10,7 @@ import {
   type ModelThinkingLevel,
   type Usage,
 } from "@earendil-works/pi-ai";
+import { gatewayKeyVariable, isBundledGatewayModel } from "./gateway.ts";
 import { resolveLatestParent } from "./latest.ts";
 
 interface Options {
@@ -31,6 +32,7 @@ interface Context {
     getProviderAuthStatus(provider: string): {
       configured: boolean;
       source?: string;
+      label?: string;
     };
     isUsingOAuth(model: Model<Api>): boolean;
     findOfType(
@@ -158,10 +160,16 @@ export async function selectChild(
     )
   )
     throw new Error("Invalid explicit thinking level.");
-  // A parent-only extension or inline key cannot be reproduced by passing a model ID.
+  // Only Factory's bundled Gateway registration is also loaded by the child.
+  const auth = registry.getProviderAuthStatus(model.provider);
+  const bundledGateway =
+    isBundledGatewayModel(model) &&
+    auth.source === "environment" &&
+    auth.label === gatewayKeyVariable;
   if (
-    registry.getRegisteredProviderIds().includes(model.provider) ||
-    registry.getProviderAuthStatus(model.provider).source === "runtime"
+    (registry.getRegisteredProviderIds().includes(model.provider) &&
+      !bundledGateway) ||
+    auth.source === "runtime"
   )
     throw new Error(
       "Child routing does not support extension-registered providers or runtime API-key overrides.",
@@ -360,7 +368,6 @@ export async function selectChild(
       ),
       { usage },
     );
-  const auth = registry.getProviderAuthStatus(model.provider);
   if (!auth.configured || !auth.source)
     throw Object.assign(
       new Error("Selected provider authentication is unavailable."),

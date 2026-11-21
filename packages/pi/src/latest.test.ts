@@ -57,7 +57,7 @@ const langfuse = "langfuse-openai";
 beforeEach(() => vi.stubEnv("LANGFUSE_GATEWAY_KEY", "placeholder"));
 afterEach(() => vi.unstubAllEnvs());
 
-it("keeps the Factory default and Codex aliases available without Langfuse opt-in", () => {
+it("registers only provider-specific aliases, even without the Gateway key", () => {
   vi.stubEnv("LANGFUSE_GATEWAY_KEY", undefined);
   const registerVirtualModel = vi.fn<ExtensionAPI["registerVirtualModel"]>();
   registerLatest({
@@ -65,43 +65,39 @@ it("keeps the Factory default and Codex aliases available without Langfuse opt-i
     on: vi.fn(),
   } as unknown as ExtensionAPI);
   expect(
-    registerVirtualModel.mock.calls.map(([alias]) => alias.provider),
-  ).toEqual(["factory", codex, codex, codex]);
+    registerVirtualModel.mock.calls.map(([alias]) => [
+      alias.provider,
+      alias.id,
+    ]),
+  ).toEqual(
+    [codex, langfuse].flatMap((provider) =>
+      ["sol", "astra", "luna"].map((family) => [
+        provider,
+        `gpt-6-${family}-latest`,
+      ]),
+    ),
+  );
 });
 
-it("uses the newest configured Gateway Sol for both the default and child inheritance", () => {
+it("resolves child inheritance only within the selected provider", () => {
   const gatewaySol = model(langfuse, "openai:gpt-6.2-sol");
-  const models = [
-    model(codex, "gpt-6.4-sol"),
-    model(langfuse, "openai:gpt-6.1-sol"),
-    gatewaySol,
-  ];
+  const codexSol = model(codex, "gpt-6.4-sol");
+  const models = [codexSol, model(langfuse, "openai:gpt-6.1-sol"), gatewaySol];
   const parent = {
-    provider: "factory",
+    provider: langfuse,
     api: "pi-virtual",
     id: "gpt-6-sol-latest",
   };
-  expect(setup(models)("factory")()).toEqual({
-    model: gatewaySol,
-    thinkingLevel: "high",
-  });
   expect(resolveLatestParent(parent, models)).toBe(gatewaySol);
+  expect(resolveLatestParent(parent, [codexSol])).toBe(parent);
 });
 
-it("falls back to Codex when no physical Gateway Sol is configured or the key is missing", () => {
-  const codexSol = model(codex, "gpt-6.2-sol");
-  const virtualSol = {
-    ...model(langfuse, "openai:gpt-6.99-sol"),
-    api: "pi-virtual",
-  } as PhysicalModel;
-  expect(setup([codexSol, virtualSol])("factory")()).toMatchObject({
-    model: codexSol,
-  });
+it("fails with an actionable error when the Gateway key is missing", () => {
   vi.stubEnv("LANGFUSE_GATEWAY_KEY", undefined);
-  const gatewaySol = model(langfuse, "openai:gpt-6.2-sol");
-  expect(setup([codexSol, gatewaySol])("factory")()).toMatchObject({
-    model: codexSol,
-  });
+  const codexSol = model(codex, "gpt-6.2-sol");
+  const route = setup([codexSol]);
+  expect(() => route(langfuse)()).toThrow("LANGFUSE_GATEWAY_KEY is not set");
+  expect(route(codex)()).toMatchObject({ model: codexSol });
 });
 
 it("resolves both providers independently and compares minors numerically", () => {

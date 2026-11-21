@@ -1,6 +1,6 @@
 {
   "defaultModel": "gpt-6-sol-latest",
-  "defaultProvider": "factory",
+  "defaultProvider": "langfuse-openai",
   "defaultTools": [
     "+codemode",
     "+tool_search"

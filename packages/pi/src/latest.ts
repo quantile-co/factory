@@ -3,9 +3,9 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-const factoryProvider = "factory";
+import { hasGatewayKey, langfusePrefix, langfuseProvider } from "./gateway.ts";
+
 const codexProvider = "openai-codex";
-const langfuseProvider = "langfuse-openai";
 const families = ["Sol", "Astra", "Luna"] as const;
 type Family = (typeof families)[number];
 
@@ -35,15 +35,19 @@ export function resolveLatestParent<
   T extends { provider: string; api: string; id: string },
 >(parent: T | undefined, models: T[]) {
   if (parent?.api !== "pi-virtual") return parent;
-  const physical = models.filter((entry) => entry.api !== "pi-virtual");
-  if (parent.provider === factoryProvider && parent.id === aliasId("Sol"))
-    return preferredSol(physical) ?? parent;
-  if (parent.provider !== codexProvider) return parent;
+  const { provider } = parent;
+  if (provider !== codexProvider && provider !== langfuseProvider)
+    return parent;
+  if (provider === langfuseProvider && !hasGatewayKey()) return parent;
   const family = families.find((entry) => aliasId(entry) === parent.id);
+  const prefix = provider === langfuseProvider ? langfusePrefix : "";
   return family
     ? (latest(
-        physical.filter((entry) => entry.provider === codexProvider),
+        models.filter(
+          (entry) => entry.provider === provider && entry.api !== "pi-virtual",
+        ),
         family,
+        prefix,
       ) ?? parent)
     : parent;
 }
@@ -54,21 +58,6 @@ const available = (ctx: ExtensionContext, provider: string) =>
     .filter(
       (model) => model.provider === provider && model.api !== "pi-virtual",
     );
-
-function preferredSol<T extends { provider: string; id: string }>(models: T[]) {
-  if (process.env.LANGFUSE_GATEWAY_KEY) {
-    const gateway = latest(
-      models.filter((model) => model.provider === langfuseProvider),
-      "Sol",
-      "openai:",
-    );
-    if (gateway) return gateway;
-  }
-  return latest(
-    models.filter((model) => model.provider === codexProvider),
-    "Sol",
-  );
-}
 
 type RouteRequest = Parameters<
   Parameters<ExtensionAPI["registerVirtualModel"]>[0]["route"]
@@ -97,32 +86,6 @@ function stickyRoute(
     };
 }
 
-function registerDefault(api: ExtensionAPI) {
-  api.registerVirtualModel({
-    provider: factoryProvider,
-    id: aliasId("Sol"),
-    name: "GPT-6 Sol (latest, Langfuse first)",
-    thinkingLevels: ["low", "medium", "high", "xhigh", "max"],
-    route(request, ctx) {
-      const models = ctx.modelRegistry
-        .getAvailable()
-        .filter((model) => model.api !== "pi-virtual");
-      const model = preferredSol(models);
-      if (!model)
-        throw new Error(
-          "No GPT-6 Sol available on Langfuse or Codex. Check /model.",
-        );
-      const prefix = model.provider === langfuseProvider ? "openai:" : "";
-      return (
-        stickyRoute(request, model.provider, "Sol", prefix) ?? {
-          model,
-          thinkingLevel: request.thinkingLevel,
-        }
-      );
-    },
-  });
-}
-
 function registerProviderAliases(
   api: ExtensionAPI,
   provider: string,
@@ -135,6 +98,10 @@ function registerProviderAliases(
       name: `GPT-6 ${family} (latest)`,
       thinkingLevels: ["low", "medium", "high", "xhigh", "max"],
       route(request, ctx) {
+        if (provider === langfuseProvider && !hasGatewayKey())
+          throw new Error(
+            "LANGFUSE_GATEWAY_KEY is not set. Configure it or select Codex explicitly with /model.",
+          );
         const sticky = stickyRoute(request, provider, family, prefix);
         if (sticky) return sticky;
         const model = latest(available(ctx, provider), family, prefix);
@@ -149,11 +116,8 @@ function registerProviderAliases(
 }
 
 export function registerLatest(api: ExtensionAPI) {
-  registerDefault(api);
   registerProviderAliases(api, codexProvider);
-  // Without the opt-in key, Pi would expose aliases even on a virtual-only provider.
-  if (process.env.LANGFUSE_GATEWAY_KEY)
-    registerProviderAliases(api, langfuseProvider, "openai:");
+  registerProviderAliases(api, langfuseProvider, langfusePrefix);
 
   // Check Pi's public catalog without mutating the registry or delaying startup.
   let remote: { id: string }[] = [];
@@ -204,9 +168,7 @@ export function registerLatest(api: ExtensionAPI) {
       !ctx.hasUI ||
       source === "restore" ||
       !(
-        model.provider === factoryProvider ||
-        model.provider === codexProvider ||
-        model.provider === langfuseProvider
+        model.provider === codexProvider || model.provider === langfuseProvider
       ) ||
       model.api !== "pi-virtual"
     )

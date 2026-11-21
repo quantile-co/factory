@@ -103,7 +103,7 @@ it("renders independent consumer configuration and replacement Pi settings", () 
   );
   expect(settings.packages[0].skills).toEqual([]);
   expect(settings).toMatchObject({
-    defaultProvider: "factory",
+    defaultProvider: "langfuse-openai",
     defaultModel: "gpt-6-sol-latest",
   });
   expect(paths.hook).toContain("HINDSIGHT_CONFIG");

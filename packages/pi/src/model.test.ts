@@ -16,6 +16,7 @@ import {
   TracerProvider,
 } from "@opentelemetry/sdk-trace";
 import { afterEach, expect, it, vi } from "vitest";
+import { gatewayBaseUrl } from "./gateway.ts";
 import { traceClassifier } from "./langfuse.ts";
 import { selectChild } from "./model.ts";
 
@@ -112,6 +113,36 @@ it("launches from a Factory latest alias using the newest physical family member
     api: "openai-codex-responses",
     thinking: "high",
   });
+});
+
+it("inherits the bundled Gateway model without selecting Codex or classifying", async () => {
+  vi.stubEnv("LANGFUSE_GATEWAY_KEY", "test-key");
+  const { ctx, available, classify } = context();
+  const gateway = {
+    ...model("openai:gpt-6.2-sol"),
+    provider: "langfuse-openai",
+    api: "openai-responses",
+    baseUrl: gatewayBaseUrl(),
+  } as const;
+  available.push(gateway);
+  ctx.model = { ...gateway, id: "gpt-6-sol-latest", api: "pi-virtual" };
+  ctx.modelRegistry.getRegisteredProviderIds = () => [gateway.provider];
+  ctx.modelRegistry.getProviderAuthStatus = () => ({
+    configured: true,
+    source: "environment",
+    label: "LANGFUSE_GATEWAY_KEY",
+  });
+  expect(await selectChild({ task }, ctx)).toMatchObject({
+    provider: "langfuse-openai",
+    model: "openai:gpt-6.2-sol",
+    thinking: "high",
+  });
+  expect(classify).not.toHaveBeenCalled();
+  ctx.modelRegistry.getProviderAuthStatus = () => ({
+    configured: true,
+    source: "runtime",
+  });
+  await expect(selectChild({ task }, ctx)).rejects.toThrow(/runtime API-key/);
 });
 
 it.each(["fork", "fresh"] as const)(
