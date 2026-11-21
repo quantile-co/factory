@@ -3,7 +3,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { registerLatest } from "./latest.ts";
+import { registerLatest, resolveLatestParent } from "./latest.ts";
 
 type Alias = Parameters<ExtensionAPI["registerVirtualModel"]>[0];
 type RouteRequest = Parameters<Alias["route"]>[0];
@@ -57,7 +57,7 @@ const langfuse = "langfuse-openai";
 beforeEach(() => vi.stubEnv("LANGFUSE_GATEWAY_KEY", "placeholder"));
 afterEach(() => vi.unstubAllEnvs());
 
-it("only registers Codex aliases if Langfuse is not opted in", () => {
+it("keeps the Factory default and Codex aliases available without Langfuse opt-in", () => {
   vi.stubEnv("LANGFUSE_GATEWAY_KEY", undefined);
   const registerVirtualModel = vi.fn<ExtensionAPI["registerVirtualModel"]>();
   registerLatest({
@@ -66,7 +66,42 @@ it("only registers Codex aliases if Langfuse is not opted in", () => {
   } as unknown as ExtensionAPI);
   expect(
     registerVirtualModel.mock.calls.map(([alias]) => alias.provider),
-  ).toEqual([codex, codex, codex]);
+  ).toEqual(["factory", codex, codex, codex]);
+});
+
+it("uses the newest configured Gateway Sol for both the default and child inheritance", () => {
+  const gatewaySol = model(langfuse, "openai:gpt-6.2-sol");
+  const models = [
+    model(codex, "gpt-6.4-sol"),
+    model(langfuse, "openai:gpt-6.1-sol"),
+    gatewaySol,
+  ];
+  const parent = {
+    provider: "factory",
+    api: "pi-virtual",
+    id: "gpt-6-sol-latest",
+  };
+  expect(setup(models)("factory")()).toEqual({
+    model: gatewaySol,
+    thinkingLevel: "high",
+  });
+  expect(resolveLatestParent(parent, models)).toBe(gatewaySol);
+});
+
+it("falls back to Codex when no physical Gateway Sol is configured or the key is missing", () => {
+  const codexSol = model(codex, "gpt-6.2-sol");
+  const virtualSol = {
+    ...model(langfuse, "openai:gpt-6.99-sol"),
+    api: "pi-virtual",
+  } as PhysicalModel;
+  expect(setup([codexSol, virtualSol])("factory")()).toMatchObject({
+    model: codexSol,
+  });
+  vi.stubEnv("LANGFUSE_GATEWAY_KEY", undefined);
+  const gatewaySol = model(langfuse, "openai:gpt-6.2-sol");
+  expect(setup([codexSol, gatewaySol])("factory")()).toMatchObject({
+    model: codexSol,
+  });
 });
 
 it("resolves both providers independently and compares minors numerically", () => {

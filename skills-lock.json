@@ -318,6 +318,14 @@
       "computedHash": "85a494e8076cbea237bfbd80592a542df869b693f0b61aa90c0a48d7f4afb5a7",
       "via": "@quantile-co/factory-pi"
     },
+    "modern-web-guidance": {
+      "source": "GoogleChrome/modern-web-guidance",
+      "ref": "64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65",
+      "sourceType": "github",
+      "skillPath": "skills/modern-web-guidance/SKILL.md",
+      "computedHash": "40c0b08c2e3103aa83002cff019fe94926cc5e64ad94adbab808736b8947d8f8",
+      "via": "@quantile-co/factory-pi"
+    },
     "narrow-react-prop-types": {
       "source": "humanlayer/skills",
       "ref": "4d69d20f6e9b57b4fcf0d501ccfb1be961f0f329",

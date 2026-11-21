@@ -102,6 +102,10 @@ it("renders independent consumer configuration and replacement Pi settings", () 
     "./npm/node_modules/@vectorize-io/hindsight-coding-agents/dist/pi.js",
   );
   expect(settings.packages[0].skills).toEqual([]);
+  expect(settings).toMatchObject({
+    defaultProvider: "factory",
+    defaultModel: "gpt-6-sol-latest",
+  });
   expect(paths.hook).toContain("HINDSIGHT_CONFIG");
   expect(paths.hook).not.toContain("HINDSIGHT_API_TOKEN");
 }, 180_000);

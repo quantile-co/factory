@@ -55,6 +55,11 @@ it("packs only Factory skills and loads extensions independently of skill sync",
     readFileSync(join(resources, "../package.json"), "utf8"),
   );
   expect(manifest.pi.skills).toEqual([]);
+  expect(manifest.skills).toContainEqual({
+    source: "GoogleChrome/modern-web-guidance/skills/modern-web-guidance",
+    ref: expect.stringMatching(/^[a-f0-9]{40}$/),
+    skills: ["modern-web-guidance"],
+  });
   expect(
     manifest.skills.every((entry: { ref: string }) =>
       /^[a-f0-9]{40}$/.test(entry.ref),
