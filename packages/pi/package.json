@@ -1,6 +1,6 @@
 {
   "name": "@quantile-co/factory-pi",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "license": "MIT",
   "description": "Factory Pi extension and shared skill selections.",
   "type": "module",
@@ -241,6 +241,13 @@
       "ref": "fc4b137cdef0a6bd28fd461b7cf9c84a5812a8cd",
       "skills": [
         "gh"
+      ]
+    },
+    {
+      "source": "herdrdev/herdr/skills/herdr",
+      "ref": "2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01",
+      "skills": [
+        "herdr"
       ]
     },
     {
