@@ -79,6 +79,42 @@ it("registers only provider-specific aliases, even without the Gateway key", () 
   );
 });
 
+it("shows the gateway selection separately from trace status", () => {
+  vi.stubEnv("PI_OFFLINE", "1");
+  type Handler = (event: unknown, ctx: ExtensionContext) => void;
+  const on = vi.fn<(event: string, handler: Handler) => void>();
+  registerLatest({
+    registerVirtualModel: vi.fn(),
+    on,
+  } as unknown as ExtensionAPI);
+  const setStatus = vi.fn();
+  const ctx = {
+    hasUI: true,
+    model: model(langfuse, "gpt-6-sol-latest"),
+    ui: { setStatus },
+  } as unknown as ExtensionContext;
+  function emit(event: string, payload: unknown) {
+    for (const [name, handler] of on.mock.calls) {
+      if (name === event) handler(payload, ctx);
+    }
+  }
+
+  emit("session_start", {});
+  emit("model_select", {
+    source: "set",
+    model: model(codex, "gpt-6-sol-latest"),
+  });
+  emit("model_select", {
+    source: "restore",
+    model: model(langfuse, "openai:gpt-6.2-sol"),
+  });
+  expect(setStatus.mock.calls).toEqual([
+    ["langfuse-ai-gateway", "langfuse-ai-gateway ✓"],
+    ["langfuse-ai-gateway", undefined],
+    ["langfuse-ai-gateway", "langfuse-ai-gateway ✓"],
+  ]);
+});
+
 it("resolves child inheritance only within the selected provider", () => {
   const gatewaySol = model(langfuse, "openai:gpt-6.2-sol");
   const codexSol = model(codex, "gpt-6.4-sol");

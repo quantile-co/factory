@@ -159,10 +159,19 @@ export function registerLatest(api: ExtensionAPI) {
       outdated ? ctx.ui.theme.fg("accent", "New models available.") : undefined,
     );
   }
+  const updateGatewayStatus = (ctx: ExtensionContext, provider?: string) => {
+    if (!ctx.hasUI) return;
+    ctx.ui.setStatus(
+      "langfuse-ai-gateway",
+      provider === langfuseProvider ? "langfuse-ai-gateway ✓" : undefined,
+    );
+  };
   api.on("session_start", (_event, ctx) => {
+    updateGatewayStatus(ctx, ctx.model?.provider);
     void updateStatus(ctx);
   });
   api.on("model_select", ({ model, source }, ctx) => {
+    updateGatewayStatus(ctx, model.provider);
     void updateStatus(ctx);
     if (
       !ctx.hasUI ||
