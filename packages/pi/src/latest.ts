@@ -3,12 +3,19 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-const provider = "openai-codex";
+const codexProvider = "openai-codex";
+const langfuseProvider = "langfuse-openai";
 const families = ["Sol", "Astra", "Luna"] as const;
 type Family = (typeof families)[number];
 
-function latest<T extends { id: string }>(models: T[], family: Family) {
-  const pattern = new RegExp(`^gpt-6(?:\\.(\\d+))?-${family.toLowerCase()}$`);
+function latest<T extends { id: string }>(
+  models: T[],
+  family: Family,
+  prefix = "",
+) {
+  const pattern = new RegExp(
+    `^${prefix}gpt-6(?:\\.(\\d+))?-${family.toLowerCase()}$`,
+  );
   let best: T | undefined;
   let minor = -1;
   for (const model of models) {
@@ -26,27 +33,32 @@ const aliasId = (family: Family) => `gpt-6-${family.toLowerCase()}-latest`;
 export function resolveLatestParent<
   T extends { provider: string; api: string; id: string },
 >(parent: T | undefined, models: T[]) {
-  if (parent?.api !== "pi-virtual" || parent.provider !== provider)
+  if (parent?.api !== "pi-virtual" || parent.provider !== codexProvider)
     return parent;
   const family = families.find((entry) => aliasId(entry) === parent.id);
   return family
     ? (latest(
         models.filter(
-          (entry) => entry.provider === provider && entry.api !== "pi-virtual",
+          (entry) =>
+            entry.provider === codexProvider && entry.api !== "pi-virtual",
         ),
         family,
       ) ?? parent)
     : parent;
 }
 
-const available = (ctx: ExtensionContext) =>
+const available = (ctx: ExtensionContext, provider: string) =>
   ctx.modelRegistry
     .getAvailable()
     .filter(
       (model) => model.provider === provider && model.api !== "pi-virtual",
     );
 
-export function registerLatest(api: ExtensionAPI) {
+function registerProviderAliases(
+  api: ExtensionAPI,
+  provider: string,
+  prefix = "",
+) {
   for (const family of families) {
     api.registerVirtualModel({
       provider,
@@ -62,19 +74,29 @@ export function registerLatest(api: ExtensionAPI) {
               : undefined;
         if (
           sticky?.model.provider === provider &&
-          latest([sticky.model], family)
+          sticky.model.api !== "pi-virtual" &&
+          latest([sticky.model], family, prefix)
         )
           return {
             model: sticky.model,
             thinkingLevel: sticky.thinkingLevel ?? request.thinkingLevel,
           };
-        const model = latest(available(ctx), family);
+        const model = latest(available(ctx, provider), family, prefix);
         if (!model)
-          throw new Error(`No GPT-6 ${family} available. Check /model.`);
+          throw new Error(
+            `No GPT-6 ${family} available on ${provider}. Check /model.`,
+          );
         return { model, thinkingLevel: request.thinkingLevel };
       },
     });
   }
+}
+
+export function registerLatest(api: ExtensionAPI) {
+  registerProviderAliases(api, codexProvider);
+  // Without the opt-in key, Pi would expose aliases even on a virtual-only provider.
+  if (process.env.LANGFUSE_GATEWAY_KEY)
+    registerProviderAliases(api, langfuseProvider, "openai:");
 
   // Check Pi's public catalog without mutating the registry or delaying startup.
   let remote: { id: string }[] = [];
@@ -104,7 +126,7 @@ export function registerLatest(api: ExtensionAPI) {
         // Offline or unreachable: never interrupt a session for an update hint.
       }
     }
-    const local = available(ctx);
+    const local = available(ctx, codexProvider);
     const outdated =
       local.length &&
       families.some((family) => {
@@ -124,7 +146,9 @@ export function registerLatest(api: ExtensionAPI) {
     if (
       !ctx.hasUI ||
       source === "restore" ||
-      model.provider !== provider ||
+      !(
+        model.provider === codexProvider || model.provider === langfuseProvider
+      ) ||
       model.api !== "pi-virtual"
     )
       return;
@@ -132,7 +156,8 @@ export function registerLatest(api: ExtensionAPI) {
     if (!family) return;
     // Pi writes its own chat status after model_select returns.
     setImmediate(() => {
-      if (ctx.model?.provider !== provider || ctx.model.id !== model.id) return;
+      if (ctx.model?.provider !== model.provider || ctx.model.id !== model.id)
+        return;
       ctx.ui.notify(
         `Selected for your next message: ${family} (latest) • ${api.getThinkingLevel()}. The footer arrow shows which model answered last.`,
         "info",
