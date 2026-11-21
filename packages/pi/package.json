@@ -1,6 +1,6 @@
 {
   "name": "@quantile-co/factory-pi",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "license": "MIT",
   "description": "Factory Pi extension and shared skill selections.",
   "type": "module",
@@ -94,6 +94,13 @@
       "ref": "6b9e9387265d9e3049258f7eae3f746d3c3ddf87",
       "skills": [
         "seo-audit"
+      ]
+    },
+    {
+      "source": "GoogleChrome/modern-web-guidance/skills/modern-web-guidance",
+      "ref": "64a6d708f5a43f2cd3fde5d4d7db3905ba1bdf65",
+      "skills": [
+        "modern-web-guidance"
       ]
     },
     {
