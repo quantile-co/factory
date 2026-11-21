@@ -106,6 +106,7 @@
               jq = pkgs.jq;
               nix = pkgs.nix;
               namespace-cli = pkgs.namespace-cli;
+              github-code-quality = factory.github.codeQuality.package;
               nixcache = factory.nixcache.package;
               otelcol-contrib = factory.otelcol-contrib.package;
               shfmt = pkgs.shfmt;
@@ -310,6 +311,7 @@
               );
               ".github/actionlint.yaml" = copy factory.actionlint.configFile;
               ".github/workflows/check.yaml" = copy factory.github.workflows.check.configFile;
+              ".github/workflows/github-code-quality.yaml" = copy factory.github.workflows.codeQuality.configFile;
               ".github/workflows/test.yaml" = copy factory.github.workflows.test.configFile;
               ".github/workflows/build.yaml" = copy buildFile;
               ".github/workflows/plan.yaml" = copy factory.github.workflows.plan.configFile;

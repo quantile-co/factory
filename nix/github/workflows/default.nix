@@ -156,6 +156,11 @@ let
 in
 {
   options.quantile-co.factory.github.workflows = {
+    codeQuality.configFile = lib.mkOption {
+      type = lib.types.path;
+      default = ../../../etc/github/workflows/github-code-quality.yaml;
+      description = "Scheduled workflow for synchronizing open Standard findings to one issue.";
+    };
     otelActionRef = lib.mkOption {
       type = lib.types.nullOr (lib.types.strMatching "[0-9a-f]{40}");
       default = null;

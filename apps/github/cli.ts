@@ -13,6 +13,7 @@ import {
 } from "@quantile-co/factory-github";
 import { withNixCache } from "@quantile-co/factory-namespace";
 import { Command, Option } from "commander";
+import { runCodeQuality } from "./code-quality.ts";
 
 const deployments = {
   infrastructure: {
@@ -267,6 +268,10 @@ for (const phase of ["plan", "apply"] as const) {
     ),
   );
 }
+program
+  .command("code-quality")
+  .description("Sync open GitHub Code Quality findings to one tracking issue")
+  .action(() => runCodeQuality());
 program.command("test").action(() =>
   withNixCache(
     async (environment) => {

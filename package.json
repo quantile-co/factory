@@ -26,6 +26,7 @@
     "namespace:nixcache:stage": "npm stage publish dist/npm/factory-namespace.tgz --access public",
     "github:build": "tsx apps/github/cli.ts build",
     "github:test": "tsx apps/github/cli.ts test",
+    "github:code-quality": "tsx apps/github/cli.ts code-quality",
     "github:plan": "tsx apps/github/cli.ts plan",
     "github:apply": "tsx apps/github/cli.ts apply"
   },
