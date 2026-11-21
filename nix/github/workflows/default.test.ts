@@ -24,7 +24,6 @@ function workflow(path: string) {
 
 function namespaceWorkflows(
   otel = false,
-  hindsight = false,
   actionRef: string | null = null,
 ): Record<string, string> {
   return JSON.parse(
@@ -47,7 +46,6 @@ function namespaceWorkflows(
           ${root}/nix/github/workflows
           { quantile-co.factory.github.workflows = {
               nixCache = "namespace";
-              hindsight = ${hindsight ? "true" : "false"};
               otelJobs = ${otel ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
               otelActionRef = ${actionRef ? JSON.stringify(actionRef) : "null"};
           }; }
@@ -108,7 +106,7 @@ it.each([false, true])(
       join(tmpdir(), "factory-namespace-workflow-"),
     );
     try {
-      const files = namespaceWorkflows(otel, false, "a".repeat(40));
+      const files = namespaceWorkflows(otel, "a".repeat(40));
       for (const [name, source] of Object.entries(files)) {
         const path = join(temporary, `${name}.yaml`);
         expect(source).not.toMatch(/[ \t]+\n/);
@@ -185,7 +183,7 @@ it("configures the pinned Collector with an endpoint and job OIDC only", () => {
   );
   try {
     const ref = "a".repeat(40);
-    const files = namespaceWorkflows(true, false, ref);
+    const files = namespaceWorkflows(true, ref);
     expect(files.check).toBe(namespaceWorkflows().check);
     for (const name of ["test", "build", "plan", "apply"]) {
       const path = join(temporary, `${name}.yaml`);
@@ -234,12 +232,10 @@ it.each([false, true])(
     );
     try {
       const ref = "a".repeat(40);
-      const disabled = namespaceWorkflows(otel, false, ref);
-      const enabled = namespaceWorkflows(otel, true, ref);
-      for (const [name, source] of Object.entries(enabled)) {
-        expect(disabled[name]).not.toContain("HINDSIGHT_API_TOKEN");
+      const files = namespaceWorkflows(otel, ref);
+      for (const [name, source] of Object.entries(files)) {
         if (!["plan", "apply"].includes(name)) {
-          expect(source).toBe(disabled[name]);
+          expect(source).not.toContain("HINDSIGHT_API_TOKEN");
           continue;
         }
         const path = join(temporary, `${name}.yaml`);

@@ -94,13 +94,7 @@ let
         source;
   hindsightJob =
     phase: source:
-    if
-      !cfg.hindsight
-      || !(builtins.elem phase [
-        "plan"
-        "apply"
-      ])
-    then
+    if phase != "plan" && phase != "apply" then
       source
     else
       let
@@ -162,7 +156,6 @@ let
 in
 {
   options.quantile-co.factory.github.workflows = {
-    hindsight = lib.mkEnableOption "the Hindsight runtime credential in protected Plan/Apply jobs";
     otelActionRef = lib.mkOption {
       type = lib.types.nullOr (lib.types.strMatching "[0-9a-f]{40}");
       default = null;

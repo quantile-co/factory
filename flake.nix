@@ -79,7 +79,6 @@
               build.layers = [ "application" ];
               otelJobs = [ "test" ];
               otelActionRef = "fc58a07d1184b9216f0a27e5b36bec80cf5a6b0b";
-              hindsight = true;
             };
 
             # Public package outputs.
