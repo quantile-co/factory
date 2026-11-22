@@ -218,7 +218,10 @@ type Node = {
   [key: string]: unknown;
 };
 function word(node: Node): string | undefined {
-  if (node.Type === "Lit" || (node.Type === "SglQuoted" && !node.Dollar)) {
+  if (
+    node.Type === "Lit" ||
+    (node.Type === "SglQuoted" && node.Dollar !== true)
+  ) {
     return node.Value?.includes("\\") ? undefined : node.Value;
   }
   if (!node.Parts) return undefined;
@@ -251,7 +254,7 @@ export async function guardFile(path: string): Promise<void> {
   const repo = await repository(path);
   if (!repo) return;
   const drift = primaryDrift(repo);
-  if (drift) throw new Error(drift);
+  if (drift !== undefined) throw new Error(drift);
   const target = canonical(resolve(path));
   const owner = repo.checkouts
     .filter(
@@ -291,7 +294,12 @@ export async function guardCommand(
         const option = args.shift();
         if (option === "-C") {
           const dir = args.shift();
-          if (!dir || (!cwd && !isAbsolute(dir))) return;
+          if (
+            dir === undefined ||
+            dir === "" ||
+            (cwd === undefined && !isAbsolute(dir))
+          )
+            return;
           cwd = resolve(cwd ?? "/", dir);
         } else if (
           option === "--no-pager" ||
@@ -313,7 +321,7 @@ export async function guardCommand(
       }
       if (args[0] !== "pr" || args[1] !== "checkout") return;
     }
-    if (!cwd || !args[0]) return;
+    if (cwd === undefined || args[0] === undefined || args[0] === "") return;
     const repo = await repository(cwd);
     if (!repo || disposableOrb(repo)) return;
     const checkout = canonical(
@@ -377,7 +385,7 @@ export async function guardCommand(
           )));
     if (readOnly) return;
     const drift = primaryDrift(repo);
-    if (drift) throw new Error(drift);
+    if (drift !== undefined) throw new Error(drift);
     if (
       executable === "git" &&
       subcommand === "fetch" &&
@@ -480,7 +488,7 @@ export async function guardCommand(
       const next = await walk(node.Cmd, cwd);
       for (const [key, value] of Object.entries(node))
         if (key !== "Cmd") await children(value, cwd);
-      return node.Background ? cwd : next;
+      return node.Background === true ? cwd : next;
     }
     if (
       node.Type === "File" ||
@@ -502,7 +510,10 @@ export async function guardCommand(
       if (!args.length) return cwd;
       if (args[0] === "cd") {
         const dir = args[1] === "--" ? args[2] : args[1];
-        return dir && !dir.startsWith("-") && (cwd || isAbsolute(dir))
+        return dir !== undefined &&
+          dir !== "" &&
+          !dir.startsWith("-") &&
+          (cwd !== undefined || isAbsolute(dir))
           ? canonical(resolve(cwd ?? "/", dir))
           : undefined;
       }
@@ -527,7 +538,7 @@ export async function guardCommand(
   ): Promise<void> {
     if (Array.isArray(value)) {
       for (const child of value) await children(child, cwd);
-    } else if (value && typeof value === "object") {
+    } else if (value !== null && typeof value === "object") {
       const node = value as Node;
       if (node.Type === "CallExpr" || node.Cmd || node.Stmts)
         await walk(node, cwd);

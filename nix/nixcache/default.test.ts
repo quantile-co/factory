@@ -183,7 +183,7 @@ require("node:http").createServer((request, response) => {
       }),
     ).toBe("");
   } finally {
-    if (pid) process.kill(pid, "SIGTERM");
+    if (pid !== undefined && pid > 0) process.kill(pid, "SIGTERM");
     rmSync(temporary, { recursive: true, force: true });
   }
 });

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -16,7 +16,66 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "preset": "recommended"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.{ts,tsx,mts,cts}"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noBannedTypes": "error"
+          },
+          "style": {
+            "noEnum": "error",
+            "noInferrableTypes": "error",
+            "noNamespace": "error",
+            "noParameterProperties": "error",
+            "useAsConstAssertion": "error",
+            "useReadonlyClassProperties": "error",
+            "useReduceTypeParameter": "error"
+          },
+          "suspicious": {
+            "noExplicitAny": "error",
+            "noExtraNonNullAssertion": "error",
+            "noNonNullAssertedOptionalChain": "error"
+          },
+          "nursery": {
+            "noMisleadingReturnType": "error",
+            "noUselessTypeAssertion": "error",
+            "useExhaustiveSwitchCases": {
+              "level": "error",
+              "options": {
+                "requireExplicitCase": true
+              }
+            },
+            "useStrictBooleanExpressions": "error"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/*.{ts,tsx,mts,cts}",
+        "!**/*.{test,spec}.{ts,tsx,mts,cts}"
+      ],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "noUnsafeReturn": "error"
+          }
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "path": "./.biome/no-literal-type-assertions.grit",
+      "includes": [
+        "**/*.{ts,tsx,mts,cts}",
+        "!**/*.{test,spec}.{ts,tsx,mts,cts}"
+      ]
+    }
+  ]
 }

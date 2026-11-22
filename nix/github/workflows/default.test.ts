@@ -47,7 +47,7 @@ function namespaceWorkflows(
           { quantile-co.factory.github.workflows = {
               nixCache = "namespace";
               otelJobs = ${otel ? '[ "test" "build" "plan" "apply" ]' : "[ ]"};
-              otelActionRef = ${actionRef ? JSON.stringify(actionRef) : "null"};
+              otelActionRef = ${actionRef !== null && actionRef !== "" ? JSON.stringify(actionRef) : "null"};
           }; }
         ];
       }).config.quantile-co.factory.github.workflows;

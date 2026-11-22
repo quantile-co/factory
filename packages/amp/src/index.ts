@@ -30,19 +30,20 @@ export function identity(orb: Orb) {
     throw new Error(
       "Expected an Amp thread UUID or its ampcode.com thread URL.",
     );
+  const repository = orb.repository ?? "";
   if (
-    orb.repository &&
-    !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(orb.repository)
+    repository !== "" &&
+    !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)
   )
     throw new Error("Repository must be GitHub org/repo.");
   if (
     orb.issue !== undefined &&
-    (!orb.repository || !Number.isSafeInteger(orb.issue) || orb.issue < 1)
+    (repository === "" || !Number.isSafeInteger(orb.issue) || orb.issue < 1)
   )
     throw new Error("An issue requires a repository and a positive integer.");
   const label = [
-    orb.repository || orb.project || "Amp",
-    [orb.issue ? `#${orb.issue}` : "", orb.title || ""]
+    [repository, orb.project ?? ""].find((value) => value !== "") ?? "Amp",
+    [orb.issue === undefined ? "" : `#${orb.issue}`, orb.title ?? ""]
       .filter(Boolean)
       .join(" "),
     `T-${thread.slice(-8)}`,
@@ -421,7 +422,7 @@ export function resumeCollector(): void {
     run(["systemctl", "stop", "factory-amp-otel.service"]);
     if (disabled) return;
     const endpoint = collectorEndpoint();
-    if (!endpoint) return;
+    if (endpoint === undefined) return;
     const install = join(homedir(), ".local/share/factory-amp/otel");
     const extraArgs = [`--config=${join(install, "journald.yaml")}`];
     if (process.env.QUANTILE_OTELCOL_DOCKER_STATS === "1")
@@ -495,7 +496,11 @@ export async function resume(
     );
   }
   const { thread, hostname, label } = identity({ ...orb, thread: current });
-  if (orb.thread && identity({ ...orb, thread: orb.thread }).thread !== thread)
+  if (
+    orb.thread !== undefined &&
+    orb.thread !== "" &&
+    identity({ ...orb, thread: orb.thread }).thread !== thread
+  )
     throw new Error(
       "Requested thread does not match this orb's runtime identity.",
     );
@@ -570,7 +575,7 @@ export async function resume(
       }
     }
   }
-  if (!spaces)
+  if (!Array.isArray(spaces))
     throw new Error(
       "Herdr did not become ready; inspect its orb session logs before retrying.",
     );

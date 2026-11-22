@@ -39,11 +39,11 @@ export interface TransportOptions {
   signal?: AbortSignal;
 }
 export class CommandFailure extends Error {
-  constructor(
-    public readonly exitCode: number,
-    message: string,
-  ) {
+  readonly exitCode: number;
+
+  constructor(exitCode: number, message: string) {
     super(message);
+    this.exitCode = exitCode;
   }
 }
 

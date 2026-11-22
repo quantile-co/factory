@@ -317,6 +317,18 @@ it("initializes the native downstream starter and preserves repository-owned wor
     ).trim();
     expect(manifest.packageManager).toBe(`pnpm@${version}`);
     expect(manifest.private).toBe(true);
+    expect(manifest.devDependencies["@biomejs/biome"]).toBe("2.6.5");
+    const biome = JSON.parse(readFileSync(join(root, "biome.json"), "utf8"));
+    expect(biome.plugins).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "./.biome/no-literal-type-assertions.grit",
+        }),
+      ]),
+    );
+    expect(
+      existsSync(join(root, ".biome/no-literal-type-assertions.grit")),
+    ).toBe(true);
     expect(Object.keys(manifest.scripts).slice(0, 5)).toEqual([
       "dev",
       "check",

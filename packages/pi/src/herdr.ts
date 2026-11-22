@@ -209,7 +209,8 @@ export function createHerdr({
             worktree.is_bare
           )
             continue;
-          if (worktree.open_workspace_id) continue; // Herdr's own worktree create/open already did this.
+          // Herdr's own worktree create/open already did this.
+          if ((worktree.open_workspace_id ?? "") !== "") continue;
           try {
             await herdr([
               "worktree",

@@ -103,7 +103,7 @@ function registerProviderAliases(
             "LANGFUSE_GATEWAY_KEY is not set. Configure it or select Codex explicitly with /model.",
           );
         const sticky = stickyRoute(request, provider, family, prefix);
-        if (sticky) return sticky;
+        if (sticky !== undefined) return sticky;
         const model = latest(available(ctx, provider), family, prefix);
         if (!model)
           throw new Error(

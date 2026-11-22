@@ -1,0 +1,19 @@
+engine biome(1.0)
+language js(typescript, jsx)
+
+pattern literal() {
+  or {
+    JsObjectExpression(),
+    JsArrayExpression(),
+    JsParenthesizedExpression(expression = literal())
+  }
+}
+
+or {
+  TsAsExpression(expression = $expression, ty = $type),
+  TsTypeAssertionExpression(expression = $expression, ty = $type)
+} as $assertion where {
+  $expression <: literal(),
+  not $type <: r"^const$",
+  register_diagnostic(span = $assertion, message = "Use an annotation or satisfies for this literal.")
+}

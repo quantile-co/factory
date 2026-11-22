@@ -222,6 +222,7 @@
                 factory.actionlint.check.package
                 factory.semgrep.test.package
                 factory.semgrep.check.package
+                factory.sonarqube.check.package
                 factory.trivy.check.package
                 factory.typos.check.package
                 factory.vale.check.package
@@ -287,6 +288,20 @@
               ".vale" = copy factory.vale.stylesDirectory;
               ".yamllint.yaml" = copy factory.yamllint.configFile;
               "biome.json" = copy factory.biome.configFile;
+              ".biome/no-literal-type-assertions.grit" = copy factory.biome.literalAssertionsPluginFile;
+              "sonar-project.properties" = copy (
+                factory.sonarqube.withProject {
+                  projectKey = "quantile-co_factory";
+                  roots = [
+                    ".github/actions"
+                    "apps"
+                    "etc/pnpm/apps/repo"
+                    "nix"
+                    "packages"
+                    "tf"
+                  ];
+                }
+              );
               "tsconfig.json" = copy (
                 factory.typescript.withOverrides {
                   compilerOptions = {
@@ -332,6 +347,8 @@
               };
               ".semgrep/tf" = copy (factory.semgrep.rulesDir + "/tf");
               ".semgrep/tests/tf" = copy (factory.semgrep.test.fixturesDir + "/tf");
+              ".semgrep/typescript" = copy (factory.semgrep.rulesDir + "/typescript");
+              ".semgrep/tests/typescript" = copy (factory.semgrep.test.fixturesDir + "/typescript");
               ".semgrep/packs/typescript.yaml" = copy factory.semgrep.packs.typescript;
               ".semgrep/packs/terraform.yaml" = copy factory.semgrep.packs.terraform;
               ".semgrep/packs/github-actions.yaml" = copy factory.semgrep.packs.github-actions;
@@ -412,6 +429,7 @@
         semgrep = ./nix/semgrep;
         shellcheck = ./nix/shellcheck;
         shfmt = ./nix/shfmt;
+        sonarqube = ./nix/sonarqube;
         statix = ./nix/statix;
         taplo = ./nix/taplo;
         tflint = ./nix/tflint;

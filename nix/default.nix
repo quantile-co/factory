@@ -51,6 +51,7 @@
     ./semgrep
     ./shellcheck
     ./shfmt
+    ./sonarqube
     ./statix
     ./taplo
     ./tflint

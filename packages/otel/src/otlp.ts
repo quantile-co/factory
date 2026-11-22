@@ -88,7 +88,9 @@ export async function exportSpans(
           signal: AbortSignal.timeout(1_500),
           headers: {
             "Content-Type": "application/json",
-            ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}),
+            ...(config.key === undefined || config.key === ""
+              ? {}
+              : { Authorization: `Bearer ${config.key}` }),
           },
           body,
         });

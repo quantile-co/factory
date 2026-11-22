@@ -139,7 +139,7 @@ function sidebar(state: Sidebar) {
       assert.ok(args.includes("--no-focus"));
       const path = args[args.indexOf("--path") + 1];
       const workspace = args[args.indexOf("--workspace") + 1];
-      if (!state.repos[workspace] || state.failOpen)
+      if (!state.repos[workspace] || state.failOpen === true)
         throw new Error("Cannot open workspace");
       state.spaces[path] = { id: `child-${++state.nextId}`, workspace };
       state.openCalls.push({ workspace, path });

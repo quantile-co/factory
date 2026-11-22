@@ -255,7 +255,8 @@ for (const phase of ["plan", "apply"] as const) {
             storage,
           );
         } else {
-          if (!options.ghPlanRef) throw new Error("Missing GH_PLAN_REF");
+          if (options.ghPlanRef === undefined || options.ghPlanRef === "")
+            throw new Error("Missing GH_PLAN_REF");
           await apply(
             { ...transport, planReference: options.ghPlanRef },
             action,

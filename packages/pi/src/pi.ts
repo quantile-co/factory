@@ -233,7 +233,13 @@ export async function startWorktree(
       "Starting a child Pi requires an interactive Pi inside Herdr on this host. The Git guard remains active without Herdr.",
     );
   const { branch, task } = options;
-  if (!branch || branch === "main" || !task?.trim())
+  if (
+    branch === undefined ||
+    branch === "" ||
+    branch === "main" ||
+    task === undefined ||
+    task.trim() === ""
+  )
     throw new Error(
       "Provide a task branch other than main and a non-empty task.",
     );
@@ -245,7 +251,7 @@ export async function startWorktree(
       "Choose a repository checkout, not a parent workspace directory.",
     );
   const drift = git.primaryDrift(repo);
-  if (drift) throw new Error(drift);
+  if (drift !== undefined) throw new Error(drift);
   const base = options.base ?? "main";
   await git.validateBranch(repo, branch, base);
   if (options.context !== "fresh" && !ctx.sessionManager.getSessionFile())
@@ -271,7 +277,7 @@ export async function startWorktree(
     const current = await git.repository(repo.primary);
     if (!current) throw new Error("Repository disappeared.");
     const changed = git.primaryDrift(current);
-    if (changed) throw new Error(changed);
+    if (changed !== undefined) throw new Error(changed);
     const existing = current.checkouts.find(
       (checkout) => checkout.branch === branch,
     );
@@ -320,9 +326,10 @@ export async function startWorktree(
       options.context === "fresh"
         ? undefined
         : forkSession(ctx, path, toolCallId, selection);
-    const sessionId = session
-      ? SessionManager.open(session).getSessionId()
-      : randomUUID();
+    const sessionId =
+      session !== undefined
+        ? SessionManager.open(session).getSessionId()
+        : randomUUID();
     const name = `task-${createHash("sha256").update(`${repo.common}:${branch}`).digest("hex").slice(0, 12)}`;
     await herdr.startAgent(
       {
@@ -330,7 +337,9 @@ export async function startWorktree(
         kind: "pi",
         pane,
         args: [
-          ...(session ? ["--session", session] : ["--session-id", sessionId]),
+          ...(session !== undefined
+            ? ["--session", session]
+            : ["--session-id", sessionId]),
           "--provider",
           selection.provider,
           "--model",
@@ -355,7 +364,7 @@ export async function startWorktree(
           actual.session !== reportedSession ||
           actual.id !== sessionId ||
           actual.cwd !== expectedCwd ||
-          (session && reportedSession !== session)
+          (session !== undefined && reportedSession !== session)
         )
           throw new Error(
             "Child startup identity/selection was not verified; no task prompt was sent.",
@@ -397,7 +406,7 @@ export async function startWorktree(
   } catch (error) {
     throw Object.assign(
       new Error(
-        `${error instanceof Error ? error.message : String(error)}${workspace ? ` Workspace ${workspace} at ${path} was preserved. Inspect it before retrying: startup or prompt delivery may already have happened.` : " No automatic cleanup or retry was attempted."}`,
+        `${error instanceof Error ? error.message : String(error)}${workspace !== undefined && workspace !== "" ? ` Workspace ${workspace} at ${path} was preserved. Inspect it before retrying: startup or prompt delivery may already have happened.` : " No automatic cleanup or retry was attempted."}`,
         { cause: error },
       ),
       {
@@ -480,8 +489,9 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
 
   async function checkBranch(ctx: ExtensionContext) {
     const repo = await git.repository(ctx.cwd);
-    const drift = repo && git.primaryDrift(repo);
-    if (drift) throw new Error(drift);
+    if (!repo) return;
+    const drift = git.primaryDrift(repo);
+    if (drift !== undefined) throw new Error(drift);
   }
   async function shell(command: string, cwd: string, ctx: ExtensionContext) {
     await checkBranch(ctx);
@@ -684,7 +694,11 @@ export function registerPi(pi: ExtensionAPI, deps: Dependencies) {
               );
         const warning =
           "selection" in result ? result.selection?.warning : undefined;
-        if (warning && warning !== lastRoutingWarning)
+        if (
+          warning !== undefined &&
+          warning !== "" &&
+          warning !== lastRoutingWarning
+        )
           ctx.ui.notify(warning, "warning");
         if ("selection" in result) lastRoutingWarning = warning;
         return {

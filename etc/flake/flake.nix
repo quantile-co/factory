@@ -56,6 +56,7 @@
               ".gitignore" = seed tools.git.ignoreFile;
               ".husky/pre-push" = copy tools.husky.prePushFile;
               "biome.json" = copy tools.biome.configFile;
+              ".biome/no-literal-type-assertions.grit" = copy tools.biome.literalAssertionsPluginFile;
               "package.json" = seed tools.pnpm.packageJsonFile;
               "apps/repo/package.json" = seed tools.pnpm.repoPackageJsonFile;
               "apps/repo/cli.ts" = seed tools.pnpm.repoCliFile;

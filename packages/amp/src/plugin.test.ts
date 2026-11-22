@@ -28,7 +28,10 @@ function inventory(agent_status?: string, agent = "pi") {
     stdout: JSON.stringify({
       result: {
         type: "agent_list",
-        agents: agent_status ? [{ agent, agent_status }] : [],
+        agents:
+          agent_status === undefined || agent_status === ""
+            ? []
+            : [{ agent, agent_status }],
       },
     }),
   });

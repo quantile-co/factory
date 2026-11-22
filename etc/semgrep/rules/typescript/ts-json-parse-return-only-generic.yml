@@ -1,0 +1,19 @@
+rules:
+  - id: ts-json-parse-return-only-generic
+    languages: [typescript]
+    severity: ERROR
+    message: A type argument cannot validate parsed JSON. Return unknown, or derive the result type from a validator.
+    metadata:
+      effective-typescript-items: [46, 51]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              function $F<$T>($INPUT: string): $T {
+                return JSON.parse($INPUT);
+              }
+          - pattern: |
+              function $F<$T>($INPUT: string): $T {
+                return JSON.parse($INPUT) as $T;
+              }
+      # Semgrep's TypeScript matcher also matches a function with no type parameters.
+      - pattern-regex: '\bfunction\s+[A-Za-z_$][\w$]*\s*<\s*([A-Za-z_$][\w$]*)\s*>\s*\(\s*[A-Za-z_$][\w$]*\s*:\s*string\s*\)\s*:\s*\1\s*\{'

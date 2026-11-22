@@ -42,7 +42,7 @@ const identity = (event: Event, id: string | number | undefined) =>
 export default function telemetry(amp: TelemetryPlugin): void {
   if (process.env.AMP_ORB !== "1") return;
   try {
-    if (!collectorEndpoint()) return;
+    if (collectorEndpoint() === undefined) return;
   } catch {
     amp.logger.log("OTel telemetry disabled: invalid runtime configuration.");
     return;
@@ -97,7 +97,8 @@ export default function telemetry(amp: TelemetryPlugin): void {
     return pending;
   }
   function start(map: Map<string, string>, id: string | undefined) {
-    if (id && !map.has(id) && map.size < 1024) map.set(id, nano());
+    if (id !== undefined && id !== "" && !map.has(id) && map.size < 1024)
+      map.set(id, nano());
   }
   function finish(
     map: Map<string, string>,
@@ -105,10 +106,10 @@ export default function telemetry(amp: TelemetryPlugin): void {
     name: string,
     event: Event,
   ) {
-    if (!id) return;
+    if (id === undefined || id === "") return;
     const began = map.get(id);
     map.delete(id);
-    if (!began) return;
+    if (began === undefined) return;
     const attributes: Record<string, string> = {
       "amp.outcome": ["done", "error", "cancelled"].includes(event.status ?? "")
         ? (event.status ?? "unknown")
@@ -138,7 +139,8 @@ export default function telemetry(amp: TelemetryPlugin): void {
       const id = identity(event, message.id);
       if (
         message.role !== "assistant" ||
-        !id ||
+        id === undefined ||
+        id === "" ||
         !message.usage ||
         usageSeen.has(id) ||
         usageSeen.size >= 8192

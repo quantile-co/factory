@@ -368,7 +368,7 @@ export async function selectChild(
       ),
       { usage },
     );
-  if (!auth.configured || !auth.source)
+  if (!auth.configured || auth.source === undefined || auth.source === "")
     throw Object.assign(
       new Error("Selected provider authentication is unavailable."),
       { usage },

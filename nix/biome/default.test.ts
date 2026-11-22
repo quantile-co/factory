@@ -67,6 +67,94 @@ it("lets callers replace formatting for independently selected native config ren
   expect(rendered["package.json"].packageManager).toMatch(/^pnpm@/);
 }, 150_000);
 
+it("enforces the default TypeScript rules without banning intentional assertions", () => {
+  const root = fileURLToPath(new URL("../../", import.meta.url));
+  const work = mkdtempSync(
+    join(tmpdir(), "factory-biome-effective-typescript-"),
+  );
+  try {
+    copyFileSync(join(root, "biome.json"), join(work, "biome.json"));
+    mkdirSync(join(work, ".biome"));
+    copyFileSync(
+      join(root, ".biome/no-literal-type-assertions.grit"),
+      join(work, ".biome/no-literal-type-assertions.grit"),
+    );
+    expect(spawnSync("git", ["init", "-q"], { cwd: work }).status).toBe(0);
+    writeFileSync(
+      join(work, "tsconfig.json"),
+      '{"compilerOptions":{"strict":true}}',
+    );
+    writeFileSync(
+      join(work, "bad.ts"),
+      `
+      export const point = (({ x: 1 })) as { x: number };
+      export const ids = [1] as number[];
+      export function parse(s: string): string { return JSON.parse(s); }
+      export function status(ok: boolean): string {
+        if (ok) return "up";
+        return "down";
+      }
+      export function label(kind: "a" | "b") {
+        switch (kind) { case "a": return "A"; default: return "other"; }
+      }
+      export function limit(value: number | undefined) {
+        if (value) return value;
+        return 10;
+      }
+      export const retries: 3 = 3;
+      export enum Code { Ready = "ready" }
+    `,
+    );
+    writeFileSync(
+      join(work, "good.ts"),
+      `
+      export const point = { x: 1 } satisfies { x: number };
+      export const ids = [1, 2] as const;
+      export const fallback = { x: 0 } as const;
+      export function parse(s: string): unknown { return JSON.parse(s); }
+      export function identity<T>(value: T) { return value; }
+      export function limit(value: number | undefined) {
+        return value === undefined ? 10 : value;
+      }
+      export function label(kind: "a" | "b") {
+        switch (kind) { case "a": return "A"; case "b": return "B"; }
+      }
+    `,
+    );
+    writeFileSync(
+      join(work, "fake.test.ts"),
+      "export const fixture = {} as { missing: string };",
+    );
+    const result = spawnSync(
+      join(root, "node_modules/.bin/biome"),
+      ["lint", "--reporter=json", "bad.ts", "good.ts", "fake.test.ts"],
+      { cwd: work, encoding: "utf8", timeout: 15_000 },
+    );
+    if (result.error) throw result.error;
+    expect(result.status, result.stdout + result.stderr).toBe(1);
+    const report = JSON.parse(result.stdout) as {
+      diagnostics: { category: string; location: { path: string } }[];
+    };
+    expect(
+      new Set(report.diagnostics.map(({ location }) => location.path)),
+    ).toEqual(new Set(["bad.ts"]));
+    const rules = report.diagnostics.map(({ category }) => category);
+    expect(rules.filter((rule) => rule === "plugin")).toHaveLength(2);
+    expect(rules).toEqual(
+      expect.arrayContaining([
+        "lint/nursery/noUnsafeReturn",
+        "lint/nursery/noMisleadingReturnType",
+        "lint/nursery/useExhaustiveSwitchCases",
+        "lint/nursery/useStrictBooleanExpressions",
+        "lint/style/noInferrableTypes",
+        "lint/style/noEnum",
+      ]),
+    );
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
 it("checks without editing and safely fixes consumer files using the store-backed Biome template", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url));
   const work = mkdtempSync(join(tmpdir(), "factory-biome-"));
@@ -96,7 +184,14 @@ it("checks without editing and safely fixes consumer files using the store-backe
     return result.stdout.trim();
   };
   try {
-    for (const dir of ["home", "nix", "tf", "etc/biome", "etc/semgrep"]) {
+    for (const dir of [
+      "home",
+      "nix",
+      "tf",
+      ".biome",
+      "etc/biome",
+      "etc/semgrep",
+    ]) {
       mkdirSync(join(work, dir), { recursive: true });
     }
     const config = run("nix", [
@@ -119,6 +214,10 @@ it("checks without editing and safely fixes consumer files using the store-backe
     ]);
     expect(config).toMatch(/^\/nix\/store\//);
     symlinkSync(config, join(work, "biome.json"));
+    copyFileSync(
+      join(root, "etc/biome/no-literal-type-assertions.grit"),
+      join(work, ".biome/no-literal-type-assertions.grit"),
+    );
     symlinkSync(join(root, "node_modules"), join(work, "node_modules"));
     for (const file of [
       "package.json",
