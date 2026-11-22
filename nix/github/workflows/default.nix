@@ -67,31 +67,6 @@ let
           ]
           source
       );
-  collectorJob =
-    phase: source:
-    if !(builtins.elem phase cfg.otelJobs) then
-      source
-    else
-      assert lib.assertMsg (
-        cfg.otelActionRef != null
-      ) "Set otelActionRef to a published Factory commit before enabling OTel jobs.";
-      assert lib.assertMsg (lib.hasInfix "      - name: Mount the Nix " source)
-        "Workflow cache setup changed";
-      builtins.replaceStrings
-        [ "    steps:\n" "      - name: Mount the Nix " ]
-        [
-          "    permissions:\n      contents: read\n      id-token: write\n    steps:\n"
-          (
-            indent 6 ''
-              - name: Start OpenTelemetry Collector
-                uses: quantile-co/factory/.github/actions/otel@${cfg.otelActionRef}
-                env:
-                  QUANTILE_OTLP_ENDPOINT: ''${{ vars.QUANTILE_OTLP_ENDPOINT }}
-            ''
-            + "\n      - name: Mount the Nix "
-          )
-        ]
-        source;
   hindsightJob =
     phase: source:
     if phase != "plan" && phase != "apply" then
@@ -149,7 +124,7 @@ let
           let
             phase = lib.removeSuffix ".yaml" name;
           in
-          hindsightJob phase (collectorJob phase (cacheJob jobs.${layer}))
+          hindsightJob phase (cacheJob jobs.${layer})
         ) layers
       )
     );
@@ -160,23 +135,6 @@ in
       type = lib.types.path;
       default = ../../../etc/github/workflows/github-code-quality.yaml;
       description = "Scheduled workflow for synchronizing open Standard findings to one issue.";
-    };
-    otelActionRef = lib.mkOption {
-      type = lib.types.nullOr (lib.types.strMatching "[0-9a-f]{40}");
-      default = null;
-      description = "Published Factory commit containing .github/actions/otel. Required when otelJobs is nonempty; starts the native Collector after checkout and WIF authentication.";
-    };
-    otelJobs = lib.mkOption {
-      type = lib.types.listOf (
-        lib.types.enum [
-          "test"
-          "build"
-          "plan"
-          "apply"
-        ]
-      );
-      default = [ ];
-      description = "Central Collector jobs, only protected workflow_dispatch main jobs, never Check/PRs. Requires otelActionRef, QUANTILE_OTLP_ENDPOINT and GitHub job OIDC.";
     };
     nixCache = lib.mkOption {
       type = lib.types.enum [
@@ -207,7 +165,7 @@ in
     test.configFile = lib.mkOption {
       type = lib.types.path;
       default = builtins.toFile "test.yaml" (
-        collectorJob "test" (cacheJob (builtins.readFile ../../../etc/github/workflows/test.yaml))
+        cacheJob (builtins.readFile ../../../etc/github/workflows/test.yaml)
       );
       description = "Test workflow.";
     };

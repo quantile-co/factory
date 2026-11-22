@@ -3,7 +3,6 @@ variable "allowed_action_patterns" {
   type        = set(string)
   default = [
     "quantile-co/factory/.github/workflows/*@*",
-    "quantile-co/factory/.github/actions/otel@38aedb9583cdd78d121f949ff94f603982f39eee",
     "cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24",
     "cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702",
     "cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b",

@@ -17,23 +17,15 @@ jobs:
   all:
     name: All
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    runs-on: namespace-profile-quantile-4x8
+    runs-on: namespace-profile-quantile-4x8;tailscale.spec=quantile
     environment: prod
     timeout-minutes: 30
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0 # Tests run the full-history checks first.
-
-      - name: Start OpenTelemetry Collector
-        uses: quantile-co/factory/.github/actions/otel@fc58a07d1184b9216f0a27e5b36bec80cf5a6b0b
-        env:
-          QUANTILE_OTLP_ENDPOINT: ${{ vars.QUANTILE_OTLP_ENDPOINT }}
 
       - name: Mount the Nix and Turbo caches
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1

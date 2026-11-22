@@ -77,8 +77,6 @@
             github.workflows = {
               layers = [ "infrastructure" ];
               build.layers = [ "application" ];
-              otelJobs = [ "test" ];
-              otelActionRef = "fc58a07d1184b9216f0a27e5b36bec80cf5a6b0b";
             };
 
             # Public package outputs.
@@ -312,7 +310,6 @@
                     types = [ "node" ];
                   };
                   include = [
-                    ".github/actions/**/*.ts"
                     "*.test.ts"
                     "nix/**/*.test.ts"
                     "tf/**/*.test.ts"

@@ -24,7 +24,7 @@ repository guides and Hindsight workflow rather than copying their contents.
 - [nix/files/](nix/files/): generic manifest and cold-bootstrap command module.
 - [nix/otelcol-contrib/](nix/otelcol-contrib/) and [etc/otelcol-contrib/](etc/otelcol-contrib/): upstream collector and native pipeline configurations.
 - [packages/otel/](packages/otel/): shared Collector endpoint configuration and OTLP metadata export.
-- [.github/actions/otel/](.github/actions/otel/): standalone upstream Collector action and post-job lifecycle.
+- [apps/github/](apps/github/) and [runner collector](packages/github/src/runner/): GitHub CLI, runner hooks and Collector lifecycle.
 - [nix/flake/](nix/flake/): per-system output module and consumer-bootstrap tests.
 - [etc/](etc/): reusable native-format configuration assets.
 - [etc/flake/](etc/flake/): native downstream flake starter.
