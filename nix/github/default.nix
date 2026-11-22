@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   github = config.quantile-co.factory.github;
   source = lib.fileset.toSource {
