@@ -106,6 +106,7 @@
               jq = pkgs.jq;
               nix = pkgs.nix;
               namespace-cli = pkgs.namespace-cli;
+              factory-github-runtime = factory.github.runtime.package;
               github-code-quality = factory.github.codeQuality.package;
               nixcache = factory.nixcache.package;
               otelcol-contrib = factory.otelcol-contrib.package;

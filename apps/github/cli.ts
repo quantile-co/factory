@@ -13,7 +13,12 @@ import {
 } from "@quantile-co/factory-github";
 import { withNixCache } from "@quantile-co/factory-namespace";
 import { Command, Option } from "commander";
-import { runCodeQuality } from "./code-quality.ts";
+import { syncCodeQuality } from "../../packages/github/src/code-quality.ts";
+import { installRunnerCollector } from "../../packages/github/src/runner/collector.ts";
+import {
+  completeRunnerJob,
+  startRunnerJob,
+} from "../../packages/github/src/runner/job.ts";
 
 const deployments = {
   infrastructure: {
@@ -272,7 +277,21 @@ for (const phase of ["plan", "apply"] as const) {
 program
   .command("code-quality")
   .description("Sync open GitHub Code Quality findings to one tracking issue")
-  .action(() => runCodeQuality());
+  .action(async () => {
+    const result = await syncCodeQuality({
+      repository: process.env.GITHUB_REPOSITORY ?? "",
+      token: process.env.GH_TOKEN ?? "",
+      apiUrl: process.env.GITHUB_API_URL,
+      serverUrl: process.env.GITHUB_SERVER_URL,
+    });
+    console.log(`Code Quality tracking issue: ${result}`);
+  });
+const runner = program
+  .command("runner")
+  .description("Manage the self-hosted runner collector");
+runner.command("install").action(() => installRunnerCollector());
+runner.command("job-started").action(() => startRunnerJob(process.env));
+runner.command("job-completed").action(() => completeRunnerJob(process.env));
 program.command("test").action(() =>
   withNixCache(
     async (environment) => {
