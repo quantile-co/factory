@@ -17,7 +17,7 @@ jobs:
   all:
     name: All
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    runs-on: namespace-profile-quantile-4x8;tailscale.spec=quantile
+    runs-on: namespace-profile-factory-4x8;tailscale.spec=quantile
     environment: prod
     timeout-minutes: 30
     steps:

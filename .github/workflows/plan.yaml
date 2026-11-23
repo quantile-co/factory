@@ -29,7 +29,7 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
       inputs.tf_layer == 'infrastructure'
-    runs-on: namespace-profile-quantile-4x8;tailscale.spec=quantile
+    runs-on: namespace-profile-factory-4x8;tailscale.spec=quantile
     environment: prod
     timeout-minutes: 30
     steps:

@@ -69,7 +69,7 @@ profile says nothing about Terraform state and never authorizes bootstrap.
     nonprod enrollment and MagicDNS. Never put enrollment credentials in the
     image or spec. Use a **published**, reviewed Factory commit that exports
     `factory-github`. The examples correspond to
-    `namespace-profile-quantile-4x8;tailscale.spec=quantile` and `namespace-profile-quantile-8x16;tailscale.spec=quantile`.
+    `namespace-profile-factory-4x8;tailscale.spec=quantile` and `namespace-profile-factory-8x16;tailscale.spec=quantile`.
     Supply the approved access level for the workspace; never infer it from size.
 
 ```bash
@@ -83,7 +83,7 @@ case "${access:?approved access level}" in
   *) exit 1 ;;
 esac
 review=$(mktemp -d)
-spec="$review/quantile-$shape.json"
+spec="$review/factory-$shape.json"
 image=$(cat <<EOF
 ARG NAMESPACE_BASE_IMAGE_REF
 FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS node24
@@ -101,7 +101,7 @@ EOF
 )
 jq -n --arg image "$image" --arg shape "$shape" --arg access "$access" \
   --argjson cpu "${shape%x*}" --argjson ram "${shape#*x}" '{
-    tag: ("quantile-" + $shape), os: "ubuntu-24.04", access_level: $access,
+    tag: ("factory-" + $shape), os: "ubuntu-24.04", access_level: $access,
     instance_shape: {os: "linux", machine_arch: "amd64", virtual_cpu: $cpu,
                       memory_megabytes: ($ram * 1024)},
     builder_mode: "NO_CACHING", swap_size_mb: 0,
