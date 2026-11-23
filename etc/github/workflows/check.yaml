@@ -28,6 +28,7 @@ jobs:
           fetch-depth: 0 # Full-history Gitleaks rejects shallow checkouts.
 
       - name: Mount workflow caches
+        id: volume
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
         with:
           path: |
@@ -45,6 +46,17 @@ jobs:
             require-sigs = true
             build-dir = ${{ runner.temp }}
 
+      # GitHub's workflow-job webhook exports these step durations to ClickStack.
+      - name: Prepare dev shell (volume restored = ${{ steps.volume.outputs.cache-hit }})
+        run: |
+          direnv_bin="$(nix build --no-link --print-out-paths '.#direnv')/bin"
+          "$direnv_bin/direnv" allow .
+          "$direnv_bin/direnv" exec . true
+          echo "$direnv_bin" >> "$GITHUB_PATH"
+
+      - name: Install workspace dependencies
+        run: direnv exec . pnpm install --frozen-lockfile
+
       - name: Run checks
         env:
           TURBO_TOKEN: >-
@@ -58,7 +70,4 @@ jobs:
           if [ -n "$TURBO_TOKEN" ]; then
             export TURBO_CACHE=local:rw,remote:r
           fi
-          direnv="$(nix build --no-link --print-out-paths '.#direnv')/bin/direnv"
-          "$direnv" allow .
-          "$direnv" exec . pnpm install --frozen-lockfile
-          "$direnv" exec . pnpm run check
+          direnv exec . pnpm run check
