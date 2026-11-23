@@ -32,10 +32,10 @@ in
   imports = [ ./workflows ];
 
   options.quantile-co.factory.github = {
-    runtime.package = lib.mkOption {
+    package = lib.mkOption {
       type = lib.types.package;
       description = "Relocatable Factory GitHub CLI and job hooks for a Node 24 runtime.";
-      default = pkgs.runCommand "factory-github-runtime" { } ''
+      default = pkgs.runCommand "factory-github" { } ''
         mkdir -p "$out/bin" "$out/node_modules/@quantile-co" "$out/node_modules/commander"
         cp -r ${source}/{apps,packages} "$out/"
         chmod +x "$out/apps/github/cli.ts"
@@ -55,7 +55,7 @@ in
         name = "github-code-quality";
         runtimeInputs = [ pkgs.nodejs_24 ];
         text = ''
-          exec node "${github.runtime.package}/apps/github/cli.ts" code-quality "$@"
+          exec node "${github.package}/apps/github/cli.ts" code-quality "$@"
         '';
       };
       description = "CLI for synchronizing GitHub Code Quality findings to one tracking issue.";

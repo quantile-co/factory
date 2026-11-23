@@ -68,7 +68,7 @@ profile says nothing about Terraform state and never authorizes bootstrap.
     workspace's `quantile` Tailscale integration is already configured for
     nonprod enrollment and MagicDNS. Never put enrollment credentials in the
     image or spec. Use a **published**, reviewed Factory commit that exports
-    `factory-github-runtime`. The examples correspond to
+    `factory-github`. The examples correspond to
     `namespace-profile-quantile-4x8;tailscale.spec=quantile` and `namespace-profile-quantile-8x16;tailscale.spec=quantile`.
     Supply the approved access level for the workspace; never infer it from size.
 
@@ -88,7 +88,7 @@ image=$(cat <<EOF
 ARG NAMESPACE_BASE_IMAGE_REF
 FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS node24
 FROM nixos/nix:2.28.3@sha256:e623d73af9cac82d1b50784c83e0cf2a4b83bfd2cfe8d5b67809a2fc94e043ac AS factory
-RUN nix --extra-experimental-features 'nix-command flakes' build 'github:quantile-co/factory/$FACTORY_REV#factory-github-runtime' --out-link /result && cp -a /result/. /runtime
+RUN nix --extra-experimental-features 'nix-command flakes' build 'github:quantile-co/factory/$FACTORY_REV#factory-github' --out-link /result && cp -a /result/. /runtime
 FROM \${NAMESPACE_BASE_IMAGE_REF}
 COPY --from=node24 /usr/local/bin/node /usr/local/bin/node
 COPY --from=factory /runtime/ /opt/factory-github/
