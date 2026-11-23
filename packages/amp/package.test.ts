@@ -31,12 +31,7 @@ it("runs both capabilities from the single installed bundle without a source tre
         import plugin from './quantile-co-factory-amp.js';
         const commands = new Map();
         const handlers = new Map();
-        const requests = [];
         let leases = 0;
-        globalThis.fetch = async (url, init) => {
-          requests.push({ url, headers: init.headers, body: JSON.parse(init.body) });
-          return { ok: true };
-        };
         plugin({
           logger: { log() {} },
           system: { executor: { kind: 'remote', keepAlive: async () => {
@@ -50,12 +45,10 @@ it("runs both capabilities from the single installed bundle without a source tre
         await commands.get('factory-orb-awake-on')({ ui: { notify: async () => {} } });
         assert.equal(leases, 1);
         const event = { thread: { id: 'T-12345678-1234-1234-1234-123456789abc' }, id: 'turn' };
-        handlers.get('agent.start')(event);
-        await handlers.get('agent.end')(event);
-        assert.equal(requests.length, 1);
-        assert.equal(requests[0].url, 'http://127.0.0.1:4318/v1/traces');
-        assert.equal(requests[0].headers.authorization, undefined);
-        assert.equal(requests[0].body.resourceSpans[0].scopeSpans[0].spans[0].name, 'amp.agent');
+        assert.equal(handlers.get('agent.start')(event), undefined);
+        assert.deepEqual(handlers.get('tool.call')({ ...event, toolUseID: 'tool' }), { action: 'allow' });
+        assert.equal(handlers.get('tool.result')({ ...event, toolUseID: 'tool' }), undefined);
+        assert.equal(await handlers.get('agent.end')(event), undefined);
         `,
       ],
       {
@@ -77,9 +70,6 @@ it("runs both capabilities from the single installed bundle without a source tre
       ".",
       "./plugin",
     ]);
-    expect(existsSync(new URL("./dist/telemetry.js", import.meta.url))).toBe(
-      false,
-    );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }

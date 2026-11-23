@@ -9,7 +9,7 @@ export default defineConfig(({ command }) => ({
           dts({
             generator: "tsgo",
             tsconfig: "tsconfig.json",
-            entry: ["src/config.ts", "src/otlp.ts"],
+            entry: ["src/config.ts", "src/index.ts"],
           }),
         ]
       : [],
@@ -19,7 +19,7 @@ export default defineConfig(({ command }) => ({
     lib: {
       entry: {
         config: "src/config.ts",
-        otlp: "src/otlp.ts",
+        index: "src/index.ts",
       },
       formats: ["es"],
       fileName: (_format, name) => `${name}.js`,

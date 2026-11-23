@@ -1,13 +1,8 @@
-import { randomBytes } from "node:crypto";
+import { ROOT_CONTEXT, type Span, trace } from "@opentelemetry/api";
+import { createTracing } from "@quantile-co/factory-otel";
 import { collectorEndpoint } from "@quantile-co/factory-otel/config";
-import {
-  exportSpans,
-  type MetadataSpan,
-  metadataSpan,
-} from "@quantile-co/factory-otel/otlp";
 
-// Telemetry capability, bundled with Node built-ins only. No transcript API,
-// telemetry SDK, keepAlive, shell commands or dependency on keep-awake.
+// Metadata only: no transcript API, shell commands or keep-awake dependency.
 type Message = {
   role: string;
   id: string | number;
@@ -30,7 +25,6 @@ export type TelemetryPlugin = {
   on(name: string, handler: (event: Event) => unknown): unknown;
   logger: { log(message: string): void };
 };
-const nano = () => (BigInt(Date.now()) * 1_000_000n).toString();
 const identity = (event: Event, id: string | number | undefined) =>
   typeof event.thread?.id === "string" &&
   event.thread.id.length <= 256 &&
@@ -47,131 +41,132 @@ export default function telemetry(amp: TelemetryPlugin): void {
     amp.logger.log("OTel telemetry disabled: invalid runtime configuration.");
     return;
   }
-  // Only the local Collector handles outbound identity and token renewal.
-  const destination = { endpoint: "http://127.0.0.1:4318" };
-  const instance = randomBytes(16).toString("hex");
-  const turns = new Map<string, string>();
-  const tools = new Map<string, string>();
+  // The SDK owns local Collector transport and batching; never register with
+  // the host's global provider or pass outbound credentials from this adapter.
+  const provider = createTracing("factory-amp");
+  const tracer = provider.getTracer("factory.amp");
+  const turns = new Map<string, Span>();
+  const tools = new Map<string, Span>();
   const usageSeen = new Set<string>();
-  const queue: MetadataSpan[] = [];
-  let pending: Promise<void> | undefined;
   let warned = false;
 
-  function emit(
-    name: string,
-    start: string,
-    values: Record<string, string | number>,
-    thread?: string,
-  ) {
-    if (queue.length >= 64) return;
-    if (
-      /^T-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        thread ?? "",
-      )
+  function safely(action: () => void) {
+    try {
+      action();
+    } catch {
+      if (!warned) {
+        warned = true;
+        amp.logger.log("OTel telemetry unavailable; workload continues.");
+      }
+    }
+  }
+  function attributes(event: Event): Record<string, string> {
+    return /^T-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      event.thread?.id ?? "",
     )
-      values["amp.thread.id"] = thread ?? "unknown";
-    queue.push(metadataSpan(name, start, nano(), values));
+      ? { "amp.thread.id": event.thread.id }
+      : {};
   }
-  function flush(): Promise<void> {
-    if (pending) return pending;
-    if (!queue.length) return Promise.resolve();
-    pending = exportSpans(
-      destination,
-      {
-        "service.name": "factory-amp",
-        "service.instance.id": instance,
-      },
-      "factory.amp",
-      queue.splice(0, 64),
-      2,
-    )
-      .then((sent) => {
-        if (!sent && !warned) {
-          warned = true;
-          amp.logger.log("OTel telemetry unavailable; workload continues.");
-        }
-      })
-      .finally(() => {
-        pending = undefined;
-      });
-    return pending;
+  function parent(event: Event) {
+    const id = identity(event, event.id);
+    const turn = id === undefined ? undefined : turns.get(id);
+    return turn ? trace.setSpan(ROOT_CONTEXT, turn) : ROOT_CONTEXT;
   }
-  function start(map: Map<string, string>, id: string | undefined) {
-    if (id !== undefined && id !== "" && !map.has(id) && map.size < 1024)
-      map.set(id, nano());
-  }
-  function finish(
-    map: Map<string, string>,
+  function start(
+    map: Map<string, Span>,
     id: string | undefined,
     name: string,
     event: Event,
   ) {
-    if (id === undefined || id === "") return;
-    const began = map.get(id);
+    if (id !== undefined && !map.has(id) && map.size < 1024)
+      map.set(
+        id,
+        tracer.startSpan(
+          name,
+          { attributes: attributes(event) },
+          parent(event),
+        ),
+      );
+  }
+  function finish(
+    map: Map<string, Span>,
+    id: string | undefined,
+    event: Event,
+    tool = false,
+  ) {
+    if (id === undefined) return;
+    const span = map.get(id);
     map.delete(id);
-    if (began === undefined) return;
-    const attributes: Record<string, string> = {
-      "amp.outcome": ["done", "error", "cancelled"].includes(event.status ?? "")
-        ? (event.status ?? "unknown")
-        : "unknown",
-    };
-    if (name === "amp.tool" && /^[\w.-]{1,80}$/.test(event.tool ?? ""))
-      attributes["amp.tool.name"] = event.tool ?? "unknown";
-    emit(name, began, attributes, event.thread.id);
+    if (!span) return;
+    try {
+      span.setAttribute(
+        "amp.outcome",
+        ["done", "error", "cancelled"].includes(event.status ?? "")
+          ? (event.status ?? "unknown")
+          : "unknown",
+      );
+      if (tool && /^[\w.-]{1,80}$/.test(event.tool ?? ""))
+        span.setAttribute("amp.tool.name", event.tool ?? "unknown");
+    } finally {
+      span.end();
+    }
   }
   amp.on("agent.start", (event) => {
-    start(turns, identity(event, event.id));
+    safely(() => start(turns, identity(event, event.id), "amp.agent", event));
   });
   amp.on("tool.call", (event) => {
-    start(tools, identity(event, event.toolUseID));
+    safely(() =>
+      start(tools, identity(event, event.toolUseID), "amp.tool", event),
+    );
     return { action: "allow" };
   });
   amp.on("tool.result", (event) => {
-    finish(tools, identity(event, event.toolUseID), "amp.tool", event);
-    void flush();
+    safely(() => finish(tools, identity(event, event.toolUseID), event, true));
     // Returning undefined leaves the native tool result unchanged.
   });
   amp.on("agent.end", async (event) => {
-    finish(turns, identity(event, event.id), "amp.agent", event);
-    // The pinned public ThreadMessage schema currently omits usage. Only consume
-    // actual numeric message usage if supplied; never estimate or read transcripts.
-    for (const message of event.messages ?? []) {
-      const id = identity(event, message.id);
-      if (
-        message.role !== "assistant" ||
-        id === undefined ||
-        id === "" ||
-        !message.usage ||
-        usageSeen.has(id) ||
-        usageSeen.size >= 8192
-      )
-        continue;
-      const values: Record<string, number> = {};
-      for (const [field, name] of [
-        ["inputTokens", "gen_ai.usage.input_tokens"],
-        ["outputTokens", "gen_ai.usage.output_tokens"],
-        ["cacheCreationInputTokens", "amp.usage.cache_creation_input_tokens"],
-        ["cacheReadInputTokens", "amp.usage.cache_read_input_tokens"],
-      ] as const) {
-        const value = message.usage[field];
+    const context = parent(event);
+    safely(() => finish(turns, identity(event, event.id), event));
+    safely(() => {
+      // The pinned public ThreadMessage schema currently omits usage. Only consume
+      // actual numeric message usage if supplied; never estimate or read transcripts.
+      for (const message of event.messages ?? []) {
+        const id = identity(event, message.id);
         if (
-          typeof value === "number" &&
-          Number.isSafeInteger(value) &&
-          value >= 0
+          message.role !== "assistant" ||
+          id === undefined ||
+          !message.usage ||
+          usageSeen.has(id) ||
+          usageSeen.size >= 8192
         )
-          values[name] = value;
+          continue;
+        const values: Record<string, number> = {};
+        for (const [field, name] of [
+          ["inputTokens", "gen_ai.usage.input_tokens"],
+          ["outputTokens", "gen_ai.usage.output_tokens"],
+          ["cacheCreationInputTokens", "amp.usage.cache_creation_input_tokens"],
+          ["cacheReadInputTokens", "amp.usage.cache_read_input_tokens"],
+        ] as const) {
+          const value = message.usage[field];
+          if (
+            typeof value === "number" &&
+            Number.isSafeInteger(value) &&
+            value >= 0
+          )
+            values[name] = value;
+        }
+        if (Object.keys(values).length) {
+          usageSeen.add(id);
+          tracer
+            .startSpan(
+              "amp.usage",
+              { attributes: { ...attributes(event), ...values } },
+              context,
+            )
+            .end();
+        }
       }
-      if (Object.keys(values).length) {
-        usageSeen.add(id);
-        emit("amp.usage", nano(), values, event.thread.id);
-      }
-    }
-    await flush();
-    // A tool flush already in flight may have preceded this turn's final spans.
-    await flush();
+    });
+    await provider.forceFlush().catch(() => {});
   });
-  const timer = setInterval(() => {
-    void flush();
-  }, 5_000);
-  timer.unref();
 }

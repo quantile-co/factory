@@ -1,6 +1,6 @@
 {
   "name": "@quantile-co/factory-namespace",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Namespace Nix cache integration.",
   "type": "module",
@@ -35,5 +35,9 @@
     "build": "vite build",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --maxWorkers=4"
+  },
+  "dependencies": {
+    "@quantile-co/factory-github": "workspace:*",
+    "@quantile-co/factory-otel": "workspace:*"
   }
 }

@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       npm_package:
-        description: Package group to release
+        description: Package to release
         type: choice
-        default: factory
+        default: github
         options:
-          - factory
+          - github
           - namespace
           - otel
           - amp

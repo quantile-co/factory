@@ -18,6 +18,8 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { withWorkflowTrace } from "@quantile-co/factory-github";
+import { withSpan } from "@quantile-co/factory-otel";
 
 type Environment = NodeJS.ProcessEnv;
 interface Context {
@@ -331,10 +333,12 @@ async function ciFinish(context: Context): Promise<void> {
   }
 }
 async function ciCleanup(context: Context): Promise<void> {
-  const current = state(context.env);
-  if (!current) return;
-  await stop(current.record, context.env);
-  rmSync(current.directory, { recursive: true, force: true });
+  return withSpan("cache.cleanup", async () => {
+    const current = state(context.env);
+    if (!current) return;
+    await stop(current.record, context.env);
+    rmSync(current.directory, { recursive: true, force: true });
+  });
 }
 
 export async function namespaceCli(
@@ -368,8 +372,10 @@ export async function namespaceCli(
   }
   if (environment.GITHUB_REF !== "refs/heads/main")
     throw new Error("CI cache writes require main");
-  if (action === "proxy") await ciStart(port, context);
-  else if (action === "publish") await ciFinish(context);
+  if (action === "proxy")
+    await withSpan("cache.setup", () => ciStart(port, context));
+  else if (action === "publish")
+    await withSpan("cache.publish", () => ciFinish(context));
   else throw new Error("Expected proxy, publish or cleanup");
 }
 
@@ -397,10 +403,8 @@ export async function main(): Promise<void> {
   process.once("SIGINT", cancel);
   process.once("SIGTERM", cancel);
   try {
-    const output = await namespaceCli(
-      process.argv.slice(2),
-      process.env,
-      abort.signal,
+    const output = await withWorkflowTrace("namespace.nixcache", () =>
+      namespaceCli(process.argv.slice(2), process.env, abort.signal),
     );
     if (process.argv[3] === "proxy" && process.env.GITHUB_ENV) {
       for (const name of ["NIXCACHE_STATE", "NIX_CONFIG"]) {

@@ -1,3 +1,4 @@
+import { builtinModules } from "node:module";
 import { dts } from "rolldown-plugin-dts";
 import { defineConfig } from "vite";
 
@@ -6,6 +7,7 @@ export default defineConfig(({ command, mode }) => {
   const entry: Record<string, string> =
     mode === "plugin" ? { plugin: "src/plugin.ts" } : { index: "src/index.ts" };
   return {
+    resolve: { conditions: ["node", "module"], mainFields: ["module", "main"] },
     oxc: { exclude: [/\.js$/, /\.d\.[cm]?ts$/] },
     plugins:
       command === "build" && mode !== "plugin"
@@ -20,7 +22,10 @@ export default defineConfig(({ command, mode }) => {
         formats: ["es"],
         fileName: (_format, name) => `${name}.js`,
       },
-      rolldownOptions: { platform: "node", external: [/^node:/] },
+      rolldownOptions: {
+        platform: "node",
+        external: [/^node:/, ...builtinModules],
+      },
     },
   };
 });

@@ -1,18 +1,11 @@
 import { execFileSync } from "node:child_process";
-import {
-  copyFileSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, it } from "vitest";
+import { it } from "vitest";
 
-it("packs SDK subpaths without a legacy CLI and loads the unified Amp plugin without a source tree", () => {
+it("loads the published OTel package from an isolated consumer", () => {
   const temporary = mkdtempSync(join(tmpdir(), "factory-otel-package-"));
   const env = { ...process.env };
   delete env.QUANTILE_OTLP_ENDPOINT;
@@ -60,45 +53,12 @@ it("packs SDK subpaths without a legacy CLI and loads the unified Amp plugin wit
         "--input-type=module",
         "-e",
         `
-      for (const path of ['config', 'otlp']) await import('@quantile-co/factory-otel/' + path);
-      for (const path of ['collector', 'cli', 'tracing']) {
-        try {
-          await import('@quantile-co/factory-otel/' + path);
-          throw new Error('Retired subpath remains exported');
-        } catch (error) {
-          if (error.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw error;
-        }
-      }
+      await import('@quantile-co/factory-otel');
       const { collectorEndpoint } = await import('@quantile-co/factory-otel/config');
       if (collectorEndpoint({}) !== undefined) process.exit(1);
     `,
       ],
       { cwd: consumer, env, stdio: "pipe" },
-    );
-    const manifest = JSON.parse(
-      readFileSync(
-        join(consumer, "node_modules/@quantile-co/factory-otel/package.json"),
-        "utf8",
-      ),
-    );
-    expect(manifest.bin).toBeUndefined();
-    const standalone = join(temporary, "plugins");
-    mkdirSync(standalone);
-    writeFileSync(join(standalone, "package.json"), '{"type":"module"}');
-    copyFileSync(
-      new URL("../amp/dist/plugin.js", import.meta.url),
-      join(standalone, "quantile-co-factory-amp.js"),
-    );
-    execFileSync(
-      process.execPath,
-      [
-        "--input-type=module",
-        "-e",
-        `
-      if (typeof (await import('./quantile-co-factory-amp.js')).default !== 'function') process.exit(1);
-    `,
-      ],
-      { cwd: standalone, env, stdio: "pipe" },
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });

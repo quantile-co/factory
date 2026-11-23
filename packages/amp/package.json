@@ -1,6 +1,6 @@
 {
   "name": "@quantile-co/factory-amp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "description": "Amp orb runtime and native Herdr connections.",
   "type": "module",
@@ -28,7 +28,8 @@
     "./plugin": "./src/plugin.ts"
   },
   "dependencies": {
-    "@quantile-co/factory-otel": "workspace:*"
+    "@quantile-co/factory-otel": "workspace:*",
+    "@opentelemetry/api": "1.9.1"
   },
   "files": [
     "dist"

@@ -17,7 +17,7 @@ export default defineConfig(({ command }) => ({
     },
     rolldownOptions: {
       platform: "node",
-      external: [/^node:/],
+      external: [/^node:/, /^@quantile-co\//],
       output: { banner: "#!/usr/bin/env node" },
     },
   },

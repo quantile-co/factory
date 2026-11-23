@@ -15,6 +15,9 @@ export default defineConfig(({ command }) => ({
       formats: ["es"],
       fileName: (_format, name) => `${name}.js`,
     },
-    rolldownOptions: { platform: "node", external: [/^node:/] },
+    rolldownOptions: {
+      platform: "node",
+      external: [/^node:/, "@quantile-co/factory-otel"],
+    },
   },
 }));

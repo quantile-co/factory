@@ -1,6 +1,6 @@
 {
   "name": "@quantile-co/factory-otel",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "MIT",
   "description": "Collector endpoint configuration and OTLP metadata export.",
   "type": "module",
@@ -20,9 +20,9 @@
         "types": "./dist/config.d.ts",
         "default": "./dist/config.js"
       },
-      "./otlp": {
-        "types": "./dist/otlp.d.ts",
-        "default": "./dist/otlp.js"
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
       }
     }
   },
@@ -31,9 +31,9 @@
       "types": "./dist/config.d.ts",
       "default": "./src/config.ts"
     },
-    "./otlp": {
-      "types": "./dist/otlp.d.ts",
-      "default": "./src/otlp.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
     }
   },
   "files": [
@@ -43,5 +43,12 @@
     "build": "vite build",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --maxWorkers=4"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/resources": "2.12.1",
+    "@opentelemetry/sdk-trace-node": "2.12.1",
+    "@opentelemetry/sdk-trace-base": "2.12.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.223.2"
   }
 }

@@ -10,8 +10,10 @@ import {
   plan,
   processRunner,
   type TransportOptions,
+  withWorkflowTrace,
 } from "@quantile-co/factory-github";
 import { withNixCache } from "@quantile-co/factory-namespace";
+import { withSpan } from "@quantile-co/factory-otel";
 import { Command, Option } from "commander";
 import { syncCodeQuality } from "../../packages/github/src/code-quality.ts";
 import { installRunnerCollector } from "../../packages/github/src/runner/collector.ts";
@@ -82,9 +84,9 @@ program
   )
   .addOption(
     new Option("--npm-package <package>", "Release selection")
-      .choices(["factory", "namespace", "otel", "amp", "pi"])
+      .choices(["github", "namespace", "otel", "amp", "pi"])
       .env("NPM_PACKAGE")
-      .default("factory"),
+      .default("github"),
   )
   .action((options: { npmToken: string; npmPackage: string }) =>
     withNixCache(
@@ -108,13 +110,9 @@ program
           if (result.status !== 0)
             throw new CommandFailure(result.status ?? 1, `${task} failed`);
         };
-        const group =
-          options.npmPackage === "factory"
-            ? "npm"
-            : options.npmPackage === "namespace"
-              ? "namespace:nixcache"
-              : options.npmPackage;
-        run(`${group}:pack`, buildEnvironment);
+        await withSpan("build.pack", async () =>
+          run(`${options.npmPackage}:pack`, buildEnvironment),
+        );
         execFileSync("git", ["diff", "--exit-code", "HEAD"], {
           cwd: root,
           env: buildEnvironment,
@@ -130,11 +128,13 @@ program
               mode: 0o600,
             },
           );
-          run(`${group}:stage`, {
-            ...buildEnvironment,
-            NPM_TOKEN: options.npmToken,
-            NPM_CONFIG_USERCONFIG: config,
-          });
+          await withSpan("build.stage", async () =>
+            run(`${options.npmPackage}:stage`, {
+              ...buildEnvironment,
+              NPM_TOKEN: options.npmToken,
+              NPM_CONFIG_USERCONFIG: config,
+            }),
+          );
         } finally {
           rmSync(directory, { recursive: true, force: true });
         }
@@ -317,7 +317,7 @@ program.command("test").action(() =>
 );
 
 try {
-  await program.parseAsync();
+  await withWorkflowTrace("factory.github", () => program.parseAsync());
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = abort.signal.aborted

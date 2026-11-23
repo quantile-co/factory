@@ -19,11 +19,113 @@ import { expect, it } from "vitest";
 import {
   type Action,
   apply,
+  buildImage,
   CommandFailure,
   plan,
   processRunner,
   publishNixCache,
 } from "./index.ts";
+
+it.each([undefined, "application"])(
+  "builds, publishes and records the exact image receipt with layer=%s",
+  async (layer) => {
+    const directory = mkdtempSync(join(tmpdir(), "factory-image-"));
+    const repository = "us-central1-docker.pkg.dev/example/images/service";
+    const digest = `sha256:${"b".repeat(64)}`;
+    const signal = new AbortController().signal;
+    const options = {
+      bucket: "example-tf-state",
+      project: "example",
+      repositoryId: "123",
+      runId: "456",
+      attempt: "1",
+      source: "a".repeat(40),
+      repository,
+      installable: ".#service-image",
+      directory,
+      layer,
+      signal,
+    };
+    const calls: string[] = [];
+    try {
+      const result = await buildImage(
+        options,
+        async (program, args, execution) => {
+          calls.push("build");
+          expect(program).toBe("nix");
+          expect(args).toEqual([
+            "build",
+            options.installable,
+            "--no-link",
+            "--print-out-paths",
+          ]);
+          expect(execution?.signal).toBe(signal);
+          return "/nix/store/fixture-image";
+        },
+        async (program, args, execution) => {
+          expect(execution?.signal).toBe(signal);
+          calls.push(`${program} ${args[0]}`);
+          if (args[0] === "auth") return "fixture-token";
+          if (args[0] === "login") {
+            expect(execution?.input).toBe("fixture-token");
+            expect(args.at(-1)).toBe("us-central1-docker.pkg.dev");
+            writeFileSync(join(directory, "auth.json"), "{}");
+          } else if (args[0] === "copy") {
+            expect(lstatSync(join(directory, "auth.json")).mode & 0o777).toBe(
+              0o600,
+            );
+            expect(args.slice(-2)).toEqual([
+              "docker-archive:/nix/store/fixture-image",
+              `docker://${repository}:456-1`,
+            ]);
+            writeFileSync(join(directory, "digest"), digest);
+          } else if (args[1] === "cp") {
+            expect(args[3]).toBe(
+              "gs://example-tf-state/builds/123/456/1/build.json",
+            );
+            expect(args).toContain("--if-generation-match=0");
+            expect(
+              JSON.parse(readFileSync(join(directory, "build.json"), "utf8")),
+            ).toEqual({
+              ...(layer === undefined ? {} : { layer }),
+              repositoryId: "123",
+              runId: "456",
+              attempt: "1",
+              source: options.source,
+              image: `${repository}@${digest}`,
+            });
+            expect(lstatSync(join(directory, "build.json")).mode & 0o777).toBe(
+              0o600,
+            );
+          } else {
+            expect(args.slice(0, 4)).toEqual([
+              "storage",
+              "objects",
+              "describe",
+              "gs://example-tf-state/builds/123/456/1/build.json",
+            ]);
+            return "42";
+          }
+          return "";
+        },
+      );
+      expect(result).toEqual({
+        reference: "456/1/42",
+        image: `${repository}@${digest}`,
+      });
+      expect(calls).toEqual([
+        "build",
+        "gcloud auth",
+        "skopeo login",
+        "skopeo copy",
+        "gcloud storage",
+        "gcloud storage",
+      ]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
 
 it("GitHub Test runs the ordinary test task without a signing secret and forwards failure", () => {
   const root = mkdtempSync(join(tmpdir(), "factory-github-test-"));
@@ -59,7 +161,7 @@ it("GitHub Test runs the ordinary test task without a signing secret and forward
   }
 });
 
-it("packs a standalone JavaScript transport with declarations for downstreams", () => {
+it("loads the packed GitHub library with its published declarations and dependencies", () => {
   const root = mkdtempSync(join(tmpdir(), "factory-github-packed-"));
   try {
     const archive = join(root, "transport.tgz");
@@ -67,15 +169,32 @@ it("packs a standalone JavaScript transport with declarations for downstreams", 
       cwd: fileURLToPath(new URL("..", import.meta.url)),
       encoding: "utf8",
     });
+    const telemetry = join(root, "otel.tgz");
+    execFileSync("pnpm", ["pack", "--out", telemetry], {
+      cwd: fileURLToPath(new URL("../../otel", import.meta.url)),
+    });
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({
+        private: true,
+        dependencies: { "@quantile-co/factory-github": "file:transport.tgz" },
+      }),
+    );
+    writeFileSync(
+      join(root, "pnpm-workspace.yaml"),
+      "overrides:\n  '@quantile-co/factory-otel': file:otel.tgz\n",
+    );
+    execFileSync(
+      "pnpm",
+      [
+        "install",
+        "--prefer-offline",
+        "--ignore-scripts",
+        "--no-frozen-lockfile",
+      ],
+      { cwd: root, stdio: "pipe" },
+    );
     const installed = join(root, "node_modules/@quantile-co/factory-github");
-    mkdirSync(installed, { recursive: true });
-    execFileSync("tar", [
-      "-xzf",
-      archive,
-      "--strip-components=1",
-      "-C",
-      installed,
-    ]);
     const manifest = JSON.parse(
       readFileSync(join(installed, "package.json"), "utf8"),
     );
@@ -162,14 +281,14 @@ it("cache publication validates keys and removes its private scratch after succe
 });
 
 it.each([
-  ["factory", "npm", 17, 0],
-  ["factory", "npm", 0, 23],
-  ["factory", "npm", 0, 0],
-  ["amp", "amp", 0, 0],
-  ["pi", "pi", 0, 0],
+  ["github", 17, 0],
+  ["github", 0, 23],
+  ["github", 0, 0],
+  ["amp", 0, 0],
+  ["pi", 0, 0],
 ] as const)(
-  "Build isolates npm credentials (%s, %s, pack=%i, stage=%i)",
-  (npmPackage, group, packExit, stageExit) => {
+  "Build isolates npm credentials (%s, pack=%i, stage=%i)",
+  (npmPackage, packExit, stageExit) => {
     const temporary = mkdtempSync(join(tmpdir(), "factory-build-cli-"));
     try {
       const bin = join(temporary, "bin");
@@ -234,12 +353,12 @@ process.exit(Number(process.argv[3].endsWith(":pack") ? e.TEST_PACK_EXIT : e.TES
         .trim()
         .split("\n")
         .map((line) => JSON.parse(line));
-      expect(calls[0].args).toEqual(["run", `${group}:pack`]);
+      expect(calls[0].args).toEqual(["run", `${npmPackage}:pack`]);
       expect(calls[0].token).toBeUndefined();
       expect(calls[0].config).toBeUndefined();
       expect(calls).toHaveLength(packExit ? 1 : 2);
       if (!packExit) {
-        expect(calls[1].args).toEqual(["run", `${group}:stage`]);
+        expect(calls[1].args).toEqual(["run", `${npmPackage}:stage`]);
         expect(calls[1].token).toBe("fixture-credential");
         expect(calls[1].contents).toBe(
           `//registry.npmjs.org/:_authToken=\${NPM_TOKEN}\n`,

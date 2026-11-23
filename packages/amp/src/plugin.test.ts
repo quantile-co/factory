@@ -1,11 +1,15 @@
-import { exportSpans } from "@quantile-co/factory-otel/otlp";
+import { createTracing } from "@quantile-co/factory-otel";
 import { afterEach, expect, it, vi } from "vitest";
 import plugin, { type AmpPlugin } from "./plugin.ts";
 import type { TelemetryPlugin } from "./telemetry.ts";
 
-vi.mock("@quantile-co/factory-otel/otlp", async (original) => ({
-  ...(await original<object>()),
-  exportSpans: vi.fn(async () => true),
+vi.mock("@quantile-co/factory-otel", () => ({
+  createTracing: vi.fn(() => ({
+    forceFlush: vi.fn(async () => {}),
+    getTracer: vi.fn(() => ({
+      startSpan: vi.fn(() => ({ setAttribute: vi.fn(), end: vi.fn() })),
+    })),
+  })),
 }));
 const activity = vi.hoisted(() => vi.fn());
 vi.mock("node:child_process", async (original) => {
@@ -77,7 +81,7 @@ async function fixture(
   return { acquire, release, commands, handlers, log, select };
 }
 
-it("registers both capabilities through one plugin and exports native spans locally", async () => {
+it("registers both capabilities through one plugin and creates a private tracer", async () => {
   vi.stubEnv("QUANTILE_OTLP_ENDPOINT", "https://collector.example");
   const f = await fixture();
   expect(f.commands.size).toBe(3);
@@ -93,13 +97,10 @@ it("registers both capabilities through one plugin and exports native spans loca
   };
   f.handlers.get("agent.start")?.(event);
   await f.handlers.get("agent.end")?.(event);
-  expect(exportSpans).toHaveBeenCalledWith(
-    { endpoint: "http://127.0.0.1:4318" },
-    expect.objectContaining({ "service.name": "factory-amp" }),
-    "factory.amp",
-    expect.any(Array),
-    2,
-  );
+  expect(createTracing).toHaveBeenCalledWith("factory-amp");
+  expect(
+    vi.mocked(createTracing).mock.results[0].value.getTracer,
+  ).toHaveBeenCalledWith("factory.amp");
   await f.select("on");
   expect(f.acquire).toHaveBeenCalledOnce();
 });

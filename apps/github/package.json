@@ -12,6 +12,7 @@
   "dependencies": {
     "@quantile-co/factory-namespace": "workspace:*",
     "@quantile-co/factory-github": "workspace:*",
-    "commander": "15.0.0"
+    "commander": "15.0.0",
+    "@quantile-co/factory-otel": "workspace:*"
   }
 }

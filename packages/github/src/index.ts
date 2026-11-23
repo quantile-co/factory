@@ -7,11 +7,55 @@ import {
   mkdirSync,
   mkdtempSync,
   openSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { constants } from "node:os";
 import { isAbsolute, join } from "node:path";
+import { createTracing, withSpan } from "@quantile-co/factory-otel";
+
+/** One provider per Actions CLI process; normal local invocations stay uninstrumented. */
+export async function withWorkflowTrace<T>(
+  service: string,
+  task: () => Promise<T>,
+): Promise<T> {
+  const {
+    GITHUB_ACTIONS,
+    GITHUB_REPOSITORY_ID,
+    GITHUB_RUN_ID,
+    GITHUB_RUN_ATTEMPT,
+  } = process.env;
+  if (
+    GITHUB_ACTIONS !== "true" ||
+    !GITHUB_REPOSITORY_ID ||
+    !GITHUB_RUN_ID ||
+    !GITHUB_RUN_ATTEMPT ||
+    ![GITHUB_REPOSITORY_ID, GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT].every((id) =>
+      /^[1-9][0-9]{0,19}$/.test(id),
+    )
+  )
+    return task();
+  let provider: ReturnType<typeof createTracing>;
+  try {
+    provider = createTracing(service, {
+      "github.repository.id": GITHUB_REPOSITORY_ID,
+      "github.workflow.run.id": GITHUB_RUN_ID,
+      "github.workflow.run.attempt": GITHUB_RUN_ATTEMPT,
+      ...(/^[a-zA-Z_][a-zA-Z0-9_-]{0,99}$/.test(
+        process.env.GITHUB_JOB ?? "",
+      ) && { "github.job": process.env.GITHUB_JOB }),
+    });
+    provider.register({ propagator: null });
+  } catch {
+    return task();
+  }
+  try {
+    return await withSpan(service, task);
+  } finally {
+    await provider.shutdown().catch(() => {});
+  }
+}
 
 export interface Execution {
   input?: string;
@@ -129,6 +173,142 @@ export function processRunner(environment: NodeJS.ProcessEnv): Execute {
     });
 }
 
+export interface ImageBuildOptions {
+  bucket: string;
+  project: string;
+  repositoryId: string;
+  runId: string;
+  attempt: string;
+  source: string;
+  repository: string;
+  installable: string;
+  directory: string;
+  layer?: string;
+  signal?: AbortSignal;
+}
+
+// Build and publication use separate runners so registry credentials never enter Nix.
+export async function buildImage(
+  options: ImageBuildOptions,
+  build: Execute,
+  execute: Execute,
+): Promise<{ reference: string; image: string }> {
+  const { project, repository, runId, attempt, directory, signal } = options;
+  const image = await withSpan("image.build", () =>
+    build(
+      "nix",
+      ["build", options.installable, "--no-link", "--print-out-paths"],
+      { signal },
+    ),
+  );
+  if (!/^\/nix\/store\/[^\s]+$/.test(image))
+    throw new Error("Expected one Nix image output");
+  const digest = await withSpan("image.publish", async () => {
+    const authfile = join(directory, "auth.json");
+    const digestfile = join(directory, "digest");
+    const token = await execute(
+      "gcloud",
+      ["auth", "print-access-token", `--project=${project}`, "--quiet"],
+      { signal },
+    );
+    await execute(
+      "skopeo",
+      [
+        "login",
+        "--authfile",
+        authfile,
+        "--username",
+        "oauth2accesstoken",
+        "--password-stdin",
+        repository.slice(0, repository.indexOf("/")),
+      ],
+      { signal, input: token },
+    );
+    chmodSync(authfile, 0o600);
+    await execute(
+      "skopeo",
+      [
+        "copy",
+        "--authfile",
+        authfile,
+        "--digestfile",
+        digestfile,
+        `docker-archive:${image}`,
+        `docker://${repository}:${runId}-${attempt}`,
+      ],
+      { signal },
+    );
+    const digest = readFileSync(digestfile, "utf8").trim();
+    if (!/^sha256:[0-9a-f]{64}$/.test(digest))
+      throw new Error("Invalid published image digest");
+    return digest;
+  });
+  const imageReference = `${repository}@${digest}`;
+  const reference = await withSpan("image.receipt", () =>
+    publishBuild({ ...options, image: imageReference }, execute),
+  );
+  return { reference, image: imageReference };
+}
+
+async function publishBuild(
+  options: Omit<ImageBuildOptions, "repository" | "installable"> & {
+    image: string;
+  },
+  execute: Execute,
+): Promise<string> {
+  if (
+    !/^[a-z0-9][a-z0-9._-]*$/.test(options.bucket) ||
+    ![options.repositoryId, options.runId, options.attempt].every((value) =>
+      /^[1-9][0-9]*$/.test(value),
+    )
+  )
+    throw new Error("Invalid build storage identity");
+  const destination = `gs://${options.bucket}/builds/${options.repositoryId}/${options.runId}/${options.attempt}/build.json`;
+  const file = join(options.directory, "build.json");
+  writeFileSync(
+    file,
+    JSON.stringify({
+      ...(options.layer === undefined ? {} : { layer: options.layer }),
+      repositoryId: options.repositoryId,
+      runId: options.runId,
+      attempt: options.attempt,
+      source: options.source,
+      image: options.image,
+    }),
+    { mode: 0o600, flag: "wx" },
+  );
+  await execute(
+    "gcloud",
+    [
+      "storage",
+      "cp",
+      file,
+      destination,
+      "--if-generation-match=0",
+      `--project=${options.project}`,
+      "--quiet",
+    ],
+    { signal: options.signal },
+  );
+  const generation = await execute(
+    "gcloud",
+    [
+      "storage",
+      "objects",
+      "describe",
+      destination,
+      "--raw",
+      "--format=value(generation)",
+      `--project=${options.project}`,
+      "--quiet",
+    ],
+    { signal: options.signal },
+  );
+  if (!/^[1-9][0-9]*$/.test(generation))
+    throw new Error("Invalid build generation");
+  return `${options.runId}/${options.attempt}/${generation}`;
+}
+
 export async function publishNixCache(
   options: {
     scratchDirectory: string;
@@ -244,35 +424,40 @@ export async function plan(
   const paths = privatePaths(options, "plan");
   const destination = `${base(options)}/${options.runId}/${options.attempt}`;
   try {
-    await action({ ...paths, signal: options.signal });
+    await withSpan("plan.execute", () =>
+      action({ ...paths, signal: options.signal }),
+    );
     requirePlan(paths.planFile);
-    await execute(
-      "gcloud",
-      [
-        "storage",
-        "cp",
-        "--recursive",
-        paths.directory,
-        `${destination}/`,
-        "--if-generation-match=0",
-        "--quiet",
-      ],
-      { signal: options.signal },
-    );
-    const generation = await execute(
-      "gcloud",
-      [
-        "storage",
-        "objects",
-        "describe",
-        `${destination}/saved-plan/plan.tfplan`,
-        "--raw",
-        "--format=value(generation)",
-      ],
-      { signal: options.signal },
-    );
-    if (!/^[1-9][0-9]*$/.test(generation))
-      throw new Error("Invalid saved-plan generation");
+    const generation = await withSpan("plan.upload", async () => {
+      await execute(
+        "gcloud",
+        [
+          "storage",
+          "cp",
+          "--recursive",
+          paths.directory,
+          `${destination}/`,
+          "--if-generation-match=0",
+          "--quiet",
+        ],
+        { signal: options.signal },
+      );
+      const generation = await execute(
+        "gcloud",
+        [
+          "storage",
+          "objects",
+          "describe",
+          `${destination}/saved-plan/plan.tfplan`,
+          "--raw",
+          "--format=value(generation)",
+        ],
+        { signal: options.signal },
+      );
+      if (!/^[1-9][0-9]*$/.test(generation))
+        throw new Error("Invalid saved-plan generation");
+      return generation;
+    });
     const reference = `${options.runId}/${options.attempt}/${generation}`;
     appendFileSync(options.summaryFile, `Plan reference: ${reference}\n`, {
       mode: 0o600,
