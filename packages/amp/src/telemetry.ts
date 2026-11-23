@@ -45,8 +45,9 @@ export default function telemetry(amp: TelemetryPlugin): void {
   // the host's global provider or pass outbound credentials from this adapter.
   const provider = createTracing("factory-amp");
   const tracer = provider.getTracer("factory.amp");
-  const turns = new Map<string, Span>();
-  const tools = new Map<string, Span>();
+  type OpenSpan = { threadId: string; span: Span };
+  const turns = new Map<string, OpenSpan>();
+  const tools = new Map<string, OpenSpan>();
   const usageSeen = new Set<string>();
   let warned = false;
 
@@ -67,35 +68,37 @@ export default function telemetry(amp: TelemetryPlugin): void {
       ? { "amp.thread.id": event.thread.id }
       : {};
   }
-  function parent(event: Event) {
-    const id = identity(event, event.id);
-    const turn = id === undefined ? undefined : turns.get(id);
-    return turn ? trace.setSpan(ROOT_CONTEXT, turn) : ROOT_CONTEXT;
+  // Tool events identify the thread, not the turn. Never guess if turns overlap.
+  function toolParent(threadId: string) {
+    let parent: Span | undefined;
+    for (const turn of turns.values()) {
+      if (turn.threadId !== threadId) continue;
+      if (parent) return ROOT_CONTEXT;
+      parent = turn.span;
+    }
+    return parent ? trace.setSpan(ROOT_CONTEXT, parent) : ROOT_CONTEXT;
   }
   function start(
-    map: Map<string, Span>,
+    map: Map<string, OpenSpan>,
     id: string | undefined,
     name: string,
     event: Event,
+    parent = ROOT_CONTEXT,
   ) {
     if (id !== undefined && !map.has(id) && map.size < 1024)
-      map.set(
-        id,
-        tracer.startSpan(
-          name,
-          { attributes: attributes(event) },
-          parent(event),
-        ),
-      );
+      map.set(id, {
+        threadId: event.thread.id,
+        span: tracer.startSpan(name, { attributes: attributes(event) }, parent),
+      });
   }
   function finish(
-    map: Map<string, Span>,
+    map: Map<string, OpenSpan>,
     id: string | undefined,
     event: Event,
     tool = false,
   ) {
     if (id === undefined) return;
-    const span = map.get(id);
+    const span = map.get(id)?.span;
     map.delete(id);
     if (!span) return;
     try {
@@ -116,7 +119,13 @@ export default function telemetry(amp: TelemetryPlugin): void {
   });
   amp.on("tool.call", (event) => {
     safely(() =>
-      start(tools, identity(event, event.toolUseID), "amp.tool", event),
+      start(
+        tools,
+        identity(event, event.toolUseID),
+        "amp.tool",
+        event,
+        toolParent(event.thread.id),
+      ),
     );
     return { action: "allow" };
   });
@@ -125,8 +134,10 @@ export default function telemetry(amp: TelemetryPlugin): void {
     // Returning undefined leaves the native tool result unchanged.
   });
   amp.on("agent.end", async (event) => {
-    const context = parent(event);
-    safely(() => finish(turns, identity(event, event.id), event));
+    const turnId = identity(event, event.id);
+    const turn = turnId === undefined ? undefined : turns.get(turnId)?.span;
+    const context = turn ? trace.setSpan(ROOT_CONTEXT, turn) : ROOT_CONTEXT;
+    safely(() => finish(turns, turnId, event));
     safely(() => {
       // The pinned public ThreadMessage schema currently omits usage. Only consume
       // actual numeric message usage if supplied; never estimate or read transcripts.

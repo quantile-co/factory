@@ -74,11 +74,17 @@ it("uses a private SDK tracer and emits only metadata and actual deduplicated us
   };
   expect(handlers.get("agent.start")?.(privateEvent)).toBeUndefined();
   const turn = sdk.startSpan.mock.results[0].value;
-  expect(handlers.get("tool.call")?.(privateEvent)).toEqual({
+  const toolEvent = {
+    thread: event.thread,
+    toolUseID: event.toolUseID,
+    tool: event.tool,
+    status: event.status,
+  };
+  expect(handlers.get("tool.call")?.(toolEvent)).toEqual({
     action: "allow",
   });
   const tool = sdk.startSpan.mock.results[1].value;
-  expect(handlers.get("tool.result")?.(privateEvent)).toBeUndefined();
+  expect(handlers.get("tool.result")?.(toolEvent)).toBeUndefined();
   const messages = [
     {
       role: "assistant",
