@@ -233,8 +233,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/amp
       commander:
-        specifier: 15.0.0
-        version: 15.0.0
+        specifier: 15.1.0
+        version: 15.1.0
 
   apps/github:
     dependencies:
@@ -248,8 +248,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/otel
       commander:
-        specifier: 15.0.0
-        version: 15.0.0
+        specifier: 15.1.0
+        version: 15.1.0
 
   apps/namespace:
     dependencies:
@@ -1245,8 +1245,8 @@ packages:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
 
-  commander@15.0.0:
-    resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
+  commander@15.1.0:
+    resolution: {integrity: sha512-cgnQ88TRrWcC7pVq46RzJVRMktu3W2RcbnoidnfBsl1bmDCBwJS/udcIZpKoCrbAYYaCqsz1yZCVIgbIaU3ddQ==}
     engines: {node: '>=22.12.0'}
 
   cross-spawn@7.0.6:
@@ -2763,7 +2763,7 @@ snapshots:
 
   chownr@3.0.0: {}
 
-  commander@15.0.0: {}
+  commander@15.1.0: {}
 
   cross-spawn@7.0.6:
     dependencies:
