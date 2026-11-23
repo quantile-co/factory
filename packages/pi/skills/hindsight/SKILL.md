@@ -13,9 +13,9 @@ before consolidation. Native `prefer_observations: true` suppresses raw facts th
 support returned observations, without excluding unconsolidated experience. This
 is not semantic deduplication or a guarantee of relevance, truth or freshness.
 The fact-text budget remains 2,000 tokens; metadata, injected guidance and the
-server's oversized-top-result fallback can exceed that budget. Keep broad Pi-managed default pages disabled. Pi-created initiatives remain
-manual-refresh unless explicitly adopted into the approved Terraform configuration;
-Terraform-managed pages use their declared server-side schedule.
+server's oversized-top-result fallback can exceed that budget. Keep broad Pi-managed
+default pages disabled. Ordinary initiatives stay Pi-owned and default to manual
+refresh. Terraform-managed recaps use their declared server-side schedules.
 After cutover, do not recreate MEMORY.md, daily logs, QMD memory collections or
 memory commits.
 
@@ -264,8 +264,10 @@ in-scope memories are available. Pages are searched/read on demand; their full
 contents are not injected into every prompt. Automatic fact recall is separate.
 
 Each Terraform root supplies its repository-specific `additional_pages` definitions.
-Factory's root defines its three initiatives and their existing top-level folder;
-page identities belong in state, not adoption-only module inputs. Root pages and
+Reserve Terraform ownership for explicitly approved durable recaps, not ordinary
+initiatives. Factory defines Full-fidelity ClickHouse Observability in the
+existing Initiatives folder; page identities belong in state, not adoption-only
+module inputs. Root pages and
 existing top-level folders are supported; the module does not create or move folders.
 Keep one-time import descriptors out of the permanent module/root configuration.
 Native import must use the same metadata endpoint, projection and required-object
@@ -289,8 +291,9 @@ in native Pi configuration. With the pinned coding-agent package, disabling
 enable archive seeding to provision pages. Do not duplicate Terraform-owned
 questions in Pi `customPages` or change their definitions/schedules through API
 tools. `hindsight_capture_initiative` with an existing `relates_to_page_id` records
-an update marker without changing the page definition. New initiatives remain
-Pi-created/manual until explicitly adopted by their repository's Terraform root.
+an update marker without changing the page definition. For a page being detached
+from Terraform, wait for the protected state-only Apply and verify that the same
+Cloud page remains before changing its schedule outside Terraform.
 
 Account setup, credentials, production Plan/Apply, paid uploads, package
 publication and each consumer activation require their own approvals.

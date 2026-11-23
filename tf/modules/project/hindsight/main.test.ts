@@ -515,6 +515,70 @@ module "memory" {
       expect(state).not.toContain("fixture-private-mission");
       expect(state).not.toContain(privateContent);
       expect(state).not.toContain("PRIVATE_TRIGGER_METADATA");
+
+      if (scenario === "import") {
+        const keep = JSON.parse(env.TF_VAR_pages ?? "{}");
+        env.TF_VAR_pages = JSON.stringify({
+          ...keep,
+          amp_adoption: { ...keep.initiative, name: "Amp fixture" },
+          hindsight_rollout: { ...keep.initiative, name: "Rollout fixture" },
+        });
+        await tofu("apply", "-auto-approve", "-input=false", "-no-color");
+        const before = [...pages.values()];
+        expect(before).toHaveLength(4);
+        const requestStart = requests.length;
+
+        env.TF_VAR_pages = JSON.stringify(keep);
+        writeFileSync(
+          join(work, "hindsight-page-detachment.tf"),
+          readFileSync(
+            resolve(
+              moduleDir,
+              "../../../infrastructure/hindsight-page-detachment.tf",
+            ),
+            "utf8",
+          ).replaceAll("module.hindsight.", "module.memory."),
+        );
+        await tofu("plan", "-input=false", "-no-color", "-out=detach.tfplan");
+        const detach = JSON.parse(
+          (await tofu("show", "-json", "detach.tfplan")).stdout,
+        );
+        const mutations = detach.resource_changes
+          .filter((r: { change: { actions: string[] } }) =>
+            r.change.actions.some((action) => action !== "no-op"),
+          )
+          .map(
+            (r: {
+              previous_address?: string;
+              change: { actions: string[] };
+            }) => ({
+              from: r.previous_address,
+              actions: r.change.actions,
+            }),
+          );
+        expect(mutations).toHaveLength(2);
+        expect(mutations).toEqual(
+          expect.arrayContaining(
+            ["amp_adoption", "hindsight_rollout"].map((key) => ({
+              from: `module.memory.restful_resource.page["${key}"]`,
+              actions: ["forget"],
+            })),
+          ),
+        );
+        await tofu("apply", "-input=false", "-no-color", "detach.tfplan");
+        await tofu("plan", "-detailed-exitcode", "-input=false", "-no-color");
+        expect((await tofu("state", "list")).stdout.trim().split("\n")).toEqual(
+          [
+            "module.memory.restful_resource.bank",
+            'module.memory.restful_resource.page["initiative"]',
+            'module.memory.restful_resource.page["procedures"]',
+          ],
+        );
+        expect([...pages.values()]).toEqual(before);
+        expect(
+          requests.slice(requestStart).every((r) => r.startsWith("GET ")),
+        ).toBe(true);
+      }
     } finally {
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));

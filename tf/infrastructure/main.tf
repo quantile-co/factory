@@ -6,21 +6,6 @@ locals {
   project_members = []
 
   hindsight_pages = {
-    hindsight_rollout = {
-      name         = "Parallel Hindsight rollout coordination"
-      parent_id    = "kf-d8f8581471bf4e229bb04f03fc8e0f74"
-      tags         = ["knowledge:feature-work"]
-      source_query = <<-EOT
-        Summarize only Factory's Hindsight rollout and maintenance: the chosen memory
-        architecture, repository isolation, native Pi configuration, migration and
-        verification decisions, and unresolved rollout work. Distinguish decisions,
-        proposals, assistant claims and evidenced outcomes; give dates and source
-        references where available. Treat old status as historical, not current.
-        Mention other repositories only where they directly constrain this rollout.
-        Exclude observability/Amp implementation details, unrelated tasks, repeated
-        chronology and credentials. Keep the answer concise and say what is unknown.
-      EOT
-    }
     observability = {
       name         = "Full-fidelity ClickHouse Observability"
       parent_id    = "kf-d8f8581471bf4e229bb04f03fc8e0f74"
@@ -34,21 +19,6 @@ locals {
         Exclude memory-rollout work, unrelated Amp adoption, repeated chronology,
         credentials and raw telemetry payloads. Mark superseded designs and do not
         present historical status as current. Keep the answer concise.
-      EOT
-    }
-    amp_adoption = {
-      name         = "Amp consumer source adoption"
-      parent_id    = "kf-d8f8581471bf4e229bb04f03fc8e0f74"
-      tags         = ["knowledge:feature-work"]
-      source_query = <<-EOT
-        Summarize only Factory's Amp consumer adoption initiative: approved integration
-        decisions and rationale, consumer requirements, completed qualifications with
-        supporting evidence, and outstanding qualifications. Distinguish decisions,
-        proposals and agent claims; include dates and source references where available.
-        Mention other repositories only for relevant consumer boundaries and obligations.
-        Exclude Hindsight migration, unrelated observability implementation, duplicate
-        chronology and credentials. Mark superseded approaches and avoid unsupported
-        claims about present deployment status. Keep the answer concise.
       EOT
     }
   }
