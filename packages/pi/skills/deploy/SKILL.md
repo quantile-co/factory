@@ -25,6 +25,7 @@ authorization to Apply. Obtain separate approval for each dispatch, credential
 operation, state repair or retry. Preserve main/prod restrictions, WIF,
 backend locks, shared production concurrency and deletion protection.
 
+For an explicitly authorized recovery operation, use [break-glass](../break-glass/SKILL.md).
 Never reseed existing infrastructure or use local Apply to bypass CI. For a
 confirmed new installation use [Day Zero](../day-zero-deploy/SKILL.md). Keep
 credentials, state, plans and provider payloads out of Git and public logs.

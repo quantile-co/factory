@@ -13,6 +13,8 @@ pinned Factory module sources, the consumer's shell and task scripts, and produc
 of the workflow's logical `--tf-layer`. Do not substitute unverified bootstrap instructions
 or assume a local checkout without state is a fresh installation.
 
+For missing operator privileges, follow [break-glass](../break-glass/SKILL.md) before the seed.
+
 Confirm the target and inventory existing resources and local/remote state
 first. For an existing installation use [deploy](../deploy/SKILL.md). Execute
 only an explicitly approved phase. Each credential operation, import, Apply,

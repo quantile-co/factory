@@ -41,6 +41,13 @@
       "computedHash": "ca00ef2671d65a7442bc796e8744cd3d759f92c01640f2fbcab638889c494424",
       "via": "@quantile-co/factory-pi"
     },
+    "break-glass": {
+      "source": "@quantile-co/factory-pi",
+      "sourceType": "node_modules",
+      "skillPath": "skills/break-glass/SKILL.md",
+      "version": "0.1.12",
+      "computedHash": "ba3f2e012250d479b81a91e5e25f240bda0c10d3200cc1a30a7cca17c4cfb831"
+    },
     "clean-architecture": {
       "source": "ciembor/agent-rules-books",
       "ref": "893a88a6fce3a80c565bf39ac65021b43a8b2990",
@@ -117,15 +124,15 @@
       "source": "@quantile-co/factory-pi",
       "sourceType": "node_modules",
       "skillPath": "skills/day-zero-deploy/SKILL.md",
-      "version": "0.1.9",
-      "computedHash": "9690342da7cb0ade8c7679396f2048e04d34d011ae2548885a32c0383c4c302d"
+      "version": "0.1.12",
+      "computedHash": "1caf78230b8034b76478b0c70db52e2fd6007957fb9327b76d63d6fdd863422c"
     },
     "deploy": {
       "source": "@quantile-co/factory-pi",
       "sourceType": "node_modules",
       "skillPath": "skills/deploy/SKILL.md",
-      "version": "0.1.9",
-      "computedHash": "384b975672f085afa7459b229cf602f961c74c97bcbe43d0e71324e484924d9a"
+      "version": "0.1.12",
+      "computedHash": "a32a4a6f4f8b479ad5db763964da95187f481f6e5fe5e76f27411eeca7725b79"
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
@@ -283,7 +290,7 @@
       "source": "@quantile-co/factory-pi",
       "sourceType": "node_modules",
       "skillPath": "skills/hindsight/SKILL.md",
-      "version": "0.1.9",
+      "version": "0.1.12",
       "computedHash": "dea65b8c0b282058c9b3aacaec26df2625a120bfae96e0957d40219f456b886e"
     },
     "hunk-review": {

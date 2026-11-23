@@ -69,6 +69,7 @@ it("packs only Factory skills and loads extensions independently of skill sync",
   const catalog = loadSkillsFromDir({ dir: skillRoot, source: "package" });
   expect(catalog.diagnostics).toEqual([]);
   expect(catalog.skills.map((skill) => skill.name).sort()).toEqual([
+    "break-glass",
     "day-zero-deploy",
     "deploy",
     "hindsight",
@@ -394,6 +395,7 @@ it("lets downstreams synchronize and exclude packaged skills without activating 
     ).toEqual(["consumer-owned", "deploy"]);
     sync("--exclude", "@quantile-co/factory-pi#deploy");
     expect(readdirSync(canonical).sort()).toEqual([
+      "break-glass",
       "consumer-owned",
       "day-zero-deploy",
       "hindsight",

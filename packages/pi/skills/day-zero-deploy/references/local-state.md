@@ -161,8 +161,8 @@ unset REST_API_BEARER
 ## 4. CI configuration
 
 Verify main/prod restrictions, existing WIF/IAM rules and the Namespace runner.
-Confirm `CACHIX_AUTH_TOKEN` is available to the protected workflow steps; do not
-print or recreate existing secrets. Approve variable and secret changes before
+Verify only the credentials for the configured cache provider (see the
+[configuration contract](../../deploy/references/configuration.md)). Do not print or recreate secrets. Approve variable and secret changes before
 running the following commands.
 
 ```sh
