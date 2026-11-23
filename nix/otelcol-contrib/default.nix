@@ -1,4 +1,12 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.quantile-co.factory.otelcol-contrib;
+in
 {
   options.quantile-co.factory.otelcol-contrib = {
     package = lib.mkOption {
@@ -10,6 +18,16 @@
           go = pkgs.go_1_26;
         }).otelcol-contrib;
       description = "Upstream contrib collector from the locked Nixpkgs input; starts nothing on import.";
+    };
+    shellHook = lib.mkOption {
+      type = lib.types.lines;
+      default = ''
+        export QUANTILE_OTELCOL_BINARY=${lib.getExe cfg.package}
+        export QUANTILE_OTELCOL_CONFIG=${cfg.hostConfigFile}
+        export QUANTILE_OTELCOL_DOCKER_CONFIG=${cfg.dockerConfigFile}
+        export QUANTILE_OTELCOL_JOURNAL_CONFIG=${cfg.journalConfigFile}
+      '';
+      description = "Expose the collector executable and configuration paths without starting it.";
     };
     hostConfigFile = lib.mkOption {
       type = lib.types.path;

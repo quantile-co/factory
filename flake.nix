@@ -159,12 +159,7 @@
                 factory.hindsight.shellHook
                 factory.uv.shellHook
                 factory.turbo.shellHook
-                ''
-                  export QUANTILE_OTELCOL_BINARY=${lib.getExe factory.otelcol-contrib.package}
-                  export QUANTILE_OTELCOL_CONFIG=${factory.otelcol-contrib.hostConfigFile}
-                  export QUANTILE_OTELCOL_DOCKER_CONFIG=${factory.otelcol-contrib.dockerConfigFile}
-                  export QUANTILE_OTELCOL_JOURNAL_CONFIG=${factory.otelcol-contrib.journalConfigFile}
-                ''
+                factory.otelcol-contrib.shellHook
               ];
               packages = [
                 pkgs.bash
