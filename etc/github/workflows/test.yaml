@@ -11,6 +11,7 @@ permissions:
   contents: read
 
 env:
+  pnpm_config_store_dir: /home/runner/.cache/pnpm-store
   OTEL_RESOURCE_ATTRIBUTES: service.namespace=${{ github.repository_owner }},service.name=${{ github.event.repository.name }}
 
 jobs:
@@ -27,11 +28,12 @@ jobs:
           persist-credentials: false
           fetch-depth: 0 # Tests run the full-history checks first.
 
-      - name: Mount the Nix and Turbo caches
+      - name: Mount workflow caches
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
         with:
           path: |
             /nix
+            /home/runner/.cache/pnpm-store
             .turbo/cache
           spacectl-version: 0.12.3
           spacectl-system-binary: ignore

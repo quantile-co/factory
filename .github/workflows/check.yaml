@@ -4,19 +4,20 @@ on:
   pull_request:
   push:
     # Dependabot branches are checked by their pull requests, not twice.
-    branches-ignore: [main, "dependabot/**"]
+    branches-ignore: ["dependabot/**"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
+  pnpm_config_store_dir: /home/runner/.cache/pnpm-store
   OTEL_RESOURCE_ATTRIBUTES: service.namespace=${{ github.repository_owner }},service.name=${{ github.event.repository.name }}
 
 jobs:
   all:
     name: All
-    if: github.ref != 'refs/heads/main'
+    # A successful main check also populates the profile’s main-only cache volume.
     runs-on: namespace-profile-factory-4x8;tailscale.spec=quantile
     timeout-minutes: 30
     steps:
@@ -26,11 +27,12 @@ jobs:
           persist-credentials: false
           fetch-depth: 0 # Full-history Gitleaks rejects shallow checkouts.
 
-      - name: Mount the Nix and Turbo caches
+      - name: Mount workflow caches
         uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
         with:
           path: |
             /nix
+            /home/runner/.cache/pnpm-store
             .turbo/cache
           spacectl-version: 0.12.3
           spacectl-system-binary: ignore

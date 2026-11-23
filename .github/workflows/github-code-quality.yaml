@@ -17,13 +17,20 @@ concurrency:
 jobs:
   sync:
     if: github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-factory-4x8;tailscale.spec=quantile
     timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Mount the Nix store and database
+        uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+        with:
+          path: /nix
+          spacectl-version: 0.12.3
+          spacectl-system-binary: ignore
 
       - name: Install Nix
         uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3

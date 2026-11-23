@@ -10,6 +10,17 @@ let
     lib.concatMapStrings (
       line: (if line == "" then "" else lib.concatStrings (lib.replicate spaces " ") + line) + "\n"
     ) (lib.splitString "\n" (lib.removeSuffix "\n" value));
+  goCachePaths =
+    source:
+    if cfg.goCaches then
+      builtins.replaceStrings
+        [ "            .turbo/cache\n" ]
+        [
+          "            .turbo/cache\n            /home/runner/.cache/go-build\n            /home/runner/go/pkg/mod\n"
+        ]
+        source
+    else
+      source;
   cachixSetup = indent 6 ''
     - name: Set up Cachix
       uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
@@ -157,15 +168,22 @@ in
       ];
       description = "Default jobs offered by Build/Plan/Apply; each dispatch selects exactly one layer.";
     };
+    goCaches = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Mount the Go compiler and module caches in Check and Test jobs that run Go outside Nix builds.";
+    };
     check.configFile = lib.mkOption {
       type = lib.types.path;
-      default = ../../../etc/github/workflows/check.yaml;
+      default = builtins.toFile "check.yaml" (
+        goCachePaths (builtins.readFile ../../../etc/github/workflows/check.yaml)
+      );
       description = "Check workflow.";
     };
     test.configFile = lib.mkOption {
       type = lib.types.path;
       default = builtins.toFile "test.yaml" (
-        cacheJob (builtins.readFile ../../../etc/github/workflows/test.yaml)
+        goCachePaths (cacheJob (builtins.readFile ../../../etc/github/workflows/test.yaml))
       );
       description = "Test workflow.";
     };

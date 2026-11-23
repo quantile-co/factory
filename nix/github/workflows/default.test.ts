@@ -43,6 +43,7 @@ function namespaceWorkflows(): Record<string, string> {
           ${root}/nix/github/workflows
           { quantile-co.factory.github.workflows = {
               nixCache = "namespace";
+              goCaches = true;
           }; }
         ];
       }).config.quantile-co.factory.github.workflows;
@@ -103,6 +104,13 @@ it("isolates Namespace cache credentials from Check", () => {
       expect(source).not.toMatch(/[ \t]+\n/);
       writeFileSync(path, source as string);
       const data = workflow(path);
+      expect(source).toContain("            /home/runner/.cache/pnpm-store\n");
+      for (const dir of [
+        "/home/runner/go/pkg/mod",
+        "/home/runner/.cache/go-build",
+      ]) {
+        expect(source.includes(dir)).toBe(name === "check" || name === "test");
+      }
       for (const job of Object.values(data.jobs) as Array<{
         "runs-on": string;
         if: string;
