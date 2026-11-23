@@ -50,6 +50,7 @@ it.each(["create", "import"])(
     const pageWrites: Record<string, unknown>[] = [];
     let pageReadStatus = 200;
     let pageSequence = 0;
+    let defaultTrigger: Record<string, unknown> = { refresh_cron: "0 * * * *" };
     const privateContent = "PRIVATE_GENERATED_PAGE_CONTENT";
     const pageNode = (page: Page) => ({
       id: page.id,
@@ -121,6 +122,30 @@ it.each(["create", "import"])(
           fact_count: bank?.fact_count ?? 0,
         };
         response.end(JSON.stringify(bank));
+        return;
+      }
+      if (
+        url.pathname === "/v1/default/banks/example--fixture/config" &&
+        bank
+      ) {
+        if (request.method === "PATCH") {
+          let body = "";
+          for await (const chunk of request) body += chunk;
+          const { updates } = JSON.parse(body);
+          if (Object.keys(updates).join() !== "page_default_trigger") {
+            response.writeHead(400).end("{}");
+            return;
+          }
+          defaultTrigger = updates.page_default_trigger;
+        }
+        response.end(
+          JSON.stringify({
+            config: {
+              page_default_trigger: defaultTrigger,
+              private_metadata: privateContent,
+            },
+          }),
+        );
         return;
       }
       const pagePath = "/v1/default/banks/example--fixture/pages";
@@ -330,6 +355,7 @@ module "memory" {
       env.TF_VAR_hindsight_api_token = credential;
       await tofu("apply", "-input=false", "-no-color", "saved.tfplan");
       expect(bank?.name).toBe("Fixture");
+      expect(defaultTrigger).toEqual({ refresh_after_consolidation: false });
       expect(pages.size).toBe(1);
       const procedures = requirePage("kp-created-1");
       expect(procedures.name).toBe("Successful procedures and pitfalls");
@@ -572,6 +598,7 @@ module "memory" {
             "module.memory.restful_resource.bank",
             'module.memory.restful_resource.page["initiative"]',
             'module.memory.restful_resource.page["procedures"]',
+            "module.memory.restful_resource.page_defaults",
           ],
         );
         expect([...pages.values()]).toEqual(before);

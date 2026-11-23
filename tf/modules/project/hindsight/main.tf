@@ -51,6 +51,25 @@ resource "restful_resource" "bank" {
   }
 }
 
+# PATCH owns a single override. DELETE /config would reset the entire bank.
+resource "restful_resource" "page_defaults" {
+  path          = "${local.bank_path}/config"
+  create_method = "PATCH"
+  update_method = "PATCH"
+  delete_method = "PATCH"
+  delete_body   = { updates = {} }
+  read_selector = "{\"updates\":config.{\"page_default_trigger\":page_default_trigger}}"
+  body = {
+    updates = { page_default_trigger = { refresh_after_consolidation = false } }
+  }
+
+  depends_on = [restful_resource.bank]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 resource "restful_resource" "page" {
   for_each = local.pages
 
