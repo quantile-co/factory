@@ -292,7 +292,6 @@
                 factory.sonarqube.withProject {
                   projectKey = "quantile-co_factory";
                   roots = [
-                    ".github/actions"
                     "apps"
                     "etc/pnpm/apps/repo"
                     "nix"

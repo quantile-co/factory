@@ -1,6 +1,6 @@
 ---
 name: day-zero-deploy
-description: Bootstrap a genuinely new Factory-module installation, migrate local state to GCS, hand off to protected saved-plan workflows, and remove the bootstrap operator's direct Owner grant. Never reseed an existing installation.
+description: Plan a clean rebuild in Terraform-root dependency order. Bootstrap genuinely new installations, migrate local state to GCS, hand off to protected saved-plan workflows, and remove the bootstrap operator's direct Owner grant. Never reseed an existing installation.
 ---
 
 # Day Zero
@@ -31,6 +31,22 @@ Terraform inputs, Git or public logs. Preserve WIF, locks, backups and recovery
 access. After CI handoff remove only the bootstrap human's direct Owner grant,
 never standing creator/billing, CI or recovery grants.
 
+## Derive the rebuild order before seeding
+
+**Confirm the rebuild scope first.** If the operator hasn't specified what to rebuild, ask.
+For one repository or a named set, inspect only those repositories. For a GitHub
+organization, enumerate all repositories visible to the current identity, identify
+which deploy Terraform roots, and show that inventory to the operator for confirmation.
+Flag any gaps in visibility; local checkouts are not an organization inventory.
+Treat dependencies outside the confirmed scope as external prerequisites unless
+the operator explicitly expands the scope.
+
+1. **Inventory roots, not repositories or modules.** For each installation in scope, trace its workflow layer to its actual root directory and backend identity. Distinguish surviving resources/state (recover them) from confirmed new installations. List external prerequisites such as the parent folder, billing, identity provider and operator access.
+2. **Trace each input to its producer.** Read root code, build/release commands and deployment checks. Record `producer → consumer` for outputs and for dependencies Terraform cannot see: a fresh DNS claim, a published image digest, a populated secret version or a certificate becoming ready. Record how to verify each handoff, not secret values. A literal copied from the old installation is not evidence the input exists in the new one.
+3. **Check the root boundaries.** An infrastructure root should be able to create its foundation without a release: for example, a project, registry and runtime identity. An application root consumes that foundation and an immutable release. A single infrastructure root is enough when there is no separately deployed workload. If one root must create a registry and also deploy an image that can only be published afterwards, show the cycle and stop for a root split; `-target` or a placeholder release is not a rebuild order.
+4. **Topologically sort.** List the roots and intervening checkpoints with no unmet prerequisites as the first wave. Mark those as satisfied on paper, then repeat. If anything remains and nothing is ready, report the missing external input or the exact dependency cycle. Don't prescribe a universal repository order.
+5. **Present the Day Zero checklist for review:** for each wave, give the root path or checkpoint, what it needs, what it produces and how readiness is verified. During an authorized rebuild, advance only on verified outputs; independent roots may proceed in parallel. Use the local seed and migration only for a new foundation that creates its backend. Later roots use their own backend prefixes and protected workflows; an ordering is not approval to run them.
+
 ## Namespace runner profiles (only if required)
 
 Skip this section unless the reviewed workflows use Namespace. Profiles belong to
@@ -38,23 +54,23 @@ Skip this section unless the reviewed workflows use Namespace. Profiles belong t
 profile says nothing about Terraform state and never authorizes bootstrap.
 
 1. From the operator's pinned shell, verify the workspace ID, connected GitHub
-   organization, admin access and exact required `runs-on` labels. Inventory the
-   workspace with `nsc --keychain "$workspace" workspace describe` and
-   `nsc --keychain "$workspace" github profile list`. A failed or partial lookup
-   is not absence. Stop on a mismatch or if the intended profile exists under
-   another tag; do not create a duplicate to resolve a naming discrepancy.
+    organization, admin access and exact required `runs-on` labels. Inventory the
+    workspace with `nsc --keychain "$workspace" workspace describe` and
+    `nsc --keychain "$workspace" github profile list`. A failed or partial lookup
+    is not absence. Stop on a mismatch or if the intended profile exists under
+    another tag; do not create a duplicate to resolve a naming discrepancy.
 2. If the required profiles exist, use them unchanged. Do not reconcile them
-   against this example. For an explicitly requested customization, draft the
-   exact diff against the current profile ID and version. Preserve access,
-   network, cache and other settings. Do not round-trip an incomplete describe
-   response into a full replacement spec. Get separate approval for the update.
+    against this example. For an explicitly requested customization, draft the
+    exact diff against the current profile ID and version. Preserve access,
+    network, cache and other settings. Do not round-trip an incomplete describe
+    response into a full replacement spec. Get separate approval for the update.
 3. Only for a **confirmed missing** profile, render one spec below. Verify the
-   workspace's `quantile` Tailscale integration is already configured for
-   nonprod enrollment and MagicDNS. Never put enrollment credentials in the
-   image or spec. Use a **published**, reviewed Factory commit that exports
-   `factory-github-runtime`. The examples correspond to
-   `namespace-profile-quantile-4x8;tailscale.spec=quantile` and `namespace-profile-quantile-8x16;tailscale.spec=quantile`.
-   Supply the approved access level for the workspace; never infer it from size.
+    workspace's `quantile` Tailscale integration is already configured for
+    nonprod enrollment and MagicDNS. Never put enrollment credentials in the
+    image or spec. Use a **published**, reviewed Factory commit that exports
+    `factory-github-runtime`. The examples correspond to
+    `namespace-profile-quantile-4x8;tailscale.spec=quantile` and `namespace-profile-quantile-8x16;tailscale.spec=quantile`.
+    Supply the approved access level for the workspace; never infer it from size.
 
 ```bash
 set -euo pipefail
@@ -87,10 +103,10 @@ jq -n --arg image "$image" --arg shape "$shape" --arg access "$access" \
   --argjson cpu "${shape%x*}" --argjson ram "${shape#*x}" '{
     tag: ("quantile-" + $shape), os: "ubuntu-24.04", access_level: $access,
     instance_shape: {os: "linux", machine_arch: "amd64", virtual_cpu: $cpu,
-                     memory_megabytes: ($ram * 1024)},
+                      memory_megabytes: ($ram * 1024)},
     builder_mode: "NO_CACHING", swap_size_mb: 0,
     cache_volume_settings: [{volume_tag: "nix", volume_size_gb: 20,
-                             allow_commit_from_branch: ["main"]}],
+                              allow_commit_from_branch: ["main"]}],
     custom_runner_image_spec: {docker_spec: {dockerfile_content: $image}}
   }' > "$spec"
 printf 'Workspace keychain: %s\n' "$workspace"

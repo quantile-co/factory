@@ -113,7 +113,9 @@ it("isolates Namespace cache credentials from Check", () => {
           run?: string;
         }>;
       }>) {
-        expect(job["runs-on"]).toBe("namespace-profile-quantile-4x8;tailscale.spec=quantile");
+        expect(job["runs-on"]).toBe(
+          "namespace-profile-quantile-4x8;tailscale.spec=quantile",
+        );
         const tasks = job.steps.filter(
           (step) => step.env?.NIX_CACHE_PROVIDER === "namespace",
         );
