@@ -1,0 +1,40 @@
+name: Qualify runner collector
+on:
+  push:
+    branches: [qualify/runner-local-collector]
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: namespace-profile-factory-4x8;tailscale.spec=quantile
+    timeout-minutes: 5
+    steps:
+      - name: Check listener installed by the runner
+        id: local
+        shell: bash
+        run: |
+          if test -n "${QUANTILE_OTLP_ENDPOINT:-}"; then echo 'Upstream configured: yes'; else echo 'Upstream configured: no'; fi
+          if timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/4318' 2>/dev/null; then
+            echo 'Loopback OTLP listener: reachable'
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Loopback OTLP listener: unavailable'
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.local.outputs.ready == 'true'
+        with:
+          persist-credentials: false
+      - name: Trace a repository integrity check
+        if: steps.local.outputs.ready == 'true'
+        shell: bash
+        run: |
+          cd "$(mktemp -d)"
+          npm install --ignore-scripts --no-audit --no-fund @quantile-co/factory-otel@0.5.0 @quantile-co/factory-github@0.2.0
+          node --input-type=module <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { withWorkflowTrace } from '@quantile-co/factory-github';
+          import { withSpan } from '@quantile-co/factory-otel';
+          await withWorkflowTrace('factory.qualification', () => withSpan('repository.fsck', async () => {
+            execFileSync('git', ['fsck', '--connectivity-only'], {cwd: process.env.GITHUB_WORKSPACE});
+          }));
+          JS
