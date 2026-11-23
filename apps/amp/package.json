@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "@quantile-co/factory-amp": "workspace:*",
-    "commander": "15.0.0"
+    "commander": "15.1.0"
   }
 }
