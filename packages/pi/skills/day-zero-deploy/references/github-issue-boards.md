@@ -21,7 +21,7 @@ the browser authorization. Inventory the owner's projects before deciding
 whether to create one:
 
 ```bash
-gh project list --owner "$owner" --limit 100 --format json
+gh project list --owner "$owner" --closed --limit 100 --format json
 ```
 
 Compare the returned list length to `totalCount` and increase the limit if
@@ -50,30 +50,21 @@ nonpublic security details, and internal notes off the public board. Only
 then run `gh project edit "$project" --owner "$owner" --visibility PUBLIC`.
 For private or internal repos, leave the project private.
 
-Use an **Open issues** Board view with `is:issue is:open`, grouped into Status
-columns **Dependabot**, **Todo**, **In Progress**, and **Done**, in that order.
-Keep **Dependabot** immediately to the left of **Todo** on every board, even
-when empty. Preserve existing Status options and their IDs when using
-`updateProjectV2Field`; omitting an option removes it. Do not filter on assignee:
-unassigned issues belong on the board too. In the UI, make Status the column
-field. `gh project` has no view-layout flag. To configure an existing view from
-the CLI, first read its ID from `organization(login: …) { projectV2(number: …)
-{ views(first: 100) { nodes { id name layout filter } } } }` with
-`gh api graphql`. After confirming the intended view, update it once:
+Open the project with `gh project view "$project" --owner "$owner" --web`.
+Save an **Open issues** view using **Table** layout and `is:issue is:open`,
+without grouping, sorting, or an assignee filter. Show these columns in order:
 
-```bash
-gh api graphql -f view="$view_id" -f query='
-  mutation($view: ID!) {
-    updateProjectV2View(input: {
-      viewId: $view, name: "Open issues", layout: BOARD_LAYOUT, filter: "is:issue is:open"
-    }) { projectV2View { id name layout filter } }
-  }'
-```
+1. Title
+2. Sub-issues progress
+3. Assignees
+4. Status
+5. Labels
+6. Created
+7. Updated
 
-If no intended view exists or the API rejects view configuration, complete it
-in the UI (`gh project view "$project" --owner "$owner" --web`). Verify the
-view name, layout, filter, and Status columns instead of assuming a project
-created successfully is already a configured board.
+Hide **Repository** (all rows come from the same repo) and **Closed**. Keep the
+ordinary statuses **Todo**, **In Progress**, and **Done**. Dependabot is an
+issue label, not a project status.
 
 ## Seed and keep current
 
@@ -83,18 +74,17 @@ again. Apply the label only to issues tracking a Dependabot PR or security
 alert, including alerts with no PR. The linked PR or alert determines the
 label, not the issue author. No label is required for a card to enter a board.
 
-Set **Item added to project** to **Todo**. After intake, route queued
-`dependabot` cards to **Dependabot**; leave other new issues in **Todo**.
-Preserve **In Progress**, **Done**, and other non-backlog statuses.
-Move Dependabot work to **In Progress** when it starts.
+Set **Item added to project** to **Todo** for all new issues. If converting
+an existing project, first apply and verify the `dependabot` issue label on
+all cards using the old **Dependabot** status. Then move those cards to
+**Todo**, remove the obsolete option, and preserve all other statuses.
 
 Check both open Dependabot PRs and open security alerts when reviewing this
 backlog. File each tracking issue in the repository the PR or alert applies to.
 For an alert without a PR, check the updater error. If the repository is public,
 link to the restricted alert without copying package impact or updater
 diagnostics into the public issue. Add only the tracking issue to the repository
-board. Unless separate routing automation is configured, classify new cards
-during triage.
+project. Apply the issue label when filing or triaging the tracking issue.
 
 List all open issues in the confirmed repository with the paginated repository
 endpoint. It includes PRs; exclude them and review the complete result before
@@ -122,16 +112,15 @@ repository, enter `is:issue is:open`, then save and turn on the rule. Leave
 labels and assignees out of the [Auto-add filter](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/adding-items-automatically).
 Linking the repository to the project does not create a rule.
 
-Native rules do not backfill existing issues or route `dependabot` issues to a
-different Status. If native intake is unavailable, record the gap; use a
-separately approved reconciliation for intake or column routing. The Open
-issues view hides closed cards retained in project history.
+Native rules do not backfill existing issues. If native intake is unavailable,
+record the gap; use a separately approved reconciliation for intake. The Open
+issues view hides closed items retained in project history.
 
 Verify the project URL, owner and visibility with `gh project view`; check
 that visibility matches the repository and compare
-paginated project items with the open-issue inventory. Confirm that no PRs or
-out-of-scope issues were added, queued Dependabot tracking issues are in their
-own column, and ordinary Todo cards and active work retained their statuses.
+paginated project items with the open-issue inventory. Confirm the table's
+visible columns and order, that tracking issues carry the `dependabot` label,
+and that no PRs or out-of-scope issues were added.
 Verify native intake on the next eligible issue creation or update. Record
 board URLs, seed counts, and which repositories have verified ongoing intake;
 report rules that are enabled but have not yet been exercised.
