@@ -13,12 +13,18 @@ jobs:
         id: local
         shell: bash
         run: |
+          hook=/opt/factory-github/bin/job-started.sh
+          prejob=/opt/namespace/mounted_prejob.sh
+          if [[ -x "$hook" ]]; then echo 'Factory hook executable: yes'; else echo 'Factory hook executable: no'; fi
+          if [[ ! -r "$prejob" ]]; then echo 'Pre-job Factory reference: unreadable'; elif grep -qF '/opt/factory-github' "$prejob"; then echo 'Pre-job Factory reference: yes'; else echo 'Pre-job Factory reference: no'; fi
+          if [[ -d "$RUNNER_TEMP/factory-otel" ]]; then echo 'Factory startup directory: present'; else echo 'Factory startup directory: absent'; fi
           if test -n "${QUANTILE_OTLP_ENDPOINT:-}"; then echo 'Upstream configured: yes'; else echo 'Upstream configured: no'; fi
           if timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/4318' 2>/dev/null; then
             echo 'Loopback OTLP listener: reachable'
             echo 'ready=true' >> "$GITHUB_OUTPUT"
           else
             echo 'Loopback OTLP listener: unavailable'
+            exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.local.outputs.ready == 'true'
