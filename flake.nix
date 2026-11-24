@@ -40,6 +40,20 @@
             inherit source;
             mode = "copy";
           };
+          planFile =
+            let
+              source = builtins.readFile factory.github.workflows.plan.configFile;
+              runner = "    runs-on: namespace-profile-factory-4x8;tailscale.spec=quantile\n";
+            in
+            assert lib.assertMsg (
+              lib.length (lib.splitString runner source) == 2
+            ) "Factory expects one selected Plan job";
+            pkgs.writeText "plan.yaml" (
+              builtins.replaceStrings
+                [ runner ]
+                [ "    runs-on: namespace-profile-factory-8x16;tailscale.spec=quantile\n" ]
+                source
+            );
           buildFile =
             let
               source = builtins.readFile factory.github.workflows.build.configFile;
@@ -321,7 +335,7 @@
               ".github/workflows/github-code-quality.yaml" = copy factory.github.workflows.codeQuality.configFile;
               ".github/workflows/test.yaml" = copy factory.github.workflows.test.configFile;
               ".github/workflows/build.yaml" = copy buildFile;
-              ".github/workflows/plan.yaml" = copy factory.github.workflows.plan.configFile;
+              ".github/workflows/plan.yaml" = copy planFile;
               ".github/workflows/apply.yaml" = copy factory.github.workflows.apply.configFile;
               ".github/dependabot.yml" = copy (
                 factory.dependabot.withUpdates [
