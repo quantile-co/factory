@@ -27,3 +27,12 @@ jobs:
             execFileSync('git', ['fsck', '--connectivity-only'], {cwd: process.env.GITHUB_WORKSPACE});
           }));
           JS
+      - name: Check collector delivery
+        shell: bash
+        run: |
+          host=${QUANTILE_OTLP_ENDPOINT#https://}
+          if getent ahosts "$host" >/dev/null; then echo 'Collector upstream DNS: resolved'; else echo 'Collector upstream DNS: unresolved'; fi
+          curl -fsS --max-time 3 http://127.0.0.1:8888/metrics | awk '/^otelcol_(receiver_accepted_spans|exporter_sent_spans)(_total)?[{ ]/ {print $1 ~ /receiver/ ? "Accepted spans:" : "Exported spans:", $NF}'
+          log="$RUNNER_TEMP/factory-otel/collector.log"
+          if grep -Eiq 'no such host|temporary failure in name resolution' "$log"; then echo 'Collector log: DNS failure'; fi
+          if grep -Eiq '401 Unauthorized|403 Forbidden|status code (401|403)' "$log"; then echo 'Collector log: authorization failure'; fi
