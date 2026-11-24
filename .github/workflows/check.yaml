@@ -18,7 +18,7 @@ jobs:
   all:
     name: All
     # A successful main check also populates the profile’s main-only cache volume.
-    runs-on: namespace-profile-factory-4x8;tailscale.spec=quantile
+    runs-on: namespace-profile-factory-8x16;tailscale.spec=quantile
     timeout-minutes: 30
     steps:
       - name: Check out repository
