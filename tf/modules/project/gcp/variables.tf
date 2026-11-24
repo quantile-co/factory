@@ -58,7 +58,7 @@ variable "gh_repo_id" {
 }
 
 variable "gh_owner_ids" {
-  description = "GitHub usernames mapped to immutable numeric actor IDs for main-branch WIF access."
+  description = "GitHub usernames mapped to immutable numeric actor IDs for protected deployment WIF access."
   type        = map(string)
   nullable    = false
 
@@ -76,12 +76,12 @@ variable "tf_state_location" {
 }
 
 variable "wif_pool" {
-  description = "Existing GitHub WIF pool with the main_branch_repository_actor_id mapping."
+  description = "Existing GitHub WIF pool with the deploy_repository_actor_id mapping limited to protected deploy jobs."
   type        = string
   nullable    = false
 
   validation {
     condition     = can(regex("^projects/[0-9]+/locations/global/workloadIdentityPools/[a-z0-9-]+$", var.wif_pool))
-    error_message = "Supply a full WIF pool path with a main-branch actor mapping."
+    error_message = "Supply a full WIF pool path."
   }
 }

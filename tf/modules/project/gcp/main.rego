@@ -52,7 +52,7 @@ valid_federation if {
 	owner.for_each == "${var.gh_owner_ids}"
 	owner.project == "${google_project.state.project_id}"
 	owner.role == "roles/owner"
-	owner.member == "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.main_branch_repository_actor_id/${var.gh_repo_id}_${each.value}"
+	owner.member == "principalSet://iam.googleapis.com/${var.wif_pool}/attribute.deploy_repository_actor_id/${var.gh_repo_id}_${each.value}"
 }
 
 deny contains "State must retain private versioned storage, deletion guards and prefix-scoped plan cleanup" if not valid_state
@@ -61,4 +61,4 @@ deny contains "Storage audit logs must cover admin reads, data reads and writes 
 
 deny contains "Reviewers must have read-only access limited to plans and builds prefixes" if not valid_readers
 
-deny contains "Project administration must retain main/repository/actor-scoped federation" if not valid_federation
+deny contains "Project administration must retain protected deploy repository/actor-scoped federation" if not valid_federation
