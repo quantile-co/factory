@@ -13,7 +13,7 @@ A source change, successful Check or Plan never authorizes a deployment.
 | `TF_LAYER` | Offered workflow layer: `infrastructure` or `application`; passed as `tf_layer`. |
 | `GCP_WIF_POOL` | Trusted `projects/NUMBER/locations/global/workloadIdentityPools/POOL` resource path. |
 | `GCP_WIF_PROVIDER` | Trusted pool path followed by `/providers/PROVIDER`, used by CI authentication. |
-| `GH_PLAN_REF` | One complete `RUN_ID/ATTEMPT/GENERATION` value from the successful Plan summary; three positive decimal integers without leading zeros. |
+| `GH_PLAN_REF` | One complete `RUN_ID/ATTEMPT/GENERATION` value from [private CLI review](saved-plan-review.md) of the successful Plan; three positive decimal integers without leading zeros. |
 
 The concrete Terraform root owns reviewed `project_owners` and `project_members`
 locals. They are source configuration, not CLI/environment inputs or Actions

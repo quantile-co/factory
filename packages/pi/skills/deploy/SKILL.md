@@ -12,7 +12,9 @@ the consuming repository root in its pinned direnv shell. Read `AGENTS.md`,
 references, the consumer's shell and task scripts, and the pinned caller **and** called workflows.
 Use the repository task/app's mapping of the workflow's logical `--tf-layer` as
 the reviewed `TF_DIR` for local inspection. Directory and backend-prefix mappings
-belong to the repository, not the shared workflow.
+belong to the repository, not the shared workflow. After a successful Plan,
+use [private CLI review](references/saved-plan-review.md) with the approved SHA
+and exact run/attempt. No Actions Summary or bucket listing is required.
 
 Before planning, review the concrete root's source-owned repository identity,
 paired owners/members, billing account, parent folder and bucket location. Adjust

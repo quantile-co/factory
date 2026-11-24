@@ -203,9 +203,9 @@ run_and_verify() {
 run_and_verify plan.yaml -f tf_layer=infrastructure
 ```
 
-Download and inspect the GCS plan using the deploy reference. Set `GH_PLAN_REF` to
-its complete `RUN_ID/ATTEMPT/GENERATION` value from the Plan summary, verify its
-exact producing attempt and obtain separate approval for Apply. Preserve the
+Follow [private CLI review](../../deploy/references/saved-plan-review.md) to
+verify the producing SHA, layer and exact run/attempt, resolve `GH_PLAN_REF`
+and inspect its saved generation. Obtain separate approval for Apply. Preserve the
 same reference after review. A successful Plan is not Apply authorization.
 
 ```sh
