@@ -33,6 +33,11 @@ Terraform inputs, Git or public logs. Preserve WIF, locks, backups and recovery
 access. After CI handoff remove only the bootstrap human's direct Owner grant,
 never standing creator/billing, CI or recovery grants.
 
+When Day Zero provisions a GitHub repository and a GCP project, include the
+[GitHub issue board](references/github-issue-boards.md) as a separate checklist
+phase. Use that procedure on its own for approved board setup on an existing
+repository; it does not authorize reseeding infrastructure.
+
 ## Derive the rebuild order before seeding
 
 **Confirm the rebuild scope first.** If the operator hasn't specified what to rebuild, ask.

@@ -265,3 +265,8 @@ run_and_verify plan.yaml -f tf_layer=infrastructure
 
 Keep private backups until state and recovery are verified. Remove only your own
 no-longer-needed local overrides and scratch; never commit them.
+
+## 7. Set up the GitHub issue board
+
+For a newly provisioned repository and GCP project, follow the separately
+approved [GitHub issue board phase](github-issue-boards.md).

@@ -42,7 +42,7 @@ variable "has_issues" {
 }
 
 variable "labels" {
-  description = "Labels managed individually by name; other repository labels remain unmanaged. Overrides the optional Factory preset."
+  description = "Labels managed individually by name; caller values override Factory defaults. Other repository labels remain unmanaged."
   type = map(object({
     color       = string
     description = optional(string, "")

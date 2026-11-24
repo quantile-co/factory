@@ -29,12 +29,21 @@ resource "github_repository" "self" {
 }
 
 locals {
-  labels = merge(var.factory_automatic_label ? {
-    factory-automatic = {
-      color       = "5319e7"
-      description = "Opt in at issue creation to an agent workspace and triage (billed runtime)."
-    }
-  } : {}, var.labels)
+  labels = merge(
+    {
+      dependabot = {
+        color       = "1d76db"
+        description = "Tracks a Dependabot update PR or security alert."
+      }
+    },
+    var.factory_automatic_label ? {
+      factory-automatic = {
+        color       = "5319e7"
+        description = "Opt in at issue creation to an agent workspace and triage (billed runtime)."
+      }
+    } : {},
+    var.labels,
+  )
 }
 
 # Per-label resources deliberately leave other labels alone.

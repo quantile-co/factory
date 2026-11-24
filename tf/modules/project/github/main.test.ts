@@ -60,8 +60,12 @@ run "${visibility}_fork_approval" {
     environments = ["preview", "prod"]
   }
   assert {
-    condition = toset(keys(github_issue_label.self)) == toset(["factory-automatic"])
-    error_message = "Repositories receive the shared Factory label by default."
+    condition = (
+      toset(keys(github_issue_label.self)) == toset(["dependabot", "factory-automatic"]) &&
+      github_issue_label.self["dependabot"].repository == github_repository.self.name &&
+      github_issue_label.self["dependabot"].description == "Tracks a Dependabot update PR or security alert."
+    )
+    error_message = "Public and private repositories receive the two shared Factory labels by default."
   }
   assert {
     condition = output.owner_ids["fixture-operator"] == "987654321"
@@ -119,12 +123,26 @@ run "caller_labels" {
   }
   assert {
     condition = (
-      toset(keys(github_issue_label.self)) == toset(["factory-automatic", "custom"]) &&
+      toset(keys(github_issue_label.self)) == toset(["dependabot", "factory-automatic", "custom"]) &&
       github_issue_label.self["factory-automatic"].repository == github_repository.self.name &&
       github_issue_label.self["factory-automatic"].color == "5319e7" &&
       github_issue_label.self["custom"].description == "Caller label"
     )
-    error_message = "The standard Factory label must compose with caller-owned labels."
+    error_message = "The standard Factory labels must compose with caller-owned labels."
+  }
+}
+run "dependabot_label_without_agent_opt_in" {
+  command = plan
+  module { source = ${JSON.stringify(moduleDir)} }
+  variables {
+    repo_name = "fixture"
+    visibility = "private"
+    owners = ["fixture-operator"]
+    factory_automatic_label = false
+  }
+  assert {
+    condition = toset(keys(github_issue_label.self)) == toset(["dependabot"])
+    error_message = "The Dependabot tracking label is independent of the agent opt-in label."
   }
 }
 run "overlapping_roles" {
