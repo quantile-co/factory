@@ -133,8 +133,8 @@ gh workflow run plan.yaml -R "$GH_REPO" --ref main -f "tf_layer=$TF_LAYER"
 
 Capture its run ID and attempt from the result; an ambiguous dispatch is not
 permission to dispatch again. Watch that exact run and require success, including
-post-steps. Set `GH_PLAN_REF` to the complete `RUN_ID/ATTEMPT/GENERATION` value
-from the Plan step summary; do not reconstruct it from separately chosen parts.
+post-steps. Retain the approved SHA, layer and exact run/attempt for lookup.
+If available, retain the complete Summary reference for an independent comparison.
 
 No plan or diagnostic is uploaded to GitHub. The saved plan and its private
 Plan log stay in GCS under `plans/REPOSITORY_ID/RUN_ID/ATTEMPT/saved-plan/`.
@@ -147,9 +147,9 @@ the input alone grants nothing.
 
 ## 3. Inspect the plan privately
 
-Follow [the saved-plan review procedure](saved-plan-review.md) in full using
-`GH_PLAN_REF`. It parses the components internally and verifies the producing
-attempt; confirm its source and effective bucket before reviewing the plan.
+Follow [the saved-plan review procedure](saved-plan-review.md) in full. It resolves
+`GH_PLAN_REF` from the verified producer and exact object metadata without
+requiring the Summary. Confirm its source, root and effective bucket first.
 Preserve that exact reference for the separately approved Apply; review does
 not authorize it.
 
